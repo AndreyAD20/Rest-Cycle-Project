@@ -1,0 +1,125 @@
+// Modelo ER para la aplicación Rest Cycle
+
+Table Usuarios {
+  usuario_id int [pk, increment]
+  nombre varchar
+  correo varchar [unique]
+  telefono varchar
+  fecha_nacimiento date
+  contrasena varchar
+  modo enum('parental', 'autocuidado')
+  tipo_usuario enum('padre', 'hijo', 'normal')
+  idioma varchar
+  tema enum('claro', 'oscuro')
+  premium boolean
+  cuenta_terceros boolean
+  isAdmin boolean
+}
+
+Table Dispositivos {
+  dispositivo_id int [pk, increment]
+  usuario_id int [ref: > Usuarios.usuario_id]
+  nombre_dispositivo varchar
+  sistema_operativo varchar
+  imei varchar
+}
+
+Table EnlaceCuentas {
+  enlace_id int [pk, increment]
+  padre_id int [ref: > Usuarios.usuario_id]
+  hijo_id int [ref: > Usuarios.usuario_id]
+  contrasena_segura varchar
+  estado enum('pendiente', 'activo', 'bloqueado')
+}
+
+Table Aplicaciones {
+  app_id int [pk, increment]
+  nombre varchar
+  categoria varchar
+  plataforma varchar
+}
+
+Table AppsVinculadas {
+  id int [pk, increment]
+  dispositivo_id int [ref: > Dispositivos.dispositivo_id]
+  app_id int [ref: > Aplicaciones.app_id]
+  tiempo_max_diario int
+  medidas_exceso text
+  bloqueada boolean
+}
+
+Table UsoAplicacion {
+  uso_id int [pk, increment]
+  dispositivo_id int [ref: > Dispositivos.dispositivo_id]
+  app_id int [ref: > Aplicaciones.app_id]
+  fecha date
+  tiempo_uso_min int
+}
+
+Table HistorialNavegacion {
+  historial_id int [pk, increment]
+  dispositivo_id int [ref: > Dispositivos.dispositivo_id]
+  url varchar
+  fecha_acceso datetime
+}
+
+Table Tareas {
+  tarea_id int [pk, increment]
+  usuario_id int [ref: > Usuarios.usuario_id]
+  titulo varchar
+  descripcion text
+  fecha_inicio date
+  fecha_fin date
+  completada boolean
+  tipo enum('recordatorio', 'compromiso', 'deber')
+}
+
+Table Notificaciones {
+  notificacion_id int [pk, increment]
+  usuario_id int [ref: > Usuarios.usuario_id]
+  tipo enum('motivacional', 'recordatorio', 'interes', 'sistema', 'uso_excesivo')
+  contenido text
+  fecha_envio datetime
+  tema_interes varchar
+}
+
+Table Calendario {
+  evento_id int [pk, increment]
+  usuario_id int [ref: > Usuarios.usuario_id]
+  titulo varchar
+  descripcion text
+  fecha_evento date
+  hora_evento time
+}
+
+Table HorasDescanso {
+  descanso_id int [pk, increment]
+  usuario_id int [ref: > Usuarios.usuario_id]
+  hora_inicio time
+  hora_fin time
+  medidas text
+}
+
+Table NotasImportantes {
+  nota_id int [pk, increment]
+  usuario_id int [ref: > Usuarios.usuario_id]
+  titulo varchar
+  contenido text
+}
+
+Table Suscripciones {
+  suscripcion_id int [pk, increment]
+  usuario_id int [ref: > Usuarios.usuario_id]
+  tipo enum('gratis', 'premium')
+  fecha_inicio date
+  fecha_fin date
+  activa boolean
+}
+
+Table SoporteTecnico {
+  soporte_id int [pk, increment]
+  usuario_id int [ref: > Usuarios.usuario_id]
+  canal enum('chat', 'email', 'telefono')
+  mensaje text
+  fecha datetime
+}
