@@ -1,0 +1,56 @@
+#imagenHabitos {
+    position: relative;
+    top: 10px;
+}
+.opcionesHabitos {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    width: 90%;
+    max-width: 350px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 1.2em;
+    padding: 10px 0;
+    background: #00cfff;
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    cursor: pointer;
+    transition: background 0.2s;
+    gap: 15px;
+}
+
+.opcionesHabitos img {
+    display: block;
+    margin: 0 0 0 15px;
+    max-width: 40px;
+    max-height: 40px;
+}
+
+.opcionesHabitos {
+    text-align: left;
+}
+
+.opcionesHabitos:active, .opcionesHabitos:hover {
+    background: #00b0d4;
+}
+#perfil {
+    margin-top: 85px;
+}
+#imagenHabitos {
+    margin-top: 100px;
+}
+.palabrasInicio {
+    margin-top: 80px;
+    text-align: center;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.1em;
+    background-color:#95d1df;
+    width: 80%;
+    height: auto;
+    
+}

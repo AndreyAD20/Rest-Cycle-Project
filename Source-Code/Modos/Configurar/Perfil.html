@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil</title>
+    <link rel="stylesheet" href="colores.css">
+</head>
+<body>
+    <div class="App">
+        <div id="Perfil">
+        <!-- Botón de retroceso -->
+        <button class="back-button" onclick="window.location.href='configuracion.html'">
+            &#8592;
+        </button>
+
+        <!-- Sección de foto de perfil -->
+        <span class="config-text">Foto de Perfil</span>
+        <div class="profile-container">
+            <div class="profile-photo-container">
+                <img id="profile-photo" src="default-avatar.png" alt="Foto de perfil">
+                <label for="photo-input" class="photo-upload-btn">
+                    <span class="camera-icon">📷</span>
+                </label>
+                <input type="file" id="photo-input" accept="image/*" style="display: none">
+            </div>
+        </div>
+
+        <!-- Sección de usuario -->
+        <span class="config-text">Usuario</span>
+        <div class="input-container">
+            <input type="text" class="custom-input" placeholder="Ingrese Nombre">
+        </div>
+
+        <!-- Botón confirmar -->
+        <div class="confirm-container">
+            <button class="confirm-button">Confirmar</button>
+        </div>
+          <span class="config-text">Correo Electronico</span>
+        <div class="input-container">
+            <input type="text" class="custom-input" placeholder="Email">
+        </div>
+
+        <!-- Botón confirmar -->
+        <div class="confirm-container">
+            <button class="confirm-button">Confirmar</button>
+        </div>
+          <span class="config-text">Telefono</span>
+        <div class="input-container">
+            <input type="text" class="custom-input" placeholder="Telefono">
+        </div>
+           <div class="confirm-container">
+            <button class="confirm-button">Confirmar</button>
+        </div>
+
+        
+    </div>
+</body>
+</html>

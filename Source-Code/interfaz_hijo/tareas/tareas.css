@@ -1,0 +1,294 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #ab00fa 0%, #fefcff 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.APP {
+    background: url('Fondo.png');
+    background-size: cover;
+    background-position: center;
+    width: 375px;
+    height: 812px;
+    border-radius: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    position: relative;
+    border: 8px solid #2c3e50;
+    display: flex;
+    flex-direction: column;
+    padding: 30px 20px;
+}
+.floating-sphere {
+    position: absolute;
+    top: 50px;
+    left: 85%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    border-radius: 60%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: float 3s ease-in-out infinite;
+    overflow: hidden; /* Para asegurar que la imagen no sobresalga */
+}
+.sphere-image {
+    width: 80%;  /* Ajusta este valor según necesites */
+    height: 85%;  /* Ajusta este valor según necesites */
+    object-fit: cover;  /* Mantiene la proporción de la imagen */
+}
+
+/* Campo de comentario dentro de la esfera */
+.comment-input {
+    width: 90%;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    padding: 8px;
+    font-size: 12px;
+    resize: none;
+    margin-bottom: 5px;
+}
+
+/* Animación de flotación */
+@keyframes float {
+    0% {
+        transform: translateX(-50%) translateY(0px);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-10px);
+    }
+    100% {
+        transform: translateX(-50%) translateY(0px);
+    }
+}
+.floating-sphere-second {
+    position: absolute;
+    top: 60px;               /* Modifica para cambiar posición vertical */
+    left: 40%;                /* Modifica para cambiar posición horizontal */
+    transform: translateX(-50%);
+    width: 200px;             /* Modifica para cambiar tamaño */
+    height: 95px;            /* Modifica para cambiar tamaño */
+    background: rgba(255, 255, 255, 0.4);  /* Modifica para cambiar color y opacidad */
+    backdrop-filter: blur(15px);
+    border-radius: 10%;
+    border: 2px solid rgba(255, 255, 255, 0.5);  /* Modifica para cambiar borde */
+    display: flex;
+    align-items: relative;
+    justify-content: center;
+    padding: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: float-second 3s ease-in-out infinite;
+    overflow: hidden;
+}
+
+
+/* Animación personalizada para la segunda esfera */
+@keyframes float-second {
+    0% {
+        transform: translateX(-50%) translateY(0px);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-15px); /* Modifica para cambiar altura de flotación */
+    }
+    100% {
+        transform: translateX(-50%) translateY(0px);
+    }
+}
+.tareas {
+    position: relative;
+    top: 200px;
+    left: 30px;
+    width: 50px;            /* Tamaño del icono de alerta */
+    height: 50px;
+    margin-right: 15px;
+  
+}
+.titulo-tareas {
+    position: relative;
+    top: 145px;
+    left: 90px;
+    color: rgb(0, 0, 0);
+    font-size: 50px;
+    width: 200px;
+    height: 50px;
+}
+.linea {
+    position: relative;
+    top: 140px;
+    left: 30px;
+    width: 200px;
+    height: 10px
+      
+}
+
+.subtitulo-tareas{
+    position: relative;
+    top: 160px;
+    left: 230px;
+    font-size: 15px;
+}
+/* Contenedor principal de cuadros */
+.cuadros-container {
+    position: absolute;
+    top: 300px;           /* Ajusta posición vertical general */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 35px;           /* Espacio entre cuadros */
+    width: 100%;
+    
+}
+
+/* Primer cuadro - Tareas pendientes */
+.cuadro-pendiente {
+    background: #FF9800;
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    width: 100%;
+    height: 90px;         /* Altura específica */
+    display: flex;
+    justify-content: center;
+    box-shadow: 0 12px 8px rgba(0, 0, 0, 0.2);
+    flex-direction: column; /* Pone los textos en columna */
+    gap: 10px; /* Espaciado entre ellos */
+
+    
+}
+
+/* Segundo cuadro - En proceso */
+.cuadro-proceso {
+    background: #34A853;
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    width: 100%;
+    height: 90px;
+    display: flex;  
+    justify-content: center;
+    box-shadow: 0 12px 8px rgba(0, 0, 0, 0.2);
+    flex-direction: column; /* Pone los textos en columna */
+    gap: 10px; /* Espaciado entre ellos */
+
+}
+
+/* Tercer cuadro - Completadas */
+.cuadro-completado {
+    background: #34A853;
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    width: 100%;    
+    height: 90px;
+    display: flex;
+    justify-content: center;
+    box-shadow: 0 12px 8px rgba(0, 0, 0, 0.2);
+    flex-direction: column; /* Pone los textos en columna */
+    gap: 10px; /* Espaciado entre ellos */
+   
+}
+
+/* Textos específicos para cada cuadro */
+.texto-pendiente {
+    color: #000000;
+    font-size: 14px;
+    position: relative;
+    
+    
+}
+
+.texto-proceso {
+    color: #000000;
+    font-size: 14px;position: relative;
+    
+    
+}
+
+.texto-completado {
+    color: #000000;
+    font-size: 14px;
+    position: relative;
+   
+
+}
+.abierto{
+    position: relative;
+    gap: 15px;
+    top: 369px;
+    left: 300px;
+    width: 40px;            /* Tamaño del icono de alerta */
+    height: 40px;
+    margin-right: 15px;
+    cursor: pointer;
+}
+
+.icono-abierto{
+    position: relative;
+    gap: 15px;
+    top: 288px;
+    left: 300px;
+    width: 40px;            /* Tamaño del icono de alerta */
+    height: 40px;
+    margin-right: 15px;
+    cursor: pointer;
+}
+.icono-cerrado{
+    position: relative;
+    top: 200px;
+    left: 300px;
+    width: 40px;            /* Tamaño del icono de alerta */
+    height: 40px;
+    margin-right: 15px;
+    cursor: pointer;
+}
+.icono-MAS{
+    position: relative;
+    cursor: pointer;
+    left: 170px;
+    width: 40px;            /* Tamaño del icono de alerta */
+    height: 40px;
+    margin-right: 15px;
+    cursor: pointer;
+}
+/* Botón de retroceso */
+.back-button {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}

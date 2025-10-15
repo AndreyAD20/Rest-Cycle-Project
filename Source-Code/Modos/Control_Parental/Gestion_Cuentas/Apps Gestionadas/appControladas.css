@@ -1,0 +1,37 @@
+span {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 50px;
+    width: 340px;
+}
+.appGestionada {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: #f0f0f0;
+    border: 1px solid black;
+    padding: 5px;
+    width: 361px;
+}
+.appGestionada img {
+    margin-left: 15px;
+    margin-right: 15px;
+}
+
+.appGestionada div {
+    background-color: #00B8D4;
+    border: 1px solid black;
+    width: 108px;
+    height: 34px;
+    border-radius: 15px;
+    margin-left: 20px;
+    margin-right: 40px;
+}
+span h3 {
+    margin-left: 15px;
+    margin-right: 1px;
+}

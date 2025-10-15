@@ -1,0 +1,15 @@
+.container {
+    width: 370px;
+    height: 62px;
+    border: 1px solid black;
+    border-radius: 15px;
+    display: grid;
+    grid-template-columns: 100px 1fr 50px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+.logoBuho {
+    margin-top: 50px;
+    margin-bottom: 20px;
+}

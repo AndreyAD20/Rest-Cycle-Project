@@ -1,0 +1,823 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.App {
+    background: url('Fondo.png');
+    background-size: cover;
+    background-position: center;
+    width: 375px;
+    height: 812px;
+    border-radius: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    position: relative;
+    border: 8px solid #2c3e50;
+    display: flex;
+    flex-direction: column;
+    padding: 30px 20px;
+}
+
+/* Título */
+h1 {
+    color: #fff;
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 30px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    padding-top: 20px;
+}
+.button-container#botonesAjuste {
+   position: relative;
+   top: 15px;
+   margin-top: 10px;
+}
+
+/* Contenedor de botones */
+.button-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    padding: 10px;
+    margin-top: 50px;  
+    
+
+}
+
+    
+
+/* Contenedor individual para cada opción */
+.config-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    padding: 18px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    min-height: 60px;
+    
+}
+
+.config-item:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  
+}
+
+/* Texto de configuración */
+.config-text {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Botones estilo enlaces */
+.config-button {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    transition: color 0.3s ease;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.config-button:hover {
+    color: #a8d8ea;
+}
+
+/* Estilos del Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    flex-shrink: 0;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 28px;
+    transition: .4s;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: .4s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+input:checked + .slider {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* Iconos para los botones (opcional) */
+.config-button::before {
+    content: "→";
+    font-size: 14px;
+    opacity: 0.7;
+    margin-left: auto;
+}
+
+/* Responsive para pantallas más pequeñas */
+@media (max-width: 400px) {
+    .App {
+        width: 95%;
+        height: 100vh;
+        border-radius: 0;
+        border: none;
+    }
+    
+    .config-item {
+        padding: 15px;
+    }
+    
+    .config-text, .config-button {
+        font-size: 14px;
+    }
+}
+
+
+/* Esfera flotante */
+.floating-sphere {
+    transform: translateX(-50%);
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    border-radius: 60%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: float 3s ease-in-out infinite;
+    overflow: hidden;
+    z-index: 2;
+    margin-top: 15px;
+}
+.sphere-image {
+    width: 80%;  /* Ajusta este valor según necesites */
+    height: 80%;  /* Ajusta este valor según necesites */
+    object-fit: cover;  /* Mantiene la proporción de la imagen */
+}
+
+/* Campo de comentario dentro de la esfera */
+.comment-input {
+    width: 90%;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    padding: 8px;
+    font-size: 12px;
+    resize: none;
+    margin-bottom: 5px;
+}
+
+
+
+.comment-input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+/* Contenedor del mensaje */
+.speech-bubble {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    padding: 15px 20px;
+    border-radius: 25px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    max-width: 200px;
+    opacity: 1; /* Cambiado de 0 a 1 para que sea visible */
+    animation: floatMessage 3s ease-in-out infinite; /* Nueva animación */
+    z-index: 1;
+}
+
+/*-----------------------------------------------------------------------------------------------*/
+/* INTERFAZ NOTIFICACIONES */
+/* Estilo para el select de tonos */
+.tone-select {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: rgba(0, 0, 0, 0.981);
+    padding: 8px 25px 8px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+}
+
+.tone-select:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+/* Botón de retroceso */
+.back-button {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+/* Nuevos estilos para inputs personalizados */
+.custom-input {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: white;
+    padding: 8px 12px;
+    font-size: 14px;
+    width: 150px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.custom-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.custom-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+/* Contenedor de la lista de iconos */
+.icon-list {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin-top: 10px;
+    gap: 15px;
+}
+
+/* Contenedor individual de cada icono */
+.icon-item {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    padding: 8px;
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.icon-item:hover {
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Estilo para las imágenes de los iconos */
+.circle-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Contenedor del selector de color */
+.color-picker-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Estilo para el input de color */
+.color-picker {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent;
+    width: 50px;
+    height: 50px;
+    border: none;
+    cursor: pointer;
+}
+
+.color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.color-picker::-webkit-color-swatch {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+}
+
+/* Vista previa del color */
+.color-preview {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+/* Estilo para el selector de idioma */
+.language-select {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: white;
+    padding: 8px 25px 8px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.language-select:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.language-select option {
+    background: #2c3e50;
+    color: white;
+}
+/* Contenedor para los controles de fuente */
+.font-controls {
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+    margin-top: 8px;
+}
+
+/* Estilo para los selectores de fuente */
+.font-select {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: white;
+    padding: 8px 25px 8px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    appearance: none;
+    -webkit-appearance: none;
+    width: 150px;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+}
+
+.font-select:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.font-select option {
+    background: #2c3e50;
+    color: white;
+}
+#Perfil {
+   margin-top: 35px;
+
+}
+   
+
+/* Contenedor del perfil */
+.profile-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-top: 60px;
+}
+
+/* Contenedor de la foto de perfil */
+.profile-photo-container {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+#profile-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Botón de subir foto */
+.photo-upload-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.photo-upload-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* Botón confirmar */
+.confirm-button {
+    padding: 12px 30px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 25px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.confirm-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+/* Ajustes para los textos y contenedores */
+.config-text {
+    display: block;
+   
+    color: white;
+    font-size: 16px;
+    text-align: left;
+    width: 100%;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.profile-container {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.input-container {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto 20px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 15px;
+}
+
+.confirm-container {
+    width: 100%;
+    max-width: 300px;
+    margin: 10px auto 15px;
+    text-align: center;
+}
+
+/* Ajuste del input */
+.custom-input {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Contenedor de notificaciones */
+#Notificaciones {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    padding: 40px 20px;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Ajuste de los items de configuración dentro de notificaciones */
+#Notificaciones .config-item {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Ajuste del select dentro de notificaciones */
+#Notificaciones .tone-select {
+    width: 100%;
+    max-width: 300px;
+    margin-top: 10px;
+}
+
+/* Ajuste del texto dentro de notificaciones */
+#Notificaciones .config-text {
+    font-size: 16px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* Ajuste del switch container */
+#Notificaciones .switch {
+    margin-top: 10px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #Notificaciones {
+        padding: 20px 10px;
+    }
+
+    #Notificaciones .config-item {
+        max-width: 100%;
+    }
+}
+
+/* Ajustes para el contenedor principal */
+#Notificaciones {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;  /* Espacio entre elementos */
+    padding: 20px;
+    margin-top: 40px;
+}
+
+/* Ajuste de los items de configuración */
+.config-item {
+    width: 100%;
+    max-width: 400px;  /* Ancho máximo del contenedor */
+    margin: 0 auto;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    
+}
+
+/* Ajuste del selector */
+.tone-select {
+    width: 100%;
+    max-width: 300px;
+    margin-top: 10px;
+}
+
+/* Ajuste del switch container */
+.switch {
+    margin-left: 20px;  /* Espacio entre texto y switch */
+}
+
+/* Ajustes específicos para la burbuja de seguridad */
+.security-bubble {
+    position: absolute;
+    top: 85px;
+    left: 120px; /* Ajustado para que aparezca junto a la esfera */
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    padding: 15px 20px;
+    border-radius: 25px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    max-width: 200px;
+    opacity: 1;
+    animation: floatMessage 3s ease-in-out infinite;
+    z-index: 1;
+}
+
+.security-bubble p {
+    color: white;
+    font-size: 14px;
+    margin: 0;
+    text-align: center;
+}
+
+
+/* Seguridad */
+#Seguridad {
+    
+    
+    flex-direction: column;
+    align-items: center;
+    
+    height: 800 px;
+    width: 100%;
+    max-width: 400px;
+    margin-top: 80px;    /* Ajusta este valor para mover verticalmente */
+    
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Esfera y burbuja para index */
+.configuracion-container{
+    width: 100%;
+    max-width: 400px;
+    height: 150px;  /* Reducido de 400px a 150px */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;  /* Añadido */
+}
+
+.index-sphere {
+    position: absolute;  /* Añadido */
+    left: 20%;          /* Añadido */
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    border-radius: 60%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: float 3s ease-in-out infinite;
+    overflow: hidden;
+    z-index: 2;
+}
+
+.index-bubble {
+     position: absolute;  /* Cambiado */
+    left: 35%;          /* Ajustado */
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    padding: 15px 20px;
+    border-radius: 25px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    max-width: 200px;
+    opacity: 1;
+    animation: floatMessage 3s ease-in-out infinite;
+    z-index: 10;
+}
+
+/* Esfera y burbuja para seguridad */
+.security-sphere {
+    position: absolute;
+    top: 60px;
+    left: 15%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    border-radius: 60%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: float 3s ease-in-out infinite;
+    overflow: hidden;
+    z-index: 2;
+}
+
+.security-bubble {
+    position: absolute;
+    top: 85px;
+    left: 120px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    padding: 15px 20px;
+    border-radius: 25px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    max-width: 200px;
+    opacity: 1;
+    animation: floatMessage 3s ease-in-out infinite;
+    z-index: 1;
+}
+
+.security-bubble p {
+    color: white;
+    font-size: 14px;
+    margin: 0;
+    text-align: center;
+}
+
+/* Ajustes específicos para el contenedor de botones de Burbuja */
+.App .button-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;              /* Espacio entre botones */
+    margin-top: 25px;      /* Distancia desde la parte superior */
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Ajustes para los items de configuración en Burbuja */
+.App .button-container .config-item {
+    width: 100%;
+    max-width: 400px;
+    padding: 15px 20px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    margin-bottom: 10px;    /* Espacio adicional entre elementos */
+}
+
