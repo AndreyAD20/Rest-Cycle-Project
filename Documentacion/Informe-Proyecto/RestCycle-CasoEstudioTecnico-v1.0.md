@@ -523,3 +523,4 @@ Mediante un sistema integral de entidades relacionadas, la aplicación gestiona 
 Ambos modos operan con la misma infraestructura técnica pero con enfoques adaptados a contextos diferentes, haciendo de Rest Cycle una solución versátil y completa para la gestión del tiempo de pantalla en la era digital.
 
 La arquitectura de base de datos diseñada permite escalabilidad, integridad de datos, y procesamiento en tiempo real, garantizando que las restricciones se apliquen inmediatamente y que los padres reciban información actualizada sobre el comportamiento digital de sus hijos.
+

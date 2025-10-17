@@ -480,3 +480,4 @@ Email: andrey.suesca@restcycle.app
 ---
 
 *Este caso de estudio fue desarrollado como parte del análisis integral del proyecto Rest Cycle. Para más información o consultas específicas, contactar al equipo de desarrollo.*
+
