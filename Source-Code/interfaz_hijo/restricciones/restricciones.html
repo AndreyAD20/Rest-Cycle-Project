@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rest Cycle </title>
+    <link rel="stylesheet" href="restricciones.css" />
+</head>
+<body> 
+    <div class="APP">
+         <!-- Agregar este botón al inicio del div.App -->
+        <button class="back-button" onclick="window.location.href='../interfaz_hijo.html'">
+            &#8592;
+       </button>
+        <h3 class="titulo-tiempo">Tiempo restante de APPS</h3>
+        <section class="contenido">
+         <div class="tiempo-container">
+
+                <div class="selector-tiempo"> 
+                     <select id="tiempoSelect" class="tiempo-select">
+                         <option value="0">Seleccionar tiempo...</option>
+                         <option value="30">30 minutos</option>
+                         <option value="60">1 hora</option>
+                         <option value="90">1 hora 30 minutos</option>
+                         <option value="120">2 horas</option>
+                          <option value="150">2 horas 30 minutos</option>
+                         <option value="180">3 horas</option>
+                     </select>
+                 </div>
+          <div class="tiempo-seleccionado">
+                            <button id="iniciarTiempo" class="btn-iniciar" disabled>
+                                <span class="btn-text">Iniciar</span>
+                                <span id="contador" class="contador-en-boton">00:00</span>
+                            </button>
+                        <img id="foto1" class="foto foto-primera" src="tik tok.png" />
+                
+     <div class="floating-sphere">
+      <img src="LogoBuho.png" alt="Imagen esfera" class="sphere-image">
+      </div>
+
+      <div class="floating-sphere-second">
+         <p>Aqui podras ver las apps que te estan gestionando para tu beneficio</p>
+        </div>
+
+   <div class="tiempo-container segundo-set">
+       <div class="selector-tiempo">
+           <select id="tiempoSelect2" class="tiempo-select">
+               <option value="0">Seleccionar tiempo...</option>
+               <option value="30">30 minutos</option>
+               <option value="60">1 hora</option>
+               <option value="90">1 hora 30 minutos</option>
+            <option value="120">2 horas</option>
+            <option value="150">2 horas 30 minutos</option>
+            <option value="180">3 horas</option>
+        </select>
+    </div>
+    <div class="tiempo-seleccionado">
+        <button id="iniciarTiempo2" class="btn-iniciar" disabled>
+            <span class="btn-text">Iniciar</span>
+            <span id="contador2" class="contador-en-boton">00:00</span>
+        </button>
+    </div>
+    <img id="foto2" class="foto segundo-set" src="whatsapp.png" />
+</div>
+
+<!-- Tercer set -->
+<div class="tiempo-container tercer-set">
+    <div class="selector-tiempo">
+        <select id="tiempoSelect3" class="tiempo-select">
+            <option value="0">Seleccionar tiempo...</option>
+            <option value="30">30 minutos</option>
+            <option value="60">1 hora</option>
+            <option value="90">1 hora 30 minutos</option>
+            <option value="120">2 horas</option>
+            <option value="150">2 horas 30 minutos</option>
+            <option value="180">3 horas</option>
+        </select>
+    </div>
+    <div class="tiempo-seleccionado">
+        <button id="iniciarTiempo3" class="btn-iniciar" disabled>
+            <span class="btn-text">Iniciar</span>
+            <span id="contador3" class="contador-en-boton">00:00</span>
+        </button>
+    </div>
+    <img id="foto3" class="foto tercer-set" src="instagram.png" />
+</div>
+
+<!-- Cuarto set -->
+<div class="tiempo-container cuarto-set">
+    <div class="selector-tiempo">
+        <select id="tiempoSelect4" class="tiempo-select">
+            <option value="0">Seleccionar tiempo...</option>
+            <option value="30">30 minutos</option>
+            <option value="60">1 hora</option>
+            <option value="90">1 hora 30 minutos</option>
+            <option value="120">2 horas</option>
+            <option value="150">2 horas 30 minutos</option>
+            <option value="180">3 horas</option>
+        </select>
+    </div>
+    <div class="tiempo-seleccionado">
+        <button id="iniciarTiempo4" class="btn-iniciar" disabled>
+            <span class="btn-text">Iniciar</span>
+            <span id="contador4" class="contador-en-boton">00:00</span>
+        </button>
+    </div>
+    <img id="foto4" class="foto cuarto-set" src="free.png" />
+</div>
+<div class="contenedor">
+    <img id="abierto" class="abierto-icono" src="abierto.png" />
+<img id="abierto"  src="abierto.png" />
+<img id="abierto"  src="abierto.png" />
+<img id="abierto"  src="abierto.png" />
+ 
+</div>
+
+
+     
+    <script src="restricciones.js"></script>
+</body>
+</html>

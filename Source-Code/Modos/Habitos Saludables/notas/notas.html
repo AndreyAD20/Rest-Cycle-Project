@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notas</title>
+    <link rel="stylesheet" href="../color.css">
+    <link rel="stylesheet" href="notas.css">
+    
+</head>
+<body>
+    <div class="App">
+        <img onclick= "window.location.href='../principalHabitos.html'" class="volver" src="../img/img atras.png" alt="">
+
+        <h1>Todas las notas</h1>
+
+    <div id="notas">
+        <section>
+            <div class="notas"> 
+            <div>
+                <input type="radio">
+            </div>
+                <p>No existen las coincidencias, vibramos en la misma frecuencia de aquello que estamos destinados a encontrar.</p>  
+            </div>
+                <p>Nota agregada 16/09</p>
+                <P>Frase <img src="../img/img estrella.png" alt=""></P>
+        </section>
+
+
+        <section>
+            <div class="notas"> 
+            <div>
+                <input type="radio">
+            </div>
+                <h5>Lista de canciones:</h5>   
+                <p>Hasta el techo<br> Arroliito<br> Si tu me besas<br> Ella es mi fiesta<br> Te mando flores<br> Pa olvidarte<br></p>  
+            </div>
+                <p>Nota agregada 10/09</p>
+                <P>Lista de canciones</P>
+        </section>
+
+
+        <section>
+            <div class="notas">
+            <div>
+                <input type="radio">
+            </div>
+                <h5>clientes para mañana:</h5>
+                <p>Carolina Suesca<br> Sofia Franco<br> Daniel Peña<br> Camilo Ribas<br> Pepito Perez<br></p>
+            </div>  
+                <p>Nota agregada 05/09</p>
+                <P>Clientes para mañana</P>
+        </section>
+
+
+        <section>
+            <div class="notas"> 
+                <div onclick="ocultar(Ver)">
+                    <input type="radio">   
+                </div>
+                <h5>Lista de aseo:</h5> 
+                <p>Soflan<br> Jabón de loza<br> Jabón de baño<br> Papel higienico<br> Esponjilla<br> Shampoo sin sal<br></p>  
+            </div>
+                <p>Nota agregada 15/08</p>
+                <P>Lista de aseo<img src="../img/img estrella.png" alt=""></P>
+        </section>
+                <img onclick= "window.location.href='agregarNota/agregarNota.html'" src="../img/ButtonAgregar.svg" alt="">
+    </div>
+
+    <div class="Ver">
+    <div class="barraSuperior">
+        <div class="botonesNotas">
+            <div class="opcionesNotas"> 
+                <img onclick= "window.location.href=''" src="../img/img eliminar.png" alt=""> 
+                <p>Eliminar</p>
+            </div>
+            <div class="opcionesNotas">
+                <img onclick= "window.location.href=''" src="../img/img detalles.png" alt="">
+                <p>Detalles</p>
+            </div>
+            <div class="opcionesNotas">
+                <img onclick= "window.location.href='favoritaNota/favoritaNota.html'" src="../img/img favoritas.png" alt="">
+                <p>Favoritas</p>
+            </div>
+        </div>
+            
+    </div>
+    <div class="Ver">
+        <h3>¿Desea eliminar esta nota?</h3><br> 
+            <button>Cancelar</button>
+            <button>Aceptar</button>
+    </div>
+    <div class="Ver botonesNotas">
+        <div class="opcionesNotas">    
+            <h2>Detalles</h2>
+            <p>Titulo</p>   
+            <h4>Frase</h4>
+            <p>Última modificación</p>
+            <h4>8:46 p.m</h4>
+            <p>Número de caracteres</p>
+            <h4>93/110(con espacios)</h4>
+                <button>Aceptar</button>
+        </div>    
+
+    </div>
+    </div>
+</div>   
+<script src="notas.js"> 
+</script>    
+</body>
+</html> 

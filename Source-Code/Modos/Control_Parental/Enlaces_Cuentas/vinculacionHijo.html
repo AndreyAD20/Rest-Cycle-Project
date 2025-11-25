@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vincula la cuenta de tu hijo</title>
+    <link rel="stylesheet" href="../../../rest_cycle.css">
+    <link rel="stylesheet" href="vinculacionHijo.css">
+</head>
+<body>
+    <div class="App">
+        <img onclick="window.location.href='../controlParental.html'" class="volver" src="../../../img/Volver.svg" alt="">
+        <span>
+            <h2>Datos del niño</h2>
+            <img src="../../../img/Perfil.svg" alt="">
+        </span>
+        <label for="NombreHijo">Nombre completo:</label>
+        <input id="NombreHijo" type="text">
+        <!-- Agregar selector de género -->
+        <label for="Genero">Genero:</label>
+        <!-- Reemplaza el div gender-selector actual con este -->
+<div class="gender-selector">
+    <label class="gender-option">
+        <input type="radio" name="gender" value="F">
+        <span class="option-text">F</span>
+    </label>
+    <label class="gender-option">
+        <input type="radio" name="gender" value="M">
+        <span class="option-text">M</span>
+    </label>
+</div>
+
+        <label for="FechaNacimiento">Fecha de nacimiento:</label>
+        <input id="FechaNacimiento" type="date">
+
+        <label for="CodigoVinculacion">Codigo de vinculacion:</label>
+        <input id="CodigoVinculacion" type="text">
+
+        <label for="ContraseñaSeguridad">Contraseña de seguridad:</label>
+        <input id="ContraseñaSeguridad" type="password"> 
+
+        <button class="mediano" onclick="window.location.href='../controlParental.html'">Vincular</button>
+    </div>
+    
+</body>
+</html>
