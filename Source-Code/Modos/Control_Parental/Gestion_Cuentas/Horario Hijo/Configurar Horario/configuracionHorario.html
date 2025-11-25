@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuracion de Horario</title>
+    <link rel="stylesheet" href="../../../../../rest_cycle.css">
+    <link rel="stylesheet" href="configuracionHorario.css">
+</head>
+<body>
+    <div class="App">
+        <img src="../../../../../img/Volver.svg" alt="" class="volver" onclick="window.location.href='../horariosHijo.html'">
+        <span>
+            <img src="../../../../../img/LogoBuho.svg" alt="">
+            <p>Configura tu horario a tu gusto</p>
+        </span>
+        <h1>Horario</h1>
+        <div class="container">
+            <div>
+                <h3>Hora de inicio</h3>
+                <input type="time">
+            </div>
+            <div>
+                <h3>Hora de finalizacion</h3>
+                <input type="time">
+            </div>
+            <div>
+                <h3>Dias activos</h3>
+                <span class="dias">
+                    <button>L</button>
+                    <button>M</button>
+                    <button>M</button>
+                    <button>J</button>
+                    <button>V</button>
+                    <button>S</button>
+                    <button>D</button>
+                </span>
+                <h2>Opciones a tomar</h2>
+                <div id="containers">
+                    <span>
+                        <h3>Bloquear totalmente</h3>
+                        <div class="config-item">
+                            <label class="switch">
+                                <input type="checkbox" id="modoOscuro">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </span>
+                    <span>
+                        <h3>Solo llamadas</h3>
+                        <div class="config-item">
+                            <label class="switch">
+                                <input type="checkbox" id="modoOscuro">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </span>
+                    <span>
+                        <h3>Avisar 30 minutos antes</h3>
+                        <div class="config-item">
+                            <label class="switch">
+                                <input type="checkbox" id="modoOscuro">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</body>
+</html>

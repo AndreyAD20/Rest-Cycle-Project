@@ -1,0 +1,17 @@
+.text {
+    position: relative;
+    left: -40px;
+    top: 30px;
+}
+.historial {
+    position: relative;
+    left: 145px;
+    top: -80px;
+}
+#map {
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+span {
+    margin-top: 60px;
+}
