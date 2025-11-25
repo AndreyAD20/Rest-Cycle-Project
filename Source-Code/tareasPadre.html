@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="rest_cycle.css">
+</head>
+<body>
+    <div class="App">
+        <h1>Tareas</h1>
+        <div class="visible" id="Tarea">
+             <button class="volver" onclick="window.location.href='principalPadre.html'"><img src="img/Volver.png" alt=""></button> 
+            <h2>Hoy</h2>
+            <div class="container">
+                <div>
+                    <p>Limpiar cocina</p>
+                    <p>10:00 a.m</p>
+                </div>
+                <div>
+                    <p>Limpiar el bañño y la sala</p>
+                    <p>01:00 p.m</p>
+                </div>
+                <div>
+                    <p>Hacer tareas de ingles</p>
+                    <p>04:00 a.m</p>
+                </div>
+            </div>
+            <div class="container">
+                <div>
+                    <p>Clase de musica</p>
+                    <p>10:00 a.m</p>
+                </div>
+                <div>
+                    <p>Almuerzo con compañeros</p>
+                    <p>01:30 p.m</p>
+                </div>
+            </div>
+            <div class="container">
+                <h2>Asignar nueva tarea</h2>
+                <button onclick="window.location.href=''">+</button>
+            </div>
+        </div>
+        
+        <div class="visible" id="GestionTarea">
+            <button onclick=""><img src="img/Volver.png" alt=""></button>
+            <h2>Titulo</h2>
+            <p>Descripcion</p>
+            <p>Tiempo Limite</p>
+            <input type="datetime-local">
+            <div>
+                <h2>Extender tiempo</h2>
+                <button>0</button>
+            </div>
+            <div>
+                <h2>Estado de la tarea</h2>
+                <button>Sin completar</button>
+                <button>Confirmar</button>
+            </div>
+            <div>
+                <button>Cancelar</button>
+                <button>Confirmar</button>
+            </div>
+
+        </div>
+    </div>
+
+    
+</body>
+</html>

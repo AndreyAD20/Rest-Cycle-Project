@@ -1,0 +1,321 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #ab00fa 0%, #fefcff 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.APP {
+    background: url('Fondo.png');
+    background-size: cover;
+    background-position: center;
+    width: 375px;
+    height: 812px;
+    border-radius: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    position: relative;
+    border: 8px solid #2c3e50;
+    display: flex;
+    flex-direction: column;
+    padding: 30px 20px;
+}
+/* Esfera flotante */
+.floating-sphere {
+    position: absolute;
+    top: 50px;
+    left: 85%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    border-radius: 60%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: float 3s ease-in-out infinite;
+    overflow: hidden; /* Para asegurar que la imagen no sobresalga */
+}
+.sphere-image {
+    width: 80%;  /* Ajusta este valor según necesites */
+    height: 85%;  /* Ajusta este valor según necesites */
+    object-fit: cover;  /* Mantiene la proporción de la imagen */
+}
+
+/* Campo de comentario dentro de la esfera */
+.comment-input {
+    width: 90%;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    padding: 8px;
+    font-size: 12px;
+    resize: none;
+    margin-bottom: 5px;
+}
+
+/* Animación de flotación */
+@keyframes float {
+    0% {
+        transform: translateX(-50%) translateY(0px);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-10px);
+    }
+    100% {
+        transform: translateX(-50%) translateY(0px);
+    }
+}
+
+.Alerta {
+    position: absolute;      /* Posicionamiento absoluto para control total */
+    width: 50px;            /* Ancho del logo */
+    height: 50px;           /* Alto del logo */
+    top: 50%;              /* Modifica este valor para mover verticalmente */
+    left: 50%;             /* Modifica este valor para mover horizontalmente */
+    transform: translate(-50%, -50%); /* Centra el elemento */
+    z-index: 2;            /* Asegura que esté por encima de otros elementos */
+}
+
+.button {
+    background: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px;
+    
+    margin: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+   
+
+    /* Nuevas propiedades para posicionamiento */
+    position: relative;
+    bottom: -285px;       /* Distancia desde abajo */
+    left: 100px;        /* Distancia desde la izquierda */
+    width: 100px;        /* Ancho fijo */
+}
+/* Esfera flotante */
+.esfera-flotante {
+    position: absolute;
+    top: 50px;
+    left: 85%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(15px);
+    border-radius: 60%;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: float 3s ease-in-out infinite;
+    overflow: hidden; /* Para asegurar que la imagen no sobresalga */
+}
+
+/* Campo de comentario dentro de la esfera */
+.comment-input {
+    width: 90%;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: white;
+    padding: 8px;
+    font-size: 12px;
+    resize: none;
+    margin-bottom: 5px;
+}
+
+/* Animación de flotación */
+@keyframes float {
+    0% {
+        transform: translateX(-50%) translateY(0px);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-10px);
+    }
+    100% {
+        transform: translateX(-50%) translateY(0px);
+    }
+}
+
+/* Segunda esfera flotante - Todos los valores son modificables */
+.floating-sphere-second {
+    position: absolute;
+    top: 55px;               /* Modifica para cambiar posición vertical */
+    left: 35%;                /* Modifica para cambiar posición horizontal */
+    transform: translateX(-50%);
+    width: 200px;             /* Modifica para cambiar tamaño */
+    height: 85px;            /* Modifica para cambiar tamaño */
+    background: rgba(255, 255, 255, 0.4);  /* Modifica para cambiar color y opacidad */
+    backdrop-filter: blur(15px);
+    border-radius: 10%;
+    border: 2px solid rgba(255, 255, 255, 0.5);  /* Modifica para cambiar borde */
+    display: flex;
+    align-items: relative;
+    justify-content: center;
+    padding: 15px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    animation: float-second 3s ease-in-out infinite;
+    overflow: hidden;
+}
+
+
+/* Animación personalizada para la segunda esfera */
+@keyframes float-second {
+    0% {
+        transform: translateX(-50%) translateY(0px);
+    }
+    50% {
+        transform: translateX(-50%) translateY(-15px); /* Modifica para cambiar altura de flotación */
+    }
+    100% {
+        transform: translateX(-50%) translateY(0px);
+    }
+}
+
+/* Burbuja de alerta */
+.alert-bubble {
+    position: absolute;
+    top: 30%;                /* Modifica este valor para mover verticalmente */
+    left: 50%;               /* Modifica este valor para mover horizontalmente */
+    transform: translate(-50%, -50%);
+    background: #FF9800; /* Color de fondo de la burbuja */
+    padding: 20px;
+    border-radius: 20px;
+    width: 280px;            /* Modifica para cambiar el ancho */
+    min-height: 100px;       /* Modifica para cambiar el alto */
+    display: flex;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 3;
+}
+
+.alert-bubble img {
+    width: 30px;            /* Tamaño del icono de alerta */
+    height: 30px;
+    margin-right: 15px;
+}
+
+.alert-bubble p {
+    color: #333333;         /* Color del texto */
+    font-size: 14px;        /* Tamaño del texto */
+    margin: 0;
+    flex: 1;
+}
+
+/* Contenedor principal de estadísticas */
+.stats-container {
+    position: absolute;
+    top: 500px;        /* Modifica para mover verticalmente */
+    left: 50%;         /* Modifica para mover horizontalmente */
+    transform: translateX(-50%);
+    width: 80%;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Escala de tiempo */
+.time-scale {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 80px 10px 80px;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 15px;
+}
+
+/* Ajustes para las barras de estadísticas */
+.stat-bar {
+    display: flex;
+    align-items: relative;
+    gap: 10px;
+    margin: 19px 0;
+    right: 120px;
+    
+}
+
+.stat-label {
+    width: 80px;
+    font-size: 12px;
+    color: #101010;
+    text-align: relative;
+    left: -20px;
+    
+}
+
+.time-used {
+    width: 60px;
+    font-size: 12px;
+    color: #020202;
+    left: -60px;
+}
+
+.bar-container {
+    flex: 1;
+    background: #f0f0f0;
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    left: -20px;
+}
+
+/* Estilos individuales de las barras */
+.bar {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+/* Colores personalizados para cada barra */
+.bar-1 { background: #FF1744; }     /* Rojo */
+.bar-2 { background: #2196F3; }     /* Azul */
+.bar-3 { background: #4CAF50; }     /* Verde */
+.bar-4 { background: #9C27B0; }     /* Púrpura */
+.bar-5 { background: #FF9800; }     /* Naranja */
+
+/* Botón de retroceso */
+.back-button {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
