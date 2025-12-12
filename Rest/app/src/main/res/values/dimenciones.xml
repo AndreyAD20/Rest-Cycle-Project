@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ============================================ -->
+    <!-- DIMENSIONES - REST CYCLE APP                 -->
+    <!-- ============================================ -->
+    
+    <!-- Espaciado / Padding -->
+    <dimen name="espaciado_minimo">4dp</dimen>
+    <dimen name="espaciado_pequeno">8dp</dimen>
+    <dimen name="espaciado_estandar">16dp</dimen>
+    <dimen name="espaciado_medio">24dp</dimen>
+    <dimen name="espaciado_grande">32dp</dimen>
+    <dimen name="espaciado_extra_grande">48dp</dimen>
+    
+    <!-- Márgenes -->
+    <dimen name="margen_pequeno">8dp</dimen>
+    <dimen name="margen_estandar">16dp</dimen>
+    <dimen name="margen_grande">32dp</dimen>
+    <dimen name="margen_lateral">20dp</dimen>
+    <dimen name="margen_vertical">40dp</dimen>
+    
+    <!-- Tamaños de Texto -->
+    <dimen name="tamano_texto_muy_pequeno">12sp</dimen>
+    <dimen name="tamano_texto_pequeno">14sp</dimen>
+    <dimen name="tamano_texto_medio">16sp</dimen>
+    <dimen name="tamano_texto_grande">22sp</dimen>
+    <dimen name="tamano_texto_titulo">26sp</dimen>
+    <dimen name="tamano_texto_titulo_grande">45sp</dimen>
+    
+    <!-- Alturas de Componentes -->
+    <dimen name="altura_boton">48dp</dimen>
+    <dimen name="altura_boton_pequeno">35dp</dimen>
+    <dimen name="altura_boton_grande">55dp</dimen>
+    <dimen name="altura_edit_text">45dp</dimen>
+    
+    <!-- Anchos de Componentes -->
+    <dimen name="ancho_boton_estandar">158dp</dimen>
+    <dimen name="ancho_boton_grande" >330dp</dimen>
+    <dimen name="ancho_boton_pequeno">104dp</dimen>
+    <dimen name="ancho_edit_text" >330dp</dimen>
+    <dimen name="ancho_maximo_contenido">600dp</dimen>
+    
+    <!-- Tamaños de Iconos -->
+    <dimen name="tamano_icono_pequeno">24dp</dimen>
+    <dimen name="tamano_icono_medio">32dp</dimen>
+    <dimen name="tamano_icono_grande">48dp</dimen>
+    <dimen name="tamano_icono_extra_grande">64dp</dimen>
+    
+    <!-- Tamaños de Imágenes -->
+    <dimen name="tamano_logo">150dp</dimen>
+    <dimen name="tamano_avatar_pequeno">40dp</dimen>
+    <dimen name="tamano_avatar_medio">64dp</dimen>
+    <dimen name="tamano_avatar_grande">96dp</dimen>
+    <dimen name="tamano_imagen_social">50dp</dimen>
+    
+    <!-- Bordes Redondeados -->
+    <dimen name="radio_borde_pequeno">4dp</dimen>
+    <dimen name="radio_borde_medio">8dp</dimen>
+    <dimen name="radio_borde_grande">16dp</dimen>
+    <dimen name="radio_borde_input">30dp</dimen>
+    <dimen name="radio_borde_circular">50dp</dimen>
+    
+    <!-- Elevación / Sombras -->
+    <dimen name="elevacion_ninguna">0dp</dimen>
+    <dimen name="elevacion_pequena">2dp</dimen>
+    <dimen name="elevacion_media">4dp</dimen>
+    <dimen name="elevacion_grande">8dp</dimen>
+    <dimen name="elevacion_extra_grande">16dp</dimen>
+    
+    <!-- Anchos de Bordes -->
+    <dimen name="ancho_borde_fino">.1dp</dimen>
+    <dimen name="ancho_borde_medio">.2dp</dimen>
+    <dimen name="ancho_borde_grueso">.4dp</dimen>
+    
+    <!-- Divisores -->
+    <dimen name="altura_divisor">1dp</dimen>
+    <dimen name="altura_divisor_grueso">2dp</dimen>
+</resources>
