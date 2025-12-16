@@ -27,10 +27,18 @@ import com.example.rest.ui.theme.*
 class RegistroComposeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setConten {
+        setContent {
             TemaRest {
                 PantallaRegistro(
-
+                    alClickInicioSesion = {
+                        val intent = Intent(this, LoginComposeActivity::class.java)
+                        startActivity(intent)
+                    },
+                    alClickRegistro = {
+                        // TODO: Implement actual registration logic
+                        val intent = Intent(this, InicioComposeActivity::class.java)
+                        startActivity(intent)
+                    }
                 )
             }
         }

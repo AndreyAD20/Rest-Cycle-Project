@@ -14,13 +14,16 @@
 
         <activity
             android:name=".LoginComposeActivity"
-            android:exported="true"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+
+
+
+        <activity
+            android:name=".RegistroComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <activity
             android:name=".LoginActivity"
@@ -33,14 +36,61 @@
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <activity
-            android:name=".InicioActivity"
+            android:name=".InicioComposeActivity"
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
 
         <activity
             android:name=".MainActivity"
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+
+
+        <activity
+            android:name=".PerfilComposeActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+            <activity
+                android:name=".EstadisticasComposeActivity"
+                android:exported="false"
+                android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+                <activity
+                    android:name=".NotasComposeActivity"
+                    android:exported="false"
+                    android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+                    <activity
+                        android:name=".BloqueoAppsComposeActivity"
+                        android:exported="false"
+                        android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+                        <activity
+                            android:name=".HoraDescansoComposeActivity"
+                            android:exported="false"
+                            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+            <activity
+                android:name=".TareasComposeActivity"
+                android:exported="false"
+                android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+                <activity
+                    android:name=".CalendarioComposeActivity"
+                    android:exported="false"
+                    android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+
+
+
+
 
     </application>
 
