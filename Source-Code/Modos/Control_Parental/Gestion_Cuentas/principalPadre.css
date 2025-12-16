@@ -1,0 +1,20 @@
+.barraSuperior {
+    position: relative;
+    top: 15px;
+    left: 50px;
+    width: 300px;
+    margin-bottom: 10px;
+}
+span {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin: 15px 0;
+}
+span p {
+    margin: 0;
+    margin-right: 50px;
+}
+

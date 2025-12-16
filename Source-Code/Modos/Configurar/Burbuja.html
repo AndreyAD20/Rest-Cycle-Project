@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BURBUJA</title>
+    <link rel="stylesheet" href="colores.css">
+</head>
+<body>
+    <div class="App">
+        <div class="button-container">
+        <!-- Agregar este botón al inicio del div.App -->
+        <button class="back-button" onclick="window.location.href='configuracion.html'">
+            &#8592;
+        </button>
+        <div class="config-item">
+            <span class="config-text">Texto de Vista Previa</span>
+            <label class="switch">
+                <input type="checkbox" id="textoVistaPrevia">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="config-item">
+            <span class="config-text">Notificacion Emergente</span>
+            <label class="switch">
+                <input type="checkbox" id="notificacionEmergente">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="config-item">
+        <span class="config-text">Nombre de la Burbuja</span>
+              <input type="text" class="custom-input" placeholder="Ingrese un nombre">
+        </div>
+        <div class="config-item">
+    <span class="config-text">Tamaño de la Burbuja</span>
+    <select class="tone-select">
+        <option value="pequeno">Predeterminado</option>
+        <option value="mediano">Grande</option>
+        <option value="grande">Mediano</option>
+        <option value="grande">Pequeño</option>
+    </select>
+</div>
+<div class="config-item">
+    <span class="config-text">Selecciona un icono</span>
+    <div class="icon-list">
+        <div class="icon-item">
+            <img src="esfera.png" alt="Icono 1" class="circle-icon">
+        </div>
+        <div class="icon-item">
+            <img src="icono2.png" alt="Icono 2" class="circle-icon">
+        </div>
+        <div class="icon-item">
+            <img src="icono3.png" alt="Icono 3" class="circle-icon">
+        </div>
+        
+        
+    </div>
+</div>
+<div class="config-item">
+    <span class="config-text">Color de la Burbuja</span>
+    <div class="color-picker-container">
+        <input type="color" class="color-picker" value="#ffffff">
+        <span class="color-preview"></span>
+    </div>
+</div>
+</div>

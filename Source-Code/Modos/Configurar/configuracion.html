@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONFIGURACIONES</title>
+    <link rel="stylesheet" href="colores.css">
+</head>
+<body>
+    <div class="App" >
+       <div class="configuracion-container">
+        <div class="floating-sphere index-sphere ">
+           <img src="esfera.png" alt="Imagen esfera" class="sphere-image">
+       </div>
+       <div class="speech-bubble index-bubble ">
+           <p>Configura tu Rest Cycle</p>
+       </div>
+       </div>
+        
+        <div class="button-container" id="botonesAjuste">
+            
+            <!-- ===== MODO OSCURO - CON SWITCH (NO REDIRECCIONA) ===== -->
+            <div class="config-item">
+                <span class="config-text">Modo Oscuro</span>
+                <label class="switch">
+                    <input type="checkbox" id="modoOscuro">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <!-- ===== NOTIFICACIONES - EDITAR AQUÍ ===== -->
+            <div class="config-item" onclick="location.href='notificaciones.html'">
+                <button class="config-button">
+                    Notificaciones
+                </button>
+            </div>
+
+            <!-- ===== BURBUJA - EDITAR AQUÍ ===== -->
+            <div class="config-item" onclick="location.href='burbuja.html'">
+                <button class="config-button" >
+                    Burbuja
+                </button>
+            </div>
+
+           
+            <!-- ===== CAMBIAR IDIOMA - SELECTOR DESPLEGABLE ===== -->
+            <div class="config-item">
+                <span class="config-text">Idioma</span>
+                <select class="language-select" id="languageSelector">
+                    <option value="es">Español</option>
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="pt">Português</option>
+                </select>
+            </div>
+
+                        <!-- ===== FUENTES - SELECTORES DESPLEGABLES ===== -->
+            <div class="config-item">
+                 <span class="config-text">Fuentes</span>
+                    <div class="font-controls">
+                                <!-- Selector de tipo de fuente -->
+                        <select class="font-select" id="fontFamily">
+                            <option value="arial">Arial</option>
+                            <option value="roboto">Roboto</option>
+                            <option value="opensans">Open Sans</option>
+                            <option value="lato">Lato</option>
+                        </select>
+        
+                            <!-- Selector de tamaño de fuente -->
+                        <select class="font-select" id="fontSize">
+                             <option value="small">Pequeño</option>
+                             <option value="medium">Mediano</option>
+                             <option value="large">Grande</option>
+                             <option value="xlarge">Extra Grande</option>
+                        </select>
+                    </div>
+            </div>
+
+            <!-- ===== PERFIL - EDITAR AQUÍ ===== -->
+            <div class="config-item" onclick="location.href='perfil.html'">
+                <button class="config-button">
+                    Perfil
+                </button>
+            </div>
+
+            <!-- ===== SEGURIDAD - EDITAR AQUÍ ===== -->
+            <div class="config-item" onclick="location.href='seguridad.html'">
+                <button class="config-button" >
+                    Seguridad
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Funcionalidad para el switch de modo oscuro
+        document.getElementById('modoOscuro').addEventListener('change', function() {
+            if (this.checked) {
+                console.log('Modo oscuro activado');
+                // Aquí puedes agregar la lógica para activar modo oscuro
+                document.body.classList.add('dark-mode');
+            } else {
+                console.log('Modo oscuro desactivado');
+                // Aquí puedes agregar la lógica para desactivar modo oscuro
+                document.body.classList.remove('dark-mode');
+            }
+        });
+    </script>
+</body>
+</html>

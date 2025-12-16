@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubicacion de tu hijo</title>
+    <link rel="stylesheet" href="../../../../rest_cycle.css">
+    <link rel="stylesheet" href="ubicacionHijo.css">
+    <style>
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="App">
+        <img class="volver" onclick="window.location.href='../principalPadre.html'" src="../../../../img/Volver.svg" alt="">
+        <span>
+            <img src="../../../../img/LogoBuho.svg" alt="">
+            <p>Revisa donde estuvo tu hijo</p>
+        </span>
+        <div id="map"></div>
+        <div class="text">
+            <h3>Cristian Felipe Alvarado</h3>
+            <h2>Ubicacion actual de tu hijo</h2>
+            <p>Calle 50 #9-e39 La Estancia del Roble</p>
+        </div>
+        
+        <img class="historial" onclick="window.location.href='Historial Ubicaciones/historialUbicacion.html'" src="../../../../img/Historial.svg" alt="">
+    </div>
+    <!-- Google Maps JavaScript API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBJMvMQIsdbwaNCVpiSU7noeFPOLDkxstc&callback=initMap" async defer></script>
+    <script>
+        function initMap() {
+            // Coordenadas de ejemplo (Bogotá, Colombia)
+            const defaultLocation = { lat: 4.710989, lng: -74.072092 };
+            
+            const map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 15,
+                center: defaultLocation,
+                disableDefaultUI: true, // Deshabilita controles por defecto
+                zoomControl: true // Mantiene solo el control de zoom
+            });
+
+            // Marcador en el mapa
+            new google.maps.Marker({
+                position: defaultLocation,
+                map: map,
+                title: 'Ubicación'
+            });
+        }
+    </script>
+</body>
+</html>
