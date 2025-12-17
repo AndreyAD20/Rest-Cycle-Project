@@ -170,4 +170,51 @@ interface SupabaseApi {
     suspend fun eliminarNota(
         @Query("id") id: String
     ): Response<Void>
+    
+    // ==================== RECUPERACIÓN DE CONTRASEÑA ====================
+    
+    /**
+     * Crear código de recuperación
+     */
+    @POST("codigos_recuperacion")
+    suspend fun crearCodigoRecuperacion(
+        @Body request: SolicitarCodigoRequest
+    ): Response<List<CodigoRecuperacion>>
+    
+    /**
+     * Verificar código de recuperación
+     */
+    @GET("codigos_recuperacion")
+    suspend fun verificarCodigoRecuperacion(
+        @Query("correo") correo: String,
+        @Query("codigo") codigo: String,
+        @Query("usado") usado: String = "eq.false",
+        @Query("select") select: String = "*"
+    ): Response<List<CodigoRecuperacion>>
+    
+    /**
+     * Marcar código como usado
+     */
+    @PATCH("codigos_recuperacion")
+    suspend fun marcarCodigoUsado(
+        @Query("id") id: String,
+        @Body update: Map<String, Boolean>
+    ): Response<List<CodigoRecuperacion>>
+    
+    /**
+     * Actualizar contraseña por correo
+     */
+    @PATCH("usuario")
+    suspend fun actualizarContraseñaPorCorreo(
+        @Query("correo") correo: String,
+        @Body request: CambiarContraseñaRequest
+    ): Response<List<Usuario>>
+    
+    /**
+     * Enviar código de recuperación por email (Edge Function)
+     */
+    @POST("functions/v1/enviar-codigo-recuperacion")
+    suspend fun enviarCodigoPorEmail(
+        @Body request: Map<String, String>
+    ): Response<Map<String, Any>>
 }
