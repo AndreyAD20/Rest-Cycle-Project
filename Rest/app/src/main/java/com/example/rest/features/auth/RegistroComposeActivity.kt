@@ -48,10 +48,47 @@ class RegistroComposeActivity : BaseComposeActivity() {
                 var cargando by remember { mutableStateOf(false) }
                 
                 PantallaRegistro(
+<<<<<<< HEAD:Rest/app/src/main/java/com/example/rest/features/auth/RegistroComposeActivity.kt
                     alClickRegistrar = { request ->
                         cargando = true
                         realizarRegistro(request) {
                             cargando = false
+=======
+                    alClickInicioSesion = {
+                        // Navegar a LoginComposeActivity
+                        val intencion = Intent(this, LoginComposeActivity::class.java)
+                        startActivity(intencion)
+                        finish()
+                    },
+                    alClickRegistro = { nombre, apellido, correo, telefono, fechaNac, contraseña, confirmarContra ->
+                        // Validaciones
+                        when {
+                            nombre.isBlank() -> {
+                                Toast.makeText(this, "Por favor ingresa tu nombre", Toast.LENGTH_SHORT).show()
+                            }
+                            correo.isBlank() || !correo.contains("@") -> {
+                                Toast.makeText(this, "Por favor ingresa un correo válido", Toast.LENGTH_SHORT).show()
+                            }
+                            telefono.isBlank() -> {
+                                Toast.makeText(this, "Por favor ingresa tu teléfono", Toast.LENGTH_SHORT).show()
+                            }
+                            fechaNac.isBlank() -> {
+                                Toast.makeText(this, "Por favor ingresa tu fecha de nacimiento", Toast.LENGTH_SHORT).show()
+                            }
+                            contraseña.isBlank() || contraseña.length < 6 -> {
+                                Toast.makeText(this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show()
+                            }
+                            contraseña != confirmarContra -> {
+                                Toast.makeText(this, "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show()
+                            }
+                            else -> {
+                                // Realizar registro
+                                cargando = true
+                                realizarRegistro(nombre, apellido, correo, telefono, fechaNac, contraseña) {
+                                    cargando = false
+                                }
+                            }
+>>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9:Rest/app/src/main/java/com/example/rest/RegistroComposeActivity.kt
                         }
                     },
                     alClickYaTienesCuenta = {

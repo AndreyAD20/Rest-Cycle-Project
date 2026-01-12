@@ -24,8 +24,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+<<<<<<< HEAD:Rest/app/src/main/java/com/example/rest/features/auth/CambioContrasenaActivity.kt
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
+=======
+>>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9:Rest/app/src/main/java/com/example/rest/OlvidoContraseñaComposeActivity.kt
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.data.repository.RecuperacionRepository
 import com.example.rest.ui.theme.*
@@ -50,11 +53,20 @@ class CambioContrasenaActivity : BaseComposeActivity() {
             TemaRest {
                 var cargando by remember { mutableStateOf(false) }
                 
+<<<<<<< HEAD:Rest/app/src/main/java/com/example/rest/features/auth/CambioContrasenaActivity.kt
                 PantallaCambioContrasena(
                     alClickRegresar = {
                         finish()
                     },
                     alClickConfirmar = { nuevaContrasena, confirmarContrasena ->
+=======
+                PantallaOlvidoContraseña(
+                    alClickRegresar = {
+                        finish()
+                    },
+                    alClickEnviarCodigo = { correo ->
+                        // Validaciones
+>>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9:Rest/app/src/main/java/com/example/rest/OlvidoContraseñaComposeActivity.kt
                         when {
                             nuevaContrasena.isBlank() || nuevaContrasena.length < 6 -> {
                                 Toast.makeText(this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show()
@@ -126,7 +138,11 @@ class CambioContrasenaActivity : BaseComposeActivity() {
 @Composable
 fun PantallaCambioContrasena(
     alClickRegresar: () -> Unit,
+<<<<<<< HEAD:Rest/app/src/main/java/com/example/rest/features/auth/CambioContrasenaActivity.kt
     alClickConfirmar: (String, String) -> Unit,
+=======
+    alClickEnviarCodigo: (String) -> Unit,
+>>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9:Rest/app/src/main/java/com/example/rest/OlvidoContraseñaComposeActivity.kt
     cargando: Boolean = false
 ) {
     var nuevaContrasena by remember { mutableStateOf("") }
@@ -270,7 +286,11 @@ fun PantallaCambioContrasena(
 
             // Botón Confirmar
             Button(
+<<<<<<< HEAD:Rest/app/src/main/java/com/example/rest/features/auth/CambioContrasenaActivity.kt
                 onClick = { alClickConfirmar(nuevaContrasena, confirmarContrasena) },
+=======
+                onClick = { alClickEnviarCodigo(correo) },
+>>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9:Rest/app/src/main/java/com/example/rest/OlvidoContraseñaComposeActivity.kt
                 modifier = Modifier
                     .width(200.dp)
                     .height(56.dp),
@@ -287,11 +307,32 @@ fun PantallaCambioContrasena(
                         strokeWidth = 2.dp
                     )
                 } else {
+<<<<<<< HEAD:Rest/app/src/main/java/com/example/rest/features/auth/CambioContrasenaActivity.kt
                     Text(
                         text = "Confirmar",
                         style = MaterialTheme.typography.labelLarge,
                         color = Blanco
                     )
+=======
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.buho_background),
+                            contentDescription = "Enviar",
+                            tint = Blanco,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Enviar Codigo de Recuperacion",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Blanco,
+                            fontSize = 14.sp
+                        )
+                    }
+>>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9:Rest/app/src/main/java/com/example/rest/OlvidoContraseñaComposeActivity.kt
                 }
             }
         }
