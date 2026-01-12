@@ -76,6 +76,13 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     
+    // Supabase Kotlin SDK
+    // implementation("io.github.jan-tennert.supabase:postgrest-kt:2.6.1")
+    // implementation("io.github.jan-tennert.supabase:gotrue-kt:2.6.1")
+    // implementation("io.ktor:ktor-client-android:2.3.12")
+    // implementation("io.ktor:ktor-client-core:2.3.12")
+    // implementation("io.ktor:ktor-client-utils:2.3.12")
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

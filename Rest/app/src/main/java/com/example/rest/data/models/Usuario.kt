@@ -9,6 +9,9 @@ data class Usuario(
     @SerializedName("id")
     val id: Int? = null,
     
+    @SerializedName("auth_user_id")
+    val authUserId: String? = null,
+    
     @SerializedName("nombre")
     val nombre: String,
     
@@ -31,7 +34,16 @@ data class Usuario(
     val rol: String, // "padre" o "hijo"
     
     @SerializedName("Mayoredad")
-    val mayorEdad: Boolean
+    val mayorEdad: Boolean,
+    
+    @SerializedName("email_verificado")
+    val emailVerificado: Boolean = false,
+    
+    @SerializedName("codigo_verificacion")
+    val codigoVerificacion: String? = null,
+    
+    @SerializedName("codigo_expiracion")
+    val codigoExpiracion: String? = null
 )
 
 /**

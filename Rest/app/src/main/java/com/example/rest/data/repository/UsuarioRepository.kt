@@ -4,6 +4,9 @@ import com.example.rest.data.models.LoginRequest
 import com.example.rest.data.models.RegistroRequest
 import com.example.rest.data.models.Usuario
 import com.example.rest.network.SupabaseClient
+import com.example.rest.utils.CodeGenerator
+import com.example.rest.utils.EmailService
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -114,6 +117,63 @@ class UsuarioRepository {
     }
     
     /**
+     * Registrar nuevo usuario con verificación de email
+     * Genera un código de verificación y lo envía por email
+     * @param request Datos del usuario a registrar
+     * @return Result con mensaje de éxito y el código (para desarrollo)
+     */
+    suspend fun registrarConVerificacion(request: RegistroRequest): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Verificar si el correo ya existe en la tabla usuario
+                val verificacion = api.verificarCorreo(correo = "eq.${request.correo}")
+                if (verificacion.isSuccessful && !verificacion.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("El correo ya está registrado")
+                }
+                
+                // 2. Generar código de verificación
+                val codigoVerificacion = CodeGenerator.generateVerificationCode()
+                val codigoExpiracion = CodeGenerator.getExpirationTime()
+                
+                // 3. Crear usuario en la base de datos (sin verificar)
+                val response = api.crearUsuario(request)
+                
+                if (!response.isSuccessful) {
+                    return@withContext Result.Error("Error al crear el usuario: ${response.code()}")
+                }
+                
+                // 4. Actualizar con código de verificación
+                val updateData: Map<String, @JvmSuppressWildcards Any> = mapOf(
+                    "codigo_verificacion" to codigoVerificacion,
+                    "codigo_expiracion" to codigoExpiracion,
+                    "email_verificado" to false
+                )
+                
+                val updateResponse = api.actualizarCodigoVerificacion(
+                    correo = "eq.${request.correo}",
+                    update = updateData
+                )
+                
+                if (!updateResponse.isSuccessful) {
+                    return@withContext Result.Error("Error al generar código de verificación")
+                }
+                
+                // 5. Enviar email con código (por ahora solo logs)
+                EmailService.enviarCodigoVerificacion(
+                    correo = request.correo,
+                    codigo = codigoVerificacion,
+                    nombre = request.nombre
+                )
+                
+                // Para desarrollo: incluir el código en el mensaje
+                Result.Success("Registro exitoso. Código de verificación: $codigoVerificacion (revisa los logs)")
+            } catch (e: Exception) {
+                Result.Error("Error al registrar: ${e.message}")
+            }
+        }
+    }
+    
+    /**
      * Verificar si un correo ya está registrado
      * @param correo Correo a verificar
      * @return true si el correo existe, false si no
@@ -152,6 +212,165 @@ class UsuarioRepository {
                 }
             } catch (e: Exception) {
                 Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Verificar código de verificación
+     * @param correo Correo del usuario
+     * @param codigo Código ingresado por el usuario
+     * @return Result con el usuario verificado
+     */
+    suspend fun verificarCodigo(correo: String, codigo: String): Result<Usuario> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Obtener datos de verificación del usuario
+                val response = api.obtenerDatosVerificacion(correo = "eq.$correo", select = "*")
+                
+                if (!response.isSuccessful || response.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("Usuario no encontrado")
+                }
+                
+                val usuario = response.body()!![0]
+                
+                // 2. Verificar que el usuario no esté ya verificado
+                if (usuario.emailVerificado) {
+                    return@withContext Result.Error("El usuario ya está verificado")
+                }
+                
+                // 3. Verificar que exista un código
+                if (usuario.codigoVerificacion.isNullOrBlank()) {
+                    return@withContext Result.Error("No hay código de verificación pendiente")
+                }
+                
+                // 4. Verificar que el código coincida
+                if (usuario.codigoVerificacion != codigo) {
+                    return@withContext Result.Error("Código incorrecto")
+                }
+                
+                // 5. Verificar que no haya expirado
+                if (usuario.codigoExpiracion != null && CodeGenerator.isExpired(usuario.codigoExpiracion)) {
+                    return@withContext Result.Error("El código ha expirado. Solicita uno nuevo.")
+                }
+                
+                // 6. Marcar usuario como verificado y limpiar código
+                val updateData: Map<String, @JvmSuppressWildcards Any?> = mapOf(
+                    "email_verificado" to true,
+                    "codigo_verificacion" to null,
+                    "codigo_expiracion" to null
+                )
+                
+                val updateResponse = api.marcarUsuarioVerificado(
+                    correo = "eq.$correo",
+                    update = updateData
+                )
+                
+                if (updateResponse.isSuccessful && !updateResponse.body().isNullOrEmpty()) {
+                    // Enviar email de bienvenida
+                    EmailService.enviarEmailBienvenida(correo, usuario.nombre)
+                    Result.Success(updateResponse.body()!![0])
+                } else {
+                    Result.Error("Error al verificar usuario")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error al verificar código: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Reenviar código de verificación
+     * @param correo Correo del usuario
+     * @return Result con mensaje de éxito
+     */
+    suspend fun reenviarCodigo(correo: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Verificar que el usuario existe
+                val response = api.verificarCorreo(correo = "eq.$correo", select = "*")
+                
+                if (!response.isSuccessful || response.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("Usuario no encontrado")
+                }
+                
+                val usuario = response.body()!![0]
+                
+                // 2. Verificar que no esté ya verificado
+                if (usuario.emailVerificado) {
+                    return@withContext Result.Error("El usuario ya está verificado")
+                }
+                
+                // 3. Generar nuevo código
+                val nuevoCodigoVerificacion = CodeGenerator.generateVerificationCode()
+                val nuevaExpiracion = CodeGenerator.getExpirationTime()
+                
+                // 4. Actualizar código en la base de datos
+                val updateData: Map<String, @JvmSuppressWildcards Any> = mapOf(
+                    "codigo_verificacion" to nuevoCodigoVerificacion,
+                    "codigo_expiracion" to nuevaExpiracion
+                )
+                
+                val updateResponse = api.actualizarCodigoVerificacion(
+                    correo = "eq.$correo",
+                    update = updateData
+                )
+                
+                if (!updateResponse.isSuccessful) {
+                    return@withContext Result.Error("Error al generar nuevo código")
+                }
+                
+                // 5. Enviar email con nuevo código
+                EmailService.enviarCodigoVerificacion(
+                    correo = correo,
+                    codigo = nuevoCodigoVerificacion,
+                    nombre = usuario.nombre
+                )
+                
+                Result.Success("Nuevo código enviado: $nuevoCodigoVerificacion (revisa los logs)")
+            } catch (e: Exception) {
+                Result.Error("Error al reenviar código: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Actualizar usuario después de verificar email
+     * Sincroniza el auth_user_id y marca email_verificado como true
+     * @param authUserId UUID del usuario en Supabase Auth
+     * @param correo Correo del usuario
+     * @return Result con el usuario actualizado
+     */
+    suspend fun actualizarUsuarioVerificado(authUserId: String, correo: String): Result<Usuario> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Buscar el usuario por correo
+                val response = api.verificarCorreo(correo = "eq.$correo", select = "*")
+                
+                if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                    val usuario = response.body()!![0]
+                    
+                    // Actualizar con auth_user_id y email_verificado
+                    val usuarioActualizado = usuario.copy(
+                        authUserId = authUserId,
+                        emailVerificado = true
+                    )
+                    
+                    val updateResponse = api.actualizarUsuario(
+                        id = "eq.${usuario.id}",
+                        usuario = usuarioActualizado
+                    )
+                    
+                    if (updateResponse.isSuccessful && !updateResponse.body().isNullOrEmpty()) {
+                        Result.Success(updateResponse.body()!![0])
+                    } else {
+                        Result.Error("Error al actualizar usuario verificado")
+                    }
+                } else {
+                    Result.Error("Usuario no encontrado")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error al actualizar: ${e.message}")
             }
         }
     }

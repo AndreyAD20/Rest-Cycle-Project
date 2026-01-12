@@ -1,4 +1,4 @@
-package com.example.rest
+package com.example.rest.features.auth
 
 import android.content.Intent
 import android.os.Bundle
@@ -20,47 +20,39 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rest.BaseComposeActivity
+import com.example.rest.R
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.data.repository.RecuperacionRepository
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.launch
 
-class CambioContraseñaActivity : BaseComposeActivity() {
+class OlvidoContrasenaActivity : BaseComposeActivity() {
     
     private val recuperacionRepository = RecuperacionRepository()
-    private var correo: String = ""
-    private var codigoId: Int = 0
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Obtener datos del intent
-        correo = intent.getStringExtra("correo") ?: ""
-        codigoId = intent.getIntExtra("codigoId", 0)
         
         setContent {
             TemaRest {
                 var cargando by remember { mutableStateOf(false) }
                 
-                PantallaCambioContraseña(
+                PantallaOlvidoContrasena(
                     alClickRegresar = {
                         finish()
                     },
-                    alClickConfirmar = { nuevaContraseña, confirmarContraseña ->
+                    alClickEnviar = { correo ->
                         when {
-                            nuevaContraseña.isBlank() || nuevaContraseña.length < 6 -> {
-                                Toast.makeText(this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show()
-                            }
-                            nuevaContraseña != confirmarContraseña -> {
-                                Toast.makeText(this, "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show()
+                            correo.isBlank() || !correo.contains("@") -> {
+                                Toast.makeText(this, "Por favor ingresa un correo válido", Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 cargando = true
-                                cambiarContraseña(nuevaContraseña) {
+                                enviarCodigo(correo) {
                                     cargando = false
                                 }
                             }
@@ -72,21 +64,21 @@ class CambioContraseñaActivity : BaseComposeActivity() {
         }
     }
     
-    private fun cambiarContraseña(nuevaContraseña: String, onComplete: () -> Unit) {
+    private fun enviarCodigo(correo: String, onComplete: () -> Unit) {
         lifecycleScope.launch {
             try {
-                when (val resultado = recuperacionRepository.cambiarContraseña(correo, codigoId, nuevaContraseña)) {
-                    is RecuperacionRepository.Result.Success -> {
+                when (val resultado = recuperacionRepository.solicitarCodigo(correo)) {
+                    is RecuperacionRepository.Result.Success<*> -> {
                         runOnUiThread {
                             Toast.makeText(
-                                this@CambioContraseñaActivity,
-                                "¡Contraseña cambiada exitosamente!",
+                                this@OlvidoContrasenaActivity,
+                                "Código enviado a $correo",
                                 Toast.LENGTH_LONG
                             ).show()
                             
-                            // Navegar a LoginActivity
-                            val intent = Intent(this@CambioContraseñaActivity, LoginComposeActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            // Navegar a pantalla de código
+                            val intent = Intent(this@OlvidoContrasenaActivity, CodigoRecuperacionActivity::class.java)
+                            intent.putExtra("correo", correo)
                             startActivity(intent)
                             finish()
                         }
@@ -94,7 +86,7 @@ class CambioContraseñaActivity : BaseComposeActivity() {
                     is RecuperacionRepository.Result.Error -> {
                         runOnUiThread {
                             Toast.makeText(
-                                this@CambioContraseñaActivity,
+                                this@OlvidoContrasenaActivity,
                                 resultado.message,
                                 Toast.LENGTH_LONG
                             ).show()
@@ -107,7 +99,7 @@ class CambioContraseñaActivity : BaseComposeActivity() {
             } catch (e: Exception) {
                 runOnUiThread {
                     Toast.makeText(
-                        this@CambioContraseñaActivity,
+                        this@OlvidoContrasenaActivity,
                         "Error inesperado: ${e.message}",
                         Toast.LENGTH_LONG
                     ).show()
@@ -120,13 +112,12 @@ class CambioContraseñaActivity : BaseComposeActivity() {
 }
 
 @Composable
-fun PantallaCambioContraseña(
+fun PantallaOlvidoContrasena(
     alClickRegresar: () -> Unit,
-    alClickConfirmar: (String, String) -> Unit,
+    alClickEnviar: (String) -> Unit,
     cargando: Boolean = false
 ) {
-    var nuevaContraseña by remember { mutableStateOf("") }
-    var confirmarContraseña by remember { mutableStateOf("") }
+    var correo by remember { mutableStateOf("") }
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
@@ -192,7 +183,7 @@ fun PantallaCambioContraseña(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "Cambia a tu nuevo Pin\nque no se te olvide",
+                            text = "Pon tu correo y te\nenviaremos un codigo",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Negro,
                             textAlign = TextAlign.Center,
@@ -202,13 +193,13 @@ fun PantallaCambioContraseña(
                 }
             }
 
-            // Campo Nuevo Pin
+            // Campo de Correo
             OutlinedTextField(
-                value = nuevaContraseña,
-                onValueChange = { nuevaContraseña = it },
+                value = correo,
+                onValueChange = { correo = it },
                 placeholder = {
                     Text(
-                        "Nuevo Pin",
+                        "Correo Electrónico",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -225,48 +216,16 @@ fun PantallaCambioContraseña(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Campo Confirmar Pin
-            OutlinedTextField(
-                value = confirmarContraseña,
-                onValueChange = { confirmarContraseña = it },
-                placeholder = {
-                    Text(
-                        "Confirmar Pin",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
-                    )
-                },
-                modifier = Modifier
-                    .width(330.dp)
-                    .height(56.dp),
-                shape = RoundedCornerShape(30.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
-                ),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Botón Confirmar
+            // Botón Enviar Código
             Button(
-                onClick = { alClickConfirmar(nuevaContraseña, confirmarContraseña) },
+                onClick = { alClickEnviar(correo) },
                 modifier = Modifier
                     .width(200.dp)
                     .height(56.dp),
@@ -284,7 +243,7 @@ fun PantallaCambioContraseña(
                     )
                 } else {
                     Text(
-                        text = "Confirmar",
+                        text = "Enviar Código",
                         style = MaterialTheme.typography.labelLarge,
                         color = Blanco
                     )

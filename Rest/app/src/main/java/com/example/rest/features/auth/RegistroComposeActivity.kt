@@ -1,4 +1,4 @@
-package com.example.rest
+package com.example.rest.features.auth
 
 import android.content.Intent
 import android.os.Bundle
@@ -8,8 +8,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -25,6 +27,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import com.example.rest.BaseComposeActivity
+import com.example.rest.R
 import com.example.rest.data.models.RegistroRequest
 import com.example.rest.data.repository.UsuarioRepository
 import com.example.rest.ui.theme.*
@@ -44,41 +48,17 @@ class RegistroComposeActivity : BaseComposeActivity() {
                 var cargando by remember { mutableStateOf(false) }
                 
                 PantallaRegistro(
-                    alClickInicioSesion = {
-                        // Navegar a LoginComposeActivity
-                        val intencion = Intent(this, LoginComposeActivity::class.java)
-                        startActivity(intencion)
-                        finish()
-                    },
-                    alClickRegistro = { nombre, apellido, correo, telefono, fechaNac, contraseña, confirmarContra ->
-                        // Validaciones
-                        when {
-                            nombre.isBlank() -> {
-                                Toast.makeText(this, "Por favor ingresa tu nombre", Toast.LENGTH_SHORT).show()
-                            }
-                            correo.isBlank() || !correo.contains("@") -> {
-                                Toast.makeText(this, "Por favor ingresa un correo válido", Toast.LENGTH_SHORT).show()
-                            }
-                            telefono.isBlank() -> {
-                                Toast.makeText(this, "Por favor ingresa tu teléfono", Toast.LENGTH_SHORT).show()
-                            }
-                            fechaNac.isBlank() -> {
-                                Toast.makeText(this, "Por favor ingresa tu fecha de nacimiento", Toast.LENGTH_SHORT).show()
-                            }
-                            contraseña.isBlank() || contraseña.length < 6 -> {
-                                Toast.makeText(this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show()
-                            }
-                            contraseña != confirmarContra -> {
-                                Toast.makeText(this, "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show()
-                            }
-                            else -> {
-                                // Realizar registro
-                                cargando = true
-                                realizarRegistro(nombre, apellido, correo, telefono, fechaNac, contraseña) {
-                                    cargando = false
-                                }
-                            }
+                    alClickRegistrar = { request ->
+                        cargando = true
+                        realizarRegistro(request) {
+                            cargando = false
                         }
+                    },
+                    alClickYaTienesCuenta = {
+                        finish() // Volver a LoginComposeActivity
+                    },
+                    alMostrarError = { mensaje ->
+                        mostrarMensaje(mensaje)
                     },
                     cargando = cargando
                 )
@@ -87,71 +67,52 @@ class RegistroComposeActivity : BaseComposeActivity() {
     }
     
     private fun realizarRegistro(
-        nombre: String,
-        apellido: String,
-        correo: String,
-        telefono: String,
-        fechaNacimiento: String,
-        contraseña: String,
+        request: RegistroRequest,
         onComplete: () -> Unit
     ) {
+        // Verificar conectividad antes de intentar el registro
+        if (!isNetworkAvailable()) {
+            Toast.makeText(
+                this@RegistroComposeActivity,
+                "❌ No hay conexión a Internet. Por favor, verifica tu conexión e intenta nuevamente.",
+                Toast.LENGTH_LONG
+            ).show()
+            onComplete()
+            return
+        }
+        
         lifecycleScope.launch {
             try {
-                // Calcular si es mayor de edad
-                val esMayorDeEdad = try {
-                    val fechaNac = LocalDate.parse(fechaNacimiento, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                    val edad = Period.between(fechaNac, LocalDate.now()).years
-                    edad >= 18
-                } catch (e: Exception) {
-                    // Si no se puede parsear la fecha, asumir mayor de edad
-                    true
-                }
-                
-                // Convertir fecha al formato de la BD (YYYY-MM-DD)
-                val fechaBD = try {
-                    val fechaNac = LocalDate.parse(fechaNacimiento, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                    fechaNac.format(DateTimeFormatter.ISO_LOCAL_DATE)
-                } catch (e: Exception) {
-                    fechaNacimiento
-                }
-                
-                
-                // Usar los campos directamente ya que están separados
-                val nombreFinal = nombre.trim()
-                val apellidoFinal = apellido.trim().ifBlank { null }
-                
-                val request = RegistroRequest(
-                    nombre = nombreFinal,
-                    apellido = apellidoFinal,
-                    correo = correo,
-                    telefono = telefono,
-                    fechaNacimiento = fechaBD,
-                    contraseña = contraseña,
-                    rol = if (esMayorDeEdad) "padre" else "hijo",
-                    mayorEdad = esMayorDeEdad
-                )
-                
-                when (val resultado = usuarioRepository.registrar(request)) {
+                when (val resultado = usuarioRepository.registrarConVerificacion(request)) {
                     is UsuarioRepository.Result.Success -> {
-                        val usuario = resultado.data
+                        val mensaje = resultado.data
                         runOnUiThread {
                             Toast.makeText(
                                 this@RegistroComposeActivity,
-                                "¡Registro exitoso! Bienvenido ${usuario.nombre}",
+                                "✅ $mensaje",
                                 Toast.LENGTH_LONG
                             ).show()
                             
-                            // Navegar a LoginComposeActivity
-                            val intencion = Intent(this@RegistroComposeActivity, LoginComposeActivity::class.java)
-                            startActivity(intencion)
+                            // Navegar a pantalla de verificación
+                            val intent = Intent(this@RegistroComposeActivity, VerificacionCodigoActivity::class.java)
+                            intent.putExtra("correo", request.correo)
+                            startActivity(intent)
                             finish()
                         }
                     }
                     is UsuarioRepository.Result.Error -> {
                         runOnUiThread {
+                            val mensajeError = when {
+                                resultado.message.contains("Unable to resolve host") ||
+                                resultado.message.contains("UnknownHostException") -> 
+                                    "❌ No se puede conectar al servidor. Verifica tu conexión a Internet."
+                                resultado.message.contains("timeout") -> 
+                                    "❌ La conexión tardó demasiado. Intenta nuevamente."
+                                else -> "❌ ${resultado.message}"
+                            }
                             Toast.makeText(
                                 this@RegistroComposeActivity,
-                                "Error: ${resultado.message}",
+                                mensajeError,
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -162,9 +123,17 @@ class RegistroComposeActivity : BaseComposeActivity() {
                 }
             } catch (e: Exception) {
                 runOnUiThread {
+                    val mensajeError = when {
+                        e.message?.contains("Unable to resolve host") == true ||
+                        e.message?.contains("UnknownHostException") == true -> 
+                            "❌ No se puede conectar al servidor. Verifica tu conexión a Internet."
+                        e.message?.contains("timeout") == true -> 
+                            "❌ La conexión tardó demasiado. Intenta nuevamente."
+                        else -> "❌ Error inesperado: ${e.message}"
+                    }
                     Toast.makeText(
                         this@RegistroComposeActivity,
-                        "Error inesperado: ${e.message}",
+                        mensajeError,
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -173,23 +142,44 @@ class RegistroComposeActivity : BaseComposeActivity() {
             }
         }
     }
+    
+    /**
+     * Verifica si hay conexión a Internet disponible
+     */
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) 
+            as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+    
+    /**
+     * Muestra un mensaje Toast
+     */
+    fun mostrarMensaje(mensaje: String) {
+        Toast.makeText(this, mensaje, Toast.LENGTH_LONG).show()
+    }
 }
 
 @Composable
 fun PantallaRegistro(
-    alClickInicioSesion: () -> Unit,
-    alClickRegistro: (String, String, String, String, String, String, String) -> Unit,
+    alClickRegistrar: (RegistroRequest) -> Unit,
+    alClickYaTienesCuenta: () -> Unit,
+    alMostrarError: (String) -> Unit,
     cargando: Boolean = false
 ) {
     var nombre by remember { mutableStateOf("") }
     var apellido by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
-    var numeroCelular by remember { mutableStateOf("") }
+    var telefono by remember { mutableStateOf("") }
     var fechaNacimiento by remember { mutableStateOf("") }
-    var contraseña by remember { mutableStateOf("") }
-    var confirmarContraseña by remember { mutableStateOf("") }
+    var pin by remember { mutableStateOf("") }
+    var confirmarPin by remember { mutableStateOf("") }
     var aceptaTerminos by remember { mutableStateOf(false) }
+    var rol by remember { mutableStateOf("hijo") } // Por defecto "hijo"
 
+    // Gradiente de fondo cyan/turquesa
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
             Primario,
@@ -204,12 +194,12 @@ fun PantallaRegistro(
             .fillMaxSize()
             .background(brochaGradiente)
     ) {
-        // Botón de volver en la esquina superior izquierda
+        // Botón de volver (flecha) en la esquina superior izquierda
         IconButton(
-            onClick = alClickInicioSesion,
+            onClick = alClickYaTienesCuenta,
             modifier = Modifier
-                .padding(16.dp)
                 .align(Alignment.TopStart)
+                .padding(16.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.ArrowBack,
@@ -221,35 +211,45 @@ fun PantallaRegistro(
         
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 32.dp)
+                .padding(top = 60.dp, bottom = 20.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            // Logo del búho y texto de bienvenida en horizontal
+            // Búho con frase
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 32.dp)
             ) {
-                // Logo del búho
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
-                    contentDescription = "Logo Búho",
-                    modifier = Modifier.size(120.dp)
+                    contentDescription = "Búho",
+                    modifier = Modifier.size(80.dp)
                 )
                 
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Texto de bienvenida
-                Text(
-                    text = "Aquí podrás\nRegistrarte en\nnuestra APP",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF004D40),
-                    textAlign = TextAlign.Start
-                )
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                // Frase en un "bocadillo"
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Blanco,
+                    modifier = Modifier
+                        .border(
+                            width = 2.dp,
+                            color = Negro,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                ) {
+                    Text(
+                        text = "Aquí podrás\nRegistrarte en\nnuestra APP",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Negro,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
 
             // Campo de Nombre
@@ -275,12 +275,11 @@ fun PantallaRegistro(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Campo de Apellido
             OutlinedTextField(
@@ -305,12 +304,11 @@ fun PantallaRegistro(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Campo de Correo Electrónico
             OutlinedTextField(
@@ -318,7 +316,7 @@ fun PantallaRegistro(
                 onValueChange = { correo = it },
                 placeholder = { 
                     Text(
-                        "Correo Electronico",
+                        "Correo Electrónico",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -340,15 +338,15 @@ fun PantallaRegistro(
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo de Número de Celular
+            // Campo de Teléfono
             OutlinedTextField(
-                value = numeroCelular,
-                onValueChange = { numeroCelular = it },
+                value = telefono,
+                onValueChange = { telefono = it },
                 placeholder = { 
                     Text(
-                        "Numero de Celular",
+                        "Teléfono",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -370,7 +368,7 @@ fun PantallaRegistro(
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Campo de Fecha de Nacimiento
             OutlinedTextField(
@@ -378,7 +376,7 @@ fun PantallaRegistro(
                 onValueChange = { fechaNacimiento = it },
                 placeholder = { 
                     Text(
-                        "Fecha de Nacimiento",
+                        "Fecha de Nacimiento (YYYY-MM-DD)",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -395,51 +393,19 @@ fun PantallaRegistro(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo de Contraseña
+            // Campo de Pin
             OutlinedTextField(
-                value = contraseña,
-                onValueChange = { contraseña = it },
+                value = pin,
+                onValueChange = { pin = it },
                 placeholder = { 
                     Text(
-                        "Ingrese su Contraseña",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
-                    ) 
-                },
-                modifier = Modifier
-                    .width(330.dp)
-                    .height(56.dp),
-                shape = RoundedCornerShape(30.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
-                ),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Campo de Confirmar Contraseña
-            OutlinedTextField(
-                value = confirmarContraseña,
-                onValueChange = { confirmarContraseña = it },
-                placeholder = { 
-                    Text(
-                        "Confirme su Contraseña",
+                        "Ingrese su Pin",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -464,43 +430,122 @@ fun PantallaRegistro(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Checkbox de términos y condiciones
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            // Campo de Confirmar Pin
+            OutlinedTextField(
+                value = confirmarPin,
+                onValueChange = { confirmarPin = it },
+                placeholder = { 
+                    Text(
+                        "Confirme su Pin",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color(0xFF757575)
+                    ) 
+                },
                 modifier = Modifier
                     .width(330.dp)
-                    .padding(horizontal = 8.dp)
+                    .height(56.dp),
+                shape = RoundedCornerShape(30.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Blanco,
+                    unfocusedContainerColor = Blanco,
+                    focusedBorderColor = Color(0xFF6B4EFF),
+                    unfocusedBorderColor = Color(0xFFB0BEC5),
+                    focusedTextColor = Negro,
+                    unfocusedTextColor = Negro
+                ),
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Checkbox de Términos y Condiciones
+            Row(
+                modifier = Modifier
+                    .width(330.dp)
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
                     checked = aceptaTerminos,
                     onCheckedChange = { aceptaTerminos = it },
                     colors = CheckboxDefaults.colors(
-                        checkedColor = Primario,
-                        uncheckedColor = Color(0xFF004D40)
+                        checkedColor = Color(0xFF6B4EFF),
+                        uncheckedColor = Color(0xFFB0BEC5)
                     )
                 )
                 Text(
-                    text = "Usted Acepta Los Terminos De Uso De\nRest Cycle Y La Politica De Privacidad.",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "Acepto los Términos y Condiciones",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF004D40),
-                    modifier = Modifier.padding(start = 4.dp)
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Botón Registrarse
+            // Botón Registrar
             Button(
                 onClick = {
-                    alClickRegistro(
-                        nombre,
-                        apellido,
-                        correo,
-                        numeroCelular,
-                        fechaNacimiento,
-                        contraseña,
-                        confirmarContraseña
-                    )
+                    // Validaciones con mensajes
+                    when {
+                        nombre.isBlank() -> {
+                            alMostrarError("❌ Por favor, ingresa tu nombre")
+                        }
+                        correo.isBlank() -> {
+                            alMostrarError("❌ Por favor, ingresa tu correo electrónico")
+                        }
+                        !correo.contains("@") -> {
+                            alMostrarError("❌ Por favor, ingresa un correo válido")
+                        }
+                        telefono.isBlank() -> {
+                            alMostrarError("❌ Por favor, ingresa tu teléfono")
+                        }
+                        fechaNacimiento.isBlank() -> {
+                            alMostrarError("❌ Por favor, ingresa tu fecha de nacimiento")
+                        }
+                        pin.isBlank() -> {
+                            alMostrarError("❌ Por favor, ingresa tu contraseña")
+                        }
+                        pin.length < 4 -> {
+                            alMostrarError("❌ La contraseña debe tener al menos 4 caracteres")
+                        }
+                        confirmarPin.isBlank() -> {
+                            alMostrarError("❌ Por favor, confirma tu contraseña")
+                        }
+                        pin != confirmarPin -> {
+                            alMostrarError("❌ Las contraseñas no coinciden")
+                        }
+                        !aceptaTerminos -> {
+                            alMostrarError("❌ Debes aceptar los Términos y Condiciones")
+                        }
+                        else -> {
+                            // Validar formato de fecha
+                            val mayorEdad = try {
+                                val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                                val fechaNac = LocalDate.parse(fechaNacimiento, formatter)
+                                val edad = Period.between(fechaNac, LocalDate.now()).years
+                                edad >= 18
+                            } catch (e: Exception) {
+                                alMostrarError("❌ Formato de fecha inválido. Usa YYYY-MM-DD (ej: 2000-01-15)")
+                                return@Button
+                            }
+
+                            val request = RegistroRequest(
+                                nombre = nombre,
+                                apellido = apellido.ifBlank { null },
+                                correo = correo,
+                                telefono = telefono,
+                                fechaNacimiento = fechaNacimiento,
+                                contraseña = pin,
+                                rol = rol,
+                                mayorEdad = mayorEdad
+                            )
+                            alClickRegistrar(request)
+                        }
+                    }
                 },
                 modifier = Modifier
                     .width(158.dp)
@@ -514,7 +559,7 @@ fun PantallaRegistro(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Primario
                 ),
-                enabled = aceptaTerminos && !cargando
+                enabled = !cargando
             ) {
                 if (cargando) {
                     CircularProgressIndicator(
@@ -524,12 +569,14 @@ fun PantallaRegistro(
                     )
                 } else {
                     Text(
-                        text = "Registrarse",
+                        text = "Registrar",
                         style = MaterialTheme.typography.labelLarge,
                         color = Negro
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }

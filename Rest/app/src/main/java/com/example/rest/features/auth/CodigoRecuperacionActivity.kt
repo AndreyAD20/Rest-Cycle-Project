@@ -1,4 +1,4 @@
-package com.example.rest
+﻿package com.example.rest.features.auth
 
 import android.content.Intent
 import android.os.Bundle
@@ -24,6 +24,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rest.BaseComposeActivity
+import com.example.rest.R
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.data.repository.RecuperacionRepository
 import com.example.rest.ui.theme.*
@@ -51,7 +53,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                     alClickConfirmar = { codigo ->
                         when {
                             codigo.isBlank() || codigo.length != 6 -> {
-                                Toast.makeText(this, "Por favor ingresa un código de 6 dígitos", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "Por favor ingresa un cÃ³digo de 6 dÃ­gitos", Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 cargando = true
@@ -62,7 +64,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                         }
                     },
                     alClickReenviar = {
-                        // Volver a la pantalla anterior para reenviar código
+                        // Volver a la pantalla anterior para reenviar cÃ³digo
                         finish()
                     },
                     cargando = cargando
@@ -80,12 +82,12 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@CodigoRecuperacionActivity,
-                                "Código verificado correctamente",
+                                "CÃ³digo verificado correctamente",
                                 Toast.LENGTH_SHORT
                             ).show()
                             
-                            // Navegar a pantalla de cambio de contraseña
-                            val intent = Intent(this@CodigoRecuperacionActivity, CambioContraseñaActivity::class.java)
+                            // Navegar a pantalla de cambio de contraseÃ±a
+                            val intent = Intent(this@CodigoRecuperacionActivity, CambioContrasenaActivity::class.java)
                             intent.putExtra("correo", correo)
                             intent.putExtra("codigoId", codigoId)
                             startActivity(intent)
@@ -143,7 +145,7 @@ fun PantallaCodigoRecuperacion(
             .fillMaxSize()
             .background(brochaGradiente)
     ) {
-        // Botón de regresar
+        // BotÃ³n de regresar
         IconButton(
             onClick = alClickRegresar,
             modifier = Modifier
@@ -165,7 +167,7 @@ fun PantallaCodigoRecuperacion(
                 .fillMaxSize()
                 .padding(horizontal = 32.dp)
         ) {
-            // Logo del búho con bocadillo
+            // Logo del bÃºho con bocadillo
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -175,7 +177,7 @@ fun PantallaCodigoRecuperacion(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
-                    contentDescription = "Logo Búho",
+                    contentDescription = "Logo BÃºho",
                     modifier = Modifier.size(100.dp)
                 )
 
@@ -203,13 +205,13 @@ fun PantallaCodigoRecuperacion(
                 }
             }
 
-            // Campo de Código de Verificación
+            // Campo de CÃ³digo de VerificaciÃ³n
             OutlinedTextField(
                 value = codigo,
                 onValueChange = { if (it.length <= 6) codigo = it },
                 placeholder = {
                     Text(
-                        "Codigo de Verificación",
+                        "Codigo de VerificaciÃ³n",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -233,7 +235,7 @@ fun PantallaCodigoRecuperacion(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Botón Confirmar
+            // BotÃ³n Confirmar
             Button(
                 onClick = { alClickConfirmar(codigo) },
                 modifier = Modifier
@@ -262,7 +264,7 @@ fun PantallaCodigoRecuperacion(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Link para reenviar código
+            // Link para reenviar cÃ³digo
             Text(
                 text = "Volver a Enviar Codigo",
                 style = MaterialTheme.typography.bodyMedium,
@@ -272,3 +274,7 @@ fun PantallaCodigoRecuperacion(
         }
     }
 }
+
+
+
+

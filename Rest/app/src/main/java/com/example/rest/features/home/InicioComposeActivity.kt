@@ -1,4 +1,4 @@
-package com.example.rest
+package com.example.rest.features.home
 
 import android.content.Intent
 import android.os.Bundle
@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rest.BaseComposeActivity
+import com.example.rest.R
 import com.example.rest.ui.theme.*
 
 class InicioComposeActivity : BaseComposeActivity() {
@@ -30,9 +32,12 @@ class InicioComposeActivity : BaseComposeActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TemaRest {
+                var mostrarDialogoCerrarSesion by remember { mutableStateOf(false) }
+                
                 PantallaModosDeUso(
                     alClickRegresar = {
-                        finish()
+                        // Mostrar diálogo de confirmación
+                        mostrarDialogoCerrarSesion = true
                     },
                     alClickConfiguracion = {
                         // TODO: Navegar a pantalla de configuración
@@ -41,9 +46,41 @@ class InicioComposeActivity : BaseComposeActivity() {
                         // TODO: Navegar a Control Parental
                     },
                     alClickHabitosSaludables = {
-                        // TODO: Navegar a Hábitos Saludables
+                        // Navegar a Perfil
+                        val intent = Intent(this, com.example.rest.features.home.PerfilComposeActivity::class.java)
+                        startActivity(intent)
                     }
                 )
+                
+                // Diálogo de confirmación para cerrar sesión
+                if (mostrarDialogoCerrarSesion) {
+                    AlertDialog(
+                        onDismissRequest = { mostrarDialogoCerrarSesion = false },
+                        title = { Text("Cerrar sesión") },
+                        text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    mostrarDialogoCerrarSesion = false
+                                    // Cerrar sesión y volver a login
+                                    val intent = Intent(this, com.example.rest.features.auth.LoginComposeActivity::class.java)
+                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    startActivity(intent)
+                                    finish()
+                                }
+                            ) {
+                                Text("Sí, cerrar sesión")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = { mostrarDialogoCerrarSesion = false }
+                            ) {
+                                Text("Cancelar")
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -184,3 +221,6 @@ fun PantallaModosDeUso(
         }
     }
 }
+
+
+
