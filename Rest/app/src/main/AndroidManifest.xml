@@ -15,53 +15,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Material3.DayNight.NoActionBar">
 
+        <!-- Login Activity (Launcher) -->
         <activity
-<<<<<<< HEAD
             android:name=".features.auth.LoginComposeActivity"
-=======
-            android:name=".LoginComposeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-
-
-
-        <activity
-            android:name=".RegistroComposeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-        <activity
-            android:name=".RegistroComposeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-        <activity
-            android:name=".OlvidoContraseñaComposeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-        <activity
-            android:name=".CodigoRecuperacionActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-        <activity
-            android:name=".CambioContraseñaActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-
-        <activity
-            android:name=".InicioComposeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-
-
-        <activity
-            android:name=".PerfilComposeActivity"
->>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9
             android:exported="true"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar">
             <intent-filter>
@@ -69,22 +25,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Auth Activities -->
         <activity android:name=".features.auth.RegistroComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.auth.VerificacionCodigoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.auth.OlvidoContrasenaActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <!-- <activity android:name=".features.auth.OlvidoContraseñaComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" /> -->
         <activity android:name=".features.auth.CodigoRecuperacionActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.auth.CambioContrasenaActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+        <!-- Home Activities -->
         <activity android:name=".features.home.InicioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.home.PerfilComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.EstadisticasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+        <!-- Tools Activities -->
         <activity android:name=".features.tools.NotasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.BloqueoAppsComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.HoraDescansoComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.TareasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.CalendarioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.habits.EstadisticasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
+        <!-- Habits Activities -->
+        <activity android:name=".features.habits.EstadisticasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
     </application>
 

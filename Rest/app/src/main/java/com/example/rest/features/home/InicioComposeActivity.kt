@@ -32,11 +32,8 @@ class InicioComposeActivity : BaseComposeActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TemaRest {
-<<<<<<< HEAD:Rest/app/src/main/java/com/example/rest/features/home/InicioComposeActivity.kt
                 var mostrarDialogoCerrarSesion by remember { mutableStateOf(false) }
                 
-=======
->>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9:Rest/app/src/main/java/com/example/rest/InicioComposeActivity.kt
                 PantallaModosDeUso(
                     alClickRegresar = {
                         // Mostrar diálogo de confirmación
@@ -54,7 +51,6 @@ class InicioComposeActivity : BaseComposeActivity() {
                         startActivity(intent)
                     }
                 )
-<<<<<<< HEAD:Rest/app/src/main/java/com/example/rest/features/home/InicioComposeActivity.kt
                 
                 // Diálogo de confirmación para cerrar sesión
                 if (mostrarDialogoCerrarSesion) {
@@ -85,8 +81,6 @@ class InicioComposeActivity : BaseComposeActivity() {
                         }
                     )
                 }
-=======
->>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9:Rest/app/src/main/java/com/example/rest/InicioComposeActivity.kt
             }
         }
     }
@@ -227,6 +221,3 @@ fun PantallaModosDeUso(
         }
     }
 }
-
-
-

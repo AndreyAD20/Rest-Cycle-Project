@@ -22,7 +22,7 @@ data class Usuario(
     val correo: String,
     
     @SerializedName("telefono")
-    val telefono: String,
+    val telefono: String? = null,
     
     @SerializedName("fechanacimiento")
     val fechaNacimiento: String, // Formato: YYYY-MM-DD
@@ -71,7 +71,7 @@ data class RegistroRequest(
     val correo: String,
     
     @SerializedName("telefono")
-    val telefono: String,
+    val telefono: String? = null,
     
     @SerializedName("fechanacimiento")
     val fechaNacimiento: String,

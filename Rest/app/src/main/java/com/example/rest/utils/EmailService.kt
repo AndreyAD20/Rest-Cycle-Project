@@ -1,52 +1,84 @@
 package com.example.rest.utils
 
 import android.util.Log
+import com.example.rest.network.SupabaseConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 /**
  * Servicio para enviar emails de verificación
- * Por ahora solo registra en logs, en producción se integrará con un servicio real
+ * Usa Supabase Edge Functions + Resend API
  */
 object EmailService {
     
     private const val TAG = "EmailService"
+    private val EDGE_FUNCTION_URL = "${SupabaseConfig.SUPABASE_URL}/functions/v1/enviar-codigo-verificacion"
+    
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
     
     /**
-     * Envía un código de verificación por email
+     * Envía un código de verificación por email usando Edge Function
      * @param correo Email del destinatario
      * @param codigo Código de verificación de 6 dígitos
-     * @param nombre Nombre del usuario (opcional)
+     * @param nombre Nombre del usuario
      * @return true si se envió correctamente, false en caso contrario
      */
-    fun enviarCodigoVerificacion(
+    suspend fun enviarCodigoVerificacion(
         correo: String,
         codigo: String,
         nombre: String = "Usuario"
     ): Boolean {
-        return try {
-            // TODO: Implementar envío real de email usando Supabase Edge Functions + Resend
-            // Por ahora solo registramos en logs para desarrollo
-            
-            Log.d(TAG, "========================================")
-            Log.d(TAG, "📧 EMAIL DE VERIFICACIÓN")
-            Log.d(TAG, "========================================")
-            Log.d(TAG, "Para: $correo")
-            Log.d(TAG, "Asunto: Código de verificación - Rest Cycle")
-            Log.d(TAG, "")
-            Log.d(TAG, "Hola $nombre,")
-            Log.d(TAG, "")
-            Log.d(TAG, "Tu código de verificación es:")
-            Log.d(TAG, "")
-            Log.d(TAG, "    🔐 $codigo")
-            Log.d(TAG, "")
-            Log.d(TAG, "Este código expirará en 15 minutos.")
-            Log.d(TAG, "")
-            Log.d(TAG, "Si no solicitaste este código, ignora este mensaje.")
-            Log.d(TAG, "========================================")
-            
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al enviar email: ${e.message}", e)
-            false
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "🚀 Iniciando envío de código a: $correo")
+                Log.d(TAG, "URL: $EDGE_FUNCTION_URL")
+                
+                // Crear JSON body
+                val json = JSONObject().apply {
+                    put("email", correo)
+                    put("code", codigo)
+                    put("nombre", nombre)
+                }
+                
+                val body = json.toString().toRequestBody("application/json".toMediaType())
+                
+                // Crear request
+                val request = Request.Builder()
+                    .url(EDGE_FUNCTION_URL)
+                    .addHeader("Authorization", "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
+                    .addHeader("Content-Type", "application/json")
+                    .post(body)
+                    .build()
+                
+                // Ejecutar request
+                Log.d(TAG, "⏳ Ejecutando petición HTTP...")
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string() ?: "Sin respuesta"
+                
+                Log.d(TAG, "📩 Response Code: ${response.code}")
+                Log.d(TAG, "📩 Response Body: $responseBody")
+                
+                if (response.isSuccessful) {
+                    Log.d(TAG, "✅ Email enviado exitosamente")
+                    true
+                } else {
+                    Log.e(TAG, "❌ Falló el envío del email. Código: ${response.code}")
+                    false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Excepción al enviar email: ${e.message}", e)
+                false
+            }
         }
     }
     
@@ -56,24 +88,16 @@ object EmailService {
      * @param nombre Nombre del usuario
      * @return true si se envió correctamente, false en caso contrario
      */
-    fun enviarEmailBienvenida(correo: String, nombre: String): Boolean {
-        return try {
-            Log.d(TAG, "========================================")
-            Log.d(TAG, "📧 EMAIL DE BIENVENIDA")
-            Log.d(TAG, "========================================")
-            Log.d(TAG, "Para: $correo")
-            Log.d(TAG, "Asunto: ¡Bienvenido a Rest Cycle!")
-            Log.d(TAG, "")
-            Log.d(TAG, "¡Hola $nombre!")
-            Log.d(TAG, "")
-            Log.d(TAG, "Tu cuenta ha sido verificada exitosamente.")
-            Log.d(TAG, "Ya puedes disfrutar de todas las funciones de Rest Cycle.")
-            Log.d(TAG, "========================================")
-            
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al enviar email de bienvenida: ${e.message}", e)
-            false
+    suspend fun enviarEmailBienvenida(correo: String, nombre: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "📧 (TODO) Email de bienvenida para $nombre -> $correo")
+                // TODO: Implementar llamada a Edge Function si es necesario
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "Error: ${e.message}", e)
+                false
+            }
         }
     }
 }

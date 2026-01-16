@@ -158,15 +158,25 @@ class UsuarioRepository {
                     return@withContext Result.Error("Error al generar código de verificación")
                 }
                 
-                // 5. Enviar email con código (por ahora solo logs)
-                EmailService.enviarCodigoVerificacion(
+                // 5. Enviar email con código
+                val fecha = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                android.util.Log.d("UsuarioRepository", "[$fecha] Intentando enviar email a ${request.correo}")
+                
+                val envioExitoso = EmailService.enviarCodigoVerificacion(
                     correo = request.correo,
                     codigo = codigoVerificacion,
                     nombre = request.nombre
                 )
                 
-                // Para desarrollo: incluir el código en el mensaje
-                Result.Success("Registro exitoso. Código de verificación: $codigoVerificacion (revisa los logs)")
+                if (!envioExitoso) {
+                    android.util.Log.e("UsuarioRepository", "[$fecha] Falló el envío del email")
+                    return@withContext Result.Error("No se pudo enviar el correo de verificación. Por favor verifica que el correo sea válido o intenta más tarde.")
+                }
+                
+                android.util.Log.d("UsuarioRepository", "[$fecha] Email enviado correctamente")
+                
+                // Mensaje sin mostrar el código
+                Result.Success("Registro exitoso. Hemos enviado un código de verificación a su correo.")
             } catch (e: Exception) {
                 Result.Error("Error al registrar: ${e.message}")
             }
@@ -321,13 +331,17 @@ class UsuarioRepository {
                 }
                 
                 // 5. Enviar email con nuevo código
-                EmailService.enviarCodigoVerificacion(
+                val envioExitoso = EmailService.enviarCodigoVerificacion(
                     correo = correo,
                     codigo = nuevoCodigoVerificacion,
                     nombre = usuario.nombre
                 )
                 
-                Result.Success("Nuevo código enviado: $nuevoCodigoVerificacion (revisa los logs)")
+                if (!envioExitoso) {
+                    return@withContext Result.Error("Error al enviar el email. Intenta nuevamente.")
+                }
+                
+                Result.Success("Nuevo código enviado a tu correo.")
             } catch (e: Exception) {
                 Result.Error("Error al reenviar código: ${e.message}")
             }

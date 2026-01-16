@@ -48,47 +48,10 @@ class RegistroComposeActivity : BaseComposeActivity() {
                 var cargando by remember { mutableStateOf(false) }
                 
                 PantallaRegistro(
-<<<<<<< HEAD:Rest/app/src/main/java/com/example/rest/features/auth/RegistroComposeActivity.kt
                     alClickRegistrar = { request ->
                         cargando = true
                         realizarRegistro(request) {
                             cargando = false
-=======
-                    alClickInicioSesion = {
-                        // Navegar a LoginComposeActivity
-                        val intencion = Intent(this, LoginComposeActivity::class.java)
-                        startActivity(intencion)
-                        finish()
-                    },
-                    alClickRegistro = { nombre, apellido, correo, telefono, fechaNac, contraseña, confirmarContra ->
-                        // Validaciones
-                        when {
-                            nombre.isBlank() -> {
-                                Toast.makeText(this, "Por favor ingresa tu nombre", Toast.LENGTH_SHORT).show()
-                            }
-                            correo.isBlank() || !correo.contains("@") -> {
-                                Toast.makeText(this, "Por favor ingresa un correo válido", Toast.LENGTH_SHORT).show()
-                            }
-                            telefono.isBlank() -> {
-                                Toast.makeText(this, "Por favor ingresa tu teléfono", Toast.LENGTH_SHORT).show()
-                            }
-                            fechaNac.isBlank() -> {
-                                Toast.makeText(this, "Por favor ingresa tu fecha de nacimiento", Toast.LENGTH_SHORT).show()
-                            }
-                            contraseña.isBlank() || contraseña.length < 6 -> {
-                                Toast.makeText(this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show()
-                            }
-                            contraseña != confirmarContra -> {
-                                Toast.makeText(this, "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show()
-                            }
-                            else -> {
-                                // Realizar registro
-                                cargando = true
-                                realizarRegistro(nombre, apellido, correo, telefono, fechaNac, contraseña) {
-                                    cargando = false
-                                }
-                            }
->>>>>>> 95ae36c8987eb3afc44a2616e663eead3cdf73c9:Rest/app/src/main/java/com/example/rest/RegistroComposeActivity.kt
                         }
                     },
                     alClickYaTienesCuenta = {
@@ -209,7 +172,7 @@ fun PantallaRegistro(
     var nombre by remember { mutableStateOf("") }
     var apellido by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
-    var telefono by remember { mutableStateOf("") }
+    // Telefono eliminado
     var fechaNacimiento by remember { mutableStateOf("") }
     var pin by remember { mutableStateOf("") }
     var confirmarPin by remember { mutableStateOf("") }
@@ -273,7 +236,7 @@ fun PantallaRegistro(
                     shape = RoundedCornerShape(16.dp),
                     color = Blanco,
                     modifier = Modifier
-                        .border(
+                    .border(
                             width = 2.dp,
                             color = Negro,
                             shape = RoundedCornerShape(16.dp)
@@ -377,36 +340,6 @@ fun PantallaRegistro(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo de Teléfono
-            OutlinedTextField(
-                value = telefono,
-                onValueChange = { telefono = it },
-                placeholder = { 
-                    Text(
-                        "Teléfono",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
-                    ) 
-                },
-                modifier = Modifier
-                    .width(330.dp)
-                    .height(56.dp),
-                shape = RoundedCornerShape(30.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
-                ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             // Campo de Fecha de Nacimiento
             OutlinedTextField(
                 value = fechaNacimiento,
@@ -442,7 +375,7 @@ fun PantallaRegistro(
                 onValueChange = { pin = it },
                 placeholder = { 
                     Text(
-                        "Ingrese su Pin",
+                        "Contraseña",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -473,7 +406,7 @@ fun PantallaRegistro(
                 onValueChange = { confirmarPin = it },
                 placeholder = { 
                     Text(
-                        "Confirme su Pin",
+                        "Confirmar Contraseña",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -537,9 +470,7 @@ fun PantallaRegistro(
                         !correo.contains("@") -> {
                             alMostrarError("❌ Por favor, ingresa un correo válido")
                         }
-                        telefono.isBlank() -> {
-                            alMostrarError("❌ Por favor, ingresa tu teléfono")
-                        }
+                        // Telefono validacion eliminada
                         fechaNacimiento.isBlank() -> {
                             alMostrarError("❌ Por favor, ingresa tu fecha de nacimiento")
                         }
@@ -574,7 +505,7 @@ fun PantallaRegistro(
                                 nombre = nombre,
                                 apellido = apellido.ifBlank { null },
                                 correo = correo,
-                                telefono = telefono,
+                                telefono = null,
                                 fechaNacimiento = fechaNacimiento,
                                 contraseña = pin,
                                 rol = rol,
