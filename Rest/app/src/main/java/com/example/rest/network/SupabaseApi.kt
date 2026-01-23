@@ -170,7 +170,9 @@ interface SupabaseApi {
     @GET("notas")
     suspend fun obtenerNotasPorUsuario(
         @Query("idusuario") idUsuario: String,
-        @Query("select") select: String = "*"
+        @Query("select") select: String = "*",
+        @Query("order") order: String? = null,
+        @Query("limit") limit: String? = null
     ): Response<List<Nota>>
     
     /**

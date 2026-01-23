@@ -31,6 +31,30 @@ class NotaRepository {
             } catch (e: Exception) {
                 Result.Error("Error de conexión: ${e.message}")
             }
+            }
+        }
+    
+    /**
+     * Obtener la última nota modificada/creada
+     */
+    suspend fun obtenerUltimaNota(idUsuario: Int): Result<Nota?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Ordenar por fecha_actualizacion descendente, límite 1
+                val response = api.obtenerNotasPorUsuario(
+                    idUsuario = "eq.$idUsuario",
+                    order = "fecha_actualizacion.desc",
+                    limit = "1"
+                )
+                if (response.isSuccessful) {
+                    val notas = response.body()
+                    Result.Success(notas?.firstOrNull())
+                } else {
+                    Result.Error("Error al obtener última nota: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
         }
     }
     

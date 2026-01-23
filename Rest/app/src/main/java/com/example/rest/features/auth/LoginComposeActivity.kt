@@ -104,6 +104,14 @@ class LoginComposeActivity : BaseComposeActivity() {
                                 Toast.LENGTH_LONG
                             ).show()
                             
+                            // Guardar nombre de usuario e ID en SharedPreferences
+                            val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+                            with (sharedPref.edit()) {
+                                putString("NOMBRE_USUARIO", usuario.nombre)
+                                putInt("ID_USUARIO", usuario.id ?: -1)
+                                apply()
+                            }
+
                             // Navegar a InicioComposeActivity
                             val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
                             startActivity(intencion)

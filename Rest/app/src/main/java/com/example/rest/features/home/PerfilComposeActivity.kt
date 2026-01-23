@@ -5,6 +5,7 @@ import com.example.rest.BaseComposeActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -220,8 +221,15 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Obtener nombre de usuario
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val nombreUsuario = remember {
+                        val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+                        sharedPref.getString("NOMBRE_USUARIO", "Usuario") ?: "Usuario"
+                    }
+
                     Text(
-                        text = "Usuario",
+                        text = nombreUsuario,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -230,25 +238,133 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f))
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                "Habitos Saludables",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = Negro
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Gestiona tus habitos diarios",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Gray
-                            )
+                    // ... (existing header code)
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // SECCIÓN NOTA RECIENTE (Dinámica)
+                    var ultimaNota by remember { mutableStateOf<com.example.rest.data.models.Nota?>(null) }
+                    var mostrarDialogoNota by remember { mutableStateOf(false) }
+                    val notaRepository = remember { com.example.rest.data.repository.NotaRepository() }
+                    
+                    // Función para cargar la última nota
+                    fun cargarUltimaNota() {
+                         scope.launch {
+                             // Obtener ID real del usuario
+                             val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+                             val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+                             
+                             if (idUsuario != -1) {
+                                 when (val result = notaRepository.obtenerUltimaNota(idUsuario)) {
+                                     is com.example.rest.data.repository.NotaRepository.Result.Success<*> -> {
+                                         @Suppress("UNCHECKED_CAST")
+                                         ultimaNota = result.data as? com.example.rest.data.models.Nota
+                                     }
+                                     else -> {} // Manejar error si es necesario
+                                 }
+                             }
+                         }
+                    }
+
+                    // Cargar al inicio
+                    LaunchedEffect(Unit) {
+                        cargarUltimaNota()
+                    }
+                    
+                    if (ultimaNota != null) {
+                        Text(
+                            "Última Nota Modificada",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Negro,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                        )
+                        
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(android.graphics.Color.parseColor(ultimaNota?.color ?: "#FFFFFF"))
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { mostrarDialogoNota = true }
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = ultimaNota?.titulo ?: "Sin título",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Negro
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = ultimaNota?.contenido ?: "",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Negro,
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
                         }
+                    } else {
+                        // Placeholder si no hay notas
+                         Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    "Hábitos Saludables",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Negro
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Gestiona tus hábitos diarios",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Diálogo para editar la nota reciente sin salir
+                    if (mostrarDialogoNota && ultimaNota != null) {
+                        com.example.rest.ui.components.DialogoNota(
+                            nota = ultimaNota,
+                            onDismiss = { mostrarDialogoNota = false },
+                            onConfirmar = { titulo, contenido, color ->
+                                scope.launch {
+                                    val fechaActual = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
+                                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                                    }.format(java.util.Date())
+                                    
+                                    val notaActualizada = ultimaNota!!.copy(
+                                        titulo = titulo,
+                                        contenido = contenido,
+                                        color = color,
+                                        fecha_actualizacion = fechaActual
+                                    )
+                                    
+                                    ultimaNota?.id?.let { id ->
+                                        when (notaRepository.actualizarNota(id, notaActualizada)) {
+                                            is com.example.rest.data.repository.NotaRepository.Result.Success<*> -> {
+                                                android.widget.Toast.makeText(context, "Nota actualizada", android.widget.Toast.LENGTH_SHORT).show()
+                                                cargarUltimaNota() // Recargar para ver cambios
+                                            }
+                                            is com.example.rest.data.repository.NotaRepository.Result.Error -> {
+                                                android.widget.Toast.makeText(context, "Error al actualizar", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                            else -> {}
+                                        }
+                                    }
+                                }
+                                mostrarDialogoNota = false
+                            }
+                        )
                     }
                 }
             }
