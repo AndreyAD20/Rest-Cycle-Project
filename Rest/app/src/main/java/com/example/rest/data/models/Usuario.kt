@@ -21,9 +21,6 @@ data class Usuario(
     @SerializedName("correo")
     val correo: String,
     
-    @SerializedName("telefono")
-    val telefono: String? = null,
-    
     @SerializedName("fechanacimiento")
     val fechaNacimiento: String, // Formato: YYYY-MM-DD
     
@@ -33,7 +30,7 @@ data class Usuario(
     @SerializedName("rol")
     val rol: String, // "padre" o "hijo"
     
-    @SerializedName("Mayoredad")
+    @SerializedName("mayoredad")
     val mayorEdad: Boolean,
     
     @SerializedName("email_verificado")
@@ -70,9 +67,6 @@ data class RegistroRequest(
     @SerializedName("correo")
     val correo: String,
     
-    @SerializedName("telefono")
-    val telefono: String? = null,
-    
     @SerializedName("fechanacimiento")
     val fechaNacimiento: String,
     
@@ -82,6 +76,6 @@ data class RegistroRequest(
     @SerializedName("rol")
     val rol: String,
     
-    @SerializedName("Mayoredad")
+    @SerializedName("mayoredad")
     val mayorEdad: Boolean
 )

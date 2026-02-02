@@ -167,6 +167,21 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                 selectedContainerColor = Blanco.copy(alpha = 0.2f)
                             )
                         )
+                        
+                        // 7. Control Parental
+                        NavigationDrawerItem(
+                            label = { Text("Control Parental", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
+                            selected = false,
+                            onClick = {
+                                context.startActivity(android.content.Intent(context, com.example.rest.features.parental.GestionHijosComposeActivity::class.java))
+                            },
+                            icon = { Icon(Icons.Default.Person, null, tint = Blanco) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent,
+                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
+                            )
+                        )
                     }
                 }
             }

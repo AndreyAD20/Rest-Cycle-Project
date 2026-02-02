@@ -1,8 +1,19 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Cargar API Key
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
 
 android {
     namespace = "com.example.rest"
@@ -18,6 +29,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
 
     buildTypes {
@@ -50,6 +63,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.6.0")
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -77,11 +91,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     
     // Supabase Kotlin SDK
-    // implementation("io.github.jan-tennert.supabase:postgrest-kt:2.6.1")
-    // implementation("io.github.jan-tennert.supabase:gotrue-kt:2.6.1")
-    // implementation("io.ktor:ktor-client-android:2.3.12")
-    // implementation("io.ktor:ktor-client-core:2.3.12")
-    // implementation("io.ktor:ktor-client-utils:2.3.12")
+    // ... (commented out) ...
+
+    // Google Maps
+    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -85,11 +85,21 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                                 Toast.LENGTH_LONG
                             ).show()
                             
-                            // Navegar a login
-                            val intent = Intent(this@VerificacionCodigoActivity, LoginComposeActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            startActivity(intent)
-                            finish()
+                            // Navegar según el flujo
+                            val retornarAPadre = intent.getBooleanExtra("retornarAPadre", false)
+                            if (retornarAPadre) {
+                                Toast.makeText(
+                                    this@VerificacionCodigoActivity,
+                                    "✅ ¡Cuenta de hijo verificada y vinculada!",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                finish() // Vuelve a la actividad anterior (GestionHijosComposeActivity)
+                            } else {
+                                val intent = Intent(this@VerificacionCodigoActivity, LoginComposeActivity::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                startActivity(intent)
+                                finish()
+                            }
                         }
                     }
                     is UsuarioRepository.Result.Error -> {

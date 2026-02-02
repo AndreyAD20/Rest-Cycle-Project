@@ -329,9 +329,58 @@ interface SupabaseApi {
     /**
      * Eliminar relación día-horario por horario y día
      */
+    /**
+     * Eliminar relación día-horario por horario y día
+     */
     @DELETE("dias_horarios")
     suspend fun eliminarDiaHorario(
         @Query("idhorario") idHorario: String,
         @Query("iddia") idDia: String
     ): Response<Void>
+
+    // ==================== EVENTOS (CALENDARIO) ====================
+    
+    /**
+     * Obtener eventos de un usuario
+     */
+    @GET("eventos")
+    suspend fun obtenerEventosPorUsuario(
+        @Query("id_usuario") idUsuario: String,
+        @Query("select") select: String = "*"
+    ): Response<List<Evento>>
+    
+    /**
+     * Crear nuevo evento
+     */
+    @POST("eventos")
+    suspend fun crearEvento(
+        @Body evento: Evento
+    ): Response<List<Evento>>
+    
+    /**
+     * Eliminar evento
+     */
+    @DELETE("eventos")
+    suspend fun eliminarEvento(
+        @Query("id") id: String
+    ): Response<Void>
+
+    // ==================== CONEXIÓN PARENTALES ====================
+
+    /**
+     * Crear conexión padre-hijo
+     */
+    @POST("conexion_parentales")
+    suspend fun crearConexionParental(
+        @Body conexion: ConexionParental
+    ): Response<Void>
+
+    /**
+     * Obtener conexiones por padre
+     */
+    @GET("conexion_parentales")
+    suspend fun obtenerConexionesPorPadre(
+        @Query("idpadre") idPadre: String,
+        @Query("select") select: String = "*"
+    ): Response<List<ConexionParental>>
 }

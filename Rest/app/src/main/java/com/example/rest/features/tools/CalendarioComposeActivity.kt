@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +36,15 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.example.rest.data.models.Evento
+import com.example.rest.network.SupabaseClient
+import com.example.rest.ui.components.DialogoEvento
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
+import java.time.format.DateTimeParseException
+import android.widget.Toast
+import kotlinx.coroutines.launch
 
 class CalendarioComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,12 +57,9 @@ class CalendarioComposeActivity : BaseComposeActivity() {
     }
 }
 
-data class EventoCalendario(
-    val id: Int,
-    val titulo: String,
-    val fecha: LocalDate,
-    val hora: String
-)
+// ... (content removed)
+
+// ... (Header existing code) ...
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,15 +72,30 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-
-    // Mock Data
-    val eventos = remember {
-        listOf(
-            EventoCalendario(1, "Reunión avances", LocalDate.now().plusDays(2), "09:00 AM"),
-            EventoCalendario(2, "Entrega de proyecto", LocalDate.now().plusDays(5), "02:00 PM"),
-            EventoCalendario(3, "Partido de fútbol", LocalDate.now().plusDays(10), "05:00 PM"),
-            EventoCalendario(4, "Cena familiar", LocalDate.now(), "08:00 PM")
-        )
+    
+    // Estado de datos
+    var eventos by remember { mutableStateOf<List<Evento>>(emptyList()) }
+    var mostrarDialogo by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
+    // Cargar eventos del usuario
+    LaunchedEffect(Unit) {
+        val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+        val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+        
+        if (idUsuario != -1) {
+            withContext(Dispatchers.IO) {
+                try {
+                    val response = SupabaseClient.api.obtenerEventosPorUsuario(idUsuario = "eq.$idUsuario")
+                    if (response.isSuccessful) {
+                        eventos = response.body() ?: emptyList()
+                    }
+                } catch (e: Exception) {
+                    // Error silencioso o log
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -90,7 +112,7 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO */ },
+                onClick = { mostrarDialogo = true },
                 containerColor = Color(0xFF00BCD4),
                 contentColor = Negro
             ) {
@@ -162,13 +184,19 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Recordatorios - ${selectedDate.format(DateTimeFormatter.ofPattern("dd MMM"))}",
+                            text = "Agenda - ${selectedDate.format(DateTimeFormatter.ofPattern("dd MMM"))}",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = Negro
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        val eventosDia = eventos.filter { it.fecha == selectedDate }
+                        // Filtrar eventos por fecha seleccionada
+                        val eventosDia = eventos.filter { 
+                            try {
+                                // Parse naive ISO prefix yyyy-MM-dd
+                                it.fechaInicio.take(10) == selectedDate.toString()
+                            } catch (e: Exception) { false }
+                        }
                         
                         if (eventosDia.isEmpty()) {
                             Text(
@@ -187,6 +215,54 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                     }
                 }
             }
+            
+            // Diálogo de creación
+            if (mostrarDialogo) {
+                DialogoEvento(
+                    onDismiss = { mostrarDialogo = false },
+                    onConfirmar = { titulo, tipo, inicioIso, finIso, lat, long ->
+                        mostrarDialogo = false
+                        scope.launch(Dispatchers.IO) {
+                            val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+                            val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+                            
+                            if (idUsuario != -1) {
+                                val nuevoEvento = Evento(
+                                    idUsuario = idUsuario,
+                                    titulo = titulo,
+                                    tipo = tipo,
+                                    fechaInicio = inicioIso,
+                                    fechaFin = finIso,
+                                    latitud = lat,
+                                    longitud = long
+                                )
+                                try {
+                                    val res = SupabaseClient.api.crearEvento(nuevoEvento)
+                                    if (res.isSuccessful) {
+                                        withContext(Dispatchers.Main) {
+                                            Toast.makeText(context, "Evento creado", Toast.LENGTH_SHORT).show()
+                                            // Recargar eventos
+                                            val refresh = SupabaseClient.api.obtenerEventosPorUsuario(idUsuario = "eq.$idUsuario")
+                                            if (refresh.isSuccessful) {
+                                                eventos = refresh.body() ?: emptyList()
+                                            }
+                                        }
+                                    } else {
+                                        withContext(Dispatchers.Main) {
+                                            val errorBody = res.errorBody()?.string() ?: "Error desconocido"
+                                            Toast.makeText(context, "Error ${res.code()}: $errorBody", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                     withContext(Dispatchers.Main) {
+                                         Toast.makeText(context, "Error al crear: ${e.message}", Toast.LENGTH_SHORT).show()
+                                     }
+                                }
+                            }
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -195,21 +271,10 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
 fun CalendarGrid(
     yearMonth: YearMonth,
     selectedDate: LocalDate,
-    eventos: List<EventoCalendario>,
+    eventos: List<Evento>,
     onDateSelected: (LocalDate) -> Unit
 ) {
     val daysInMonth = yearMonth.lengthOfMonth()
-    val firstDayOfMonth = yearMonth.atDay(1).dayOfWeek.value % 7 // adjust for Sunday start if needed logic matches standard
-    // In Java Time, Monday = 1, Sunday = 7. 
-    // If our grid starts Sunday, we need to shift.
-    // DOM LUN MAR ...
-    // If first day is Monday (1), we skip 1 slot? No, Sunday is index 0. Monday is index 1.
-    // standard: 1=Mon, ..., 7=Sun.
-    // We want 7=Sun to be index 0? Or 7=Sun -> 0, 1=Mon -> 1?
-    // Let's assume Grid DOM=0.
-    // If first day is Tues(2), we need 2 empty slots (Sun, Mon).
-    // offset = dayOfWeek.value % 7 gives: 7(Sun)->0, 1(Mon)->1, ... perfect.
-    
     val startOffset = yearMonth.atDay(1).dayOfWeek.value % 7
 
     LazyVerticalGrid(
@@ -217,19 +282,17 @@ fun CalendarGrid(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .height(280.dp) // Fixed height to avoid scroll conflict
+            .height(280.dp)
     ) {
-        // Empty slots
-        items(startOffset) {
-            Box(modifier = Modifier.aspectRatio(1f))
-        }
+        items(startOffset) { Box(modifier = Modifier.aspectRatio(1f)) }
 
-        // Days
         items(daysInMonth) { index ->
             val day = index + 1
             val date = yearMonth.atDay(day)
             val isSelected = date == selectedDate
-            val hasEvent = eventos.any { it.fecha == date }
+            val hasEvent = eventos.any { 
+                 try { it.fechaInicio.take(10) == date.toString() } catch (e: Exception) { false }
+            }
 
             Box(
                 modifier = Modifier
@@ -262,9 +325,20 @@ fun CalendarGrid(
 }
 
 @Composable
-fun EventoItem(evento: EventoCalendario) {
+fun EventoItem(evento: Evento) {
+    // Formatear hora para mostrar (ej: 02:30 PM)
+    val horaTexto = try {
+        // Asumiendo formato ISO con Z: 2026-01-23T14:30:00Z -> Parsear y mostrar hora local
+        // Simplificación: parsear solo la hora del string si viene en ISO estricto
+        // O mejor, usar un formatter simple sobre el string truncado
+        val isoPattern = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'") // Naive zulu
+        // Esta parte puede ser frágil con zonas horarias reales, ajustar según necesidad
+        // Para visualización rápida:
+        evento.fechaInicio.substring(11, 16) // Toma HH:mm crudo (UTC) - Idealmente convertir a local
+    } catch (e: Exception) { "??" }
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F7FA)), // Light Cyan
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F7FA)), 
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -276,7 +350,15 @@ fun EventoItem(evento: EventoCalendario) {
                 modifier = Modifier
                     .width(4.dp)
                     .height(32.dp)
-                    .background(Primario, RoundedCornerShape(2.dp))
+                    .background(
+                        when(evento.tipo) {
+                           "Reunión" -> Color(0xFF5C6BC0)
+                           "Trabajo" -> Color(0xFFEF5350)
+                           "Salud" -> Color(0xFF66BB6A)
+                           else -> Primario
+                        }, 
+                        RoundedCornerShape(2.dp)
+                    )
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column {
@@ -285,11 +367,22 @@ fun EventoItem(evento: EventoCalendario) {
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                     color = Negro
                 )
-                Text(
-                    text = evento.hora,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.Gray
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "$horaTexto - ${evento.tipo}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.Gray
+                    )
+                    if (evento.latitud != null) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Place,
+                            contentDescription = "Con ubicación",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
             }
         }
     }

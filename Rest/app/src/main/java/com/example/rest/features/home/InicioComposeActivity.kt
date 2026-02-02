@@ -43,7 +43,9 @@ class InicioComposeActivity : BaseComposeActivity() {
                         // TODO: Navegar a pantalla de configuración
                     },
                     alClickControlParental = {
-                        // TODO: Navegar a Control Parental
+                        // Navegar a Control Parental
+                        val intent = Intent(this, com.example.rest.features.parental.GestionHijosComposeActivity::class.java)
+                        startActivity(intent)
                     },
                     alClickHabitosSaludables = {
                         // Navegar a Perfil

@@ -16,6 +16,10 @@
         android:theme="@style/Theme.Material3.DayNight.NoActionBar">
 
         <!-- Login Activity (Launcher) -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${mapsApiKey}" />
+
         <activity
             android:name=".features.auth.LoginComposeActivity"
             android:exported="true"
@@ -43,6 +47,10 @@
         <activity android:name=".features.tools.HoraDescansoComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.TareasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.CalendarioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+        <!-- Parental Activities -->
+        <activity android:name=".features.parental.GestionHijosComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.parental.CrearHijoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <!-- Habits Activities -->
         <activity android:name=".features.habits.EstadisticasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />

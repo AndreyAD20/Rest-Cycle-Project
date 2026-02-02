@@ -139,7 +139,9 @@ class UsuarioRepository {
                 val response = api.crearUsuario(request)
                 
                 if (!response.isSuccessful) {
-                    return@withContext Result.Error("Error al crear el usuario: ${response.code()}")
+                    val errorBody = response.errorBody()?.string()
+                    android.util.Log.e("UsuarioCtx", "Error crearUsuario: $errorBody")
+                    return@withContext Result.Error("Error al crear el usuario: ${response.code()} - $errorBody")
                 }
                 
                 // 4. Actualizar con código de verificación
@@ -385,6 +387,94 @@ class UsuarioRepository {
                 }
             } catch (e: Exception) {
                 Result.Error("Error al actualizar: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * Crear un usuario hijo y enlazarlo con el padre
+     * @param idPadre ID del usuario padre
+     * @param datosHijo Datos del hijo para registro
+     * @param contrasenaSegura Contraseña de seguridad para la conexión
+     */
+    /**
+     * Crear un usuario hijo, generar código de verificación, enviar email y enlazarlo con el padre.
+     * @param idPadre ID del usuario padre
+     * @param datosHijo Datos del hijo para registro
+     * @param contrasenaSegura Contraseña de seguridad para la conexión
+     */
+    suspend fun crearHijo(idPadre: Int, datosHijo: RegistroRequest, contrasenaSegura: String): Result<Usuario> {
+        return withContext(Dispatchers.IO) {
+            var idHijoCreado: Int? = null
+            try {
+                // 1. Verificar correo primero
+                val verificar = api.verificarCorreo(correo = "eq.${datosHijo.correo}")
+                if (verificar.isSuccessful && !verificar.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("El correo del hijo ya está registrado")
+                }
+                
+                // 2. Generar código de verificación
+                val codigoVerificacion = CodeGenerator.generateVerificationCode()
+                val codigoExpiracion = CodeGenerator.getExpirationTime()
+                
+                // 3. Crear el usuario hijo
+                val responseHijo = api.crearUsuario(datosHijo)
+                if (!responseHijo.isSuccessful || responseHijo.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("Error al crear la cuenta del hijo: ${responseHijo.code()}")
+                }
+                
+                val hijo = responseHijo.body()!![0]
+                idHijoCreado = hijo.id
+                
+                // 4. Actualizar con código de verificación
+                 val updateData: Map<String, @JvmSuppressWildcards Any> = mapOf(
+                    "codigo_verificacion" to codigoVerificacion,
+                    "codigo_expiracion" to codigoExpiracion,
+                    "email_verificado" to false
+                )
+                
+                val updateResponse = api.actualizarCodigoVerificacion(
+                    correo = "eq.${datosHijo.correo}",
+                    update = updateData
+                )
+                
+                if (!updateResponse.isSuccessful) {
+                    throw Exception("Error al guardar código de verificación")
+                }
+
+                // 5. Enviar email con código
+                val envioExitoso = EmailService.enviarCodigoVerificacion(
+                    correo = datosHijo.correo,
+                    codigo = codigoVerificacion,
+                    nombre = datosHijo.nombre
+                )
+                
+                if (!envioExitoso) {
+                    throw Exception("No se pudo enviar el correo de verificación.")
+                }
+                
+                // 6. Crear la conexión parental
+                 val conexion = com.example.rest.data.models.ConexionParental(
+                    idPadre = idPadre,
+                    idHijo = hijo.id!!,
+                    contrasenaSegura = contrasenaSegura
+                )
+                
+                val responseConexion = api.crearConexionParental(conexion)
+                
+                if (responseConexion.isSuccessful) {
+                    // Retornamos el hijo creado, el UI deberá llevar a la pantalla de verificación
+                    Result.Success(hijo)
+                } else {
+                    throw Exception("Error al enlazar la cuenta: ${responseConexion.code()}")
+                }
+                
+            } catch (e: Exception) {
+                // Rollback en caso de excepción: borrar usuario creado
+                 if (idHijoCreado != null) {
+                     try { api.eliminarUsuario("eq.$idHijoCreado") } catch (ex: Exception) { }
+                }
+                Result.Error("Excepción al crear hijo: ${e.message}")
             }
         }
     }

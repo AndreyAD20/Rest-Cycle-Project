@@ -505,7 +505,6 @@ fun PantallaRegistro(
                                 nombre = nombre,
                                 apellido = apellido.ifBlank { null },
                                 correo = correo,
-                                telefono = null,
                                 fechaNacimiento = fechaNacimiento,
                                 contraseña = pin,
                                 rol = rol,
