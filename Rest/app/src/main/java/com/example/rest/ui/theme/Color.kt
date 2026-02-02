@@ -17,6 +17,7 @@ val AcentoClaro = Color(0xFFFF80AB)
 // Colores de Fondo (Background)
 val FondoPrimario = Color(0xFFFFFFFF)
 val FondoSecundario = Color(0xFFF0F0F0)
+val Fondo = FondoPrimario
 
 // Colores de Texto (Text)
 val TextoPrimario = Color(0xFF000000)

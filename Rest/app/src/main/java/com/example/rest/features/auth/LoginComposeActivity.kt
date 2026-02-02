@@ -1,4 +1,4 @@
-package com.example.rest
+package com.example.rest.features.auth
 
 import android.content.Intent
 import android.os.Bundle
@@ -24,7 +24,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import com.example.rest.BaseComposeActivity
+import com.example.rest.R
 import com.example.rest.data.repository.UsuarioRepository
+import com.example.rest.features.home.InicioComposeActivity
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -63,8 +66,8 @@ class LoginComposeActivity : BaseComposeActivity() {
                         startActivity(intencion)
                     },
                     alClickOlvidoContraseña = {
-                        // Navegar a OlvidoContraseñaComposeActivity
-                        val intencion = Intent(this, OlvidoContraseñaComposeActivity::class.java)
+                        // Navegar a OlvidoContrasenaActivity
+                        val intencion = Intent(this, OlvidoContrasenaActivity::class.java)
                         startActivity(intencion)
                     },
                     cargando = cargando
@@ -78,6 +81,17 @@ class LoginComposeActivity : BaseComposeActivity() {
         contraseña: String,
         onComplete: () -> Unit
     ) {
+        // Verificar conectividad antes de intentar el login
+        if (!isNetworkAvailable()) {
+            Toast.makeText(
+                this@LoginComposeActivity,
+                "❌ No hay conexión a Internet. Por favor, verifica tu conexión e intenta nuevamente.",
+                Toast.LENGTH_LONG
+            ).show()
+            onComplete()
+            return
+        }
+        
         lifecycleScope.launch {
             try {
                 when (val resultado = usuarioRepository.login(correo, contraseña)) {
@@ -86,10 +100,18 @@ class LoginComposeActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@LoginComposeActivity,
-                                "¡Bienvenido ${usuario.nombre}!",
+                                "✅ ¡Bienvenido ${usuario.nombre}!",
                                 Toast.LENGTH_LONG
                             ).show()
                             
+                            // Guardar nombre de usuario e ID en SharedPreferences
+                            val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+                            with (sharedPref.edit()) {
+                                putString("NOMBRE_USUARIO", usuario.nombre)
+                                putInt("ID_USUARIO", usuario.id ?: -1)
+                                apply()
+                            }
+
                             // Navegar a InicioComposeActivity
                             val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
                             startActivity(intencion)
@@ -98,9 +120,17 @@ class LoginComposeActivity : BaseComposeActivity() {
                     }
                     is UsuarioRepository.Result.Error -> {
                         runOnUiThread {
+                            val mensajeError = when {
+                                resultado.message.contains("Unable to resolve host") ||
+                                resultado.message.contains("UnknownHostException") -> 
+                                    "❌ No se puede conectar al servidor. Verifica tu conexión a Internet."
+                                resultado.message.contains("timeout") -> 
+                                    "❌ La conexión tardó demasiado. Intenta nuevamente."
+                                else -> "❌ ${resultado.message}"
+                            }
                             Toast.makeText(
                                 this@LoginComposeActivity,
-                                resultado.message,
+                                mensajeError,
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -111,9 +141,17 @@ class LoginComposeActivity : BaseComposeActivity() {
                 }
             } catch (e: Exception) {
                 runOnUiThread {
+                    val mensajeError = when {
+                        e.message?.contains("Unable to resolve host") == true ||
+                        e.message?.contains("UnknownHostException") == true -> 
+                            "❌ No se puede conectar al servidor. Verifica tu conexión a Internet."
+                        e.message?.contains("timeout") == true -> 
+                            "❌ La conexión tardó demasiado. Intenta nuevamente."
+                        else -> "❌ Error inesperado: ${e.message}"
+                    }
                     Toast.makeText(
                         this@LoginComposeActivity,
-                        "Error inesperado: ${e.message}",
+                        mensajeError,
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -121,6 +159,17 @@ class LoginComposeActivity : BaseComposeActivity() {
                 onComplete()
             }
         }
+    }
+    
+    /**
+     * Verifica si hay conexión a Internet disponible
+     */
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) 
+            as android.net.ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 }
 
@@ -345,3 +394,6 @@ fun PantallaLogin(
         }
     }
 }
+
+
+

@@ -16,5 +16,11 @@ data class Nota(
     val titulo: String?,
     
     @SerializedName("contenido")
-    val contenido: String?
+    val contenido: String?,
+
+    @SerializedName("color")
+    val color: String? = "#FFFFFF",
+
+    @SerializedName("fecha_actualizacion")
+    val fecha_actualizacion: String? = null
 )

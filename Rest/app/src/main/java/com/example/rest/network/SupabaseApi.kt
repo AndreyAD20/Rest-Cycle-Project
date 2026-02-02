@@ -64,6 +64,33 @@ interface SupabaseApi {
     ): Response<List<Usuario>>
     
     /**
+     * Obtener datos de verificación de usuario por correo
+     */
+    @GET("usuario")
+    suspend fun obtenerDatosVerificacion(
+        @Query("correo") correo: String,
+        @Query("select") select: String = "codigo_verificacion,codigo_expiracion,email_verificado"
+    ): Response<List<Usuario>>
+    
+    /**
+     * Actualizar código de verificación de usuario
+     */
+    @PATCH("usuario")
+    suspend fun actualizarCodigoVerificacion(
+        @Query("correo") correo: String,
+        @Body update: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<List<Usuario>>
+    
+    /**
+     * Marcar usuario como verificado
+     */
+    @PATCH("usuario")
+    suspend fun marcarUsuarioVerificado(
+        @Query("correo") correo: String,
+        @Body update: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<List<Usuario>>
+    
+    /**
      * Eliminar usuario
      */
     @DELETE("usuario")
@@ -143,7 +170,9 @@ interface SupabaseApi {
     @GET("notas")
     suspend fun obtenerNotasPorUsuario(
         @Query("idusuario") idUsuario: String,
-        @Query("select") select: String = "*"
+        @Query("select") select: String = "*",
+        @Query("order") order: String? = null,
+        @Query("limit") limit: String? = null
     ): Response<List<Nota>>
     
     /**
@@ -217,4 +246,141 @@ interface SupabaseApi {
     suspend fun enviarCodigoPorEmail(
         @Body request: Map<String, String>
     ): Response<Map<String, Any>>
+    
+    // ==================== DÍAS ====================
+    
+    /**
+     * Obtener todos los días
+     */
+    @GET("dias")
+    suspend fun obtenerDias(): Response<List<Dia>>
+    
+    // ==================== MEDIDAS ====================
+    
+    /**
+     * Obtener todas las medidas
+     */
+    @GET("medida")
+    suspend fun obtenerMedidas(): Response<List<Medida>>
+    
+    /**
+     * Crear nueva medida
+     */
+    @POST("medida")
+    suspend fun crearMedida(
+        @Body medida: Medida
+    ): Response<List<Medida>>
+    
+    // ==================== HORARIOS ====================
+    
+    /**
+     * Obtener horarios de un dispositivo
+     */
+    @GET("horarios")
+    suspend fun obtenerHorariosPorDispositivo(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("select") select: String = "*"
+    ): Response<List<Horario>>
+    
+    /**
+     * Crear nuevo horario
+     */
+    @POST("horarios")
+    suspend fun crearHorario(
+        @Body horario: Horario
+    ): Response<List<Horario>>
+    
+    /**
+     * Actualizar horario
+     */
+    @PATCH("horarios")
+    suspend fun actualizarHorario(
+        @Query("id") id: String,
+        @Body horario: Horario
+    ): Response<List<Horario>>
+    
+    /**
+     * Eliminar horario
+     */
+    @DELETE("horarios")
+    suspend fun eliminarHorario(
+        @Query("id") id: String
+    ): Response<Void>
+    
+    // ==================== DÍAS HORARIO ====================
+    
+    /**
+     * Obtener días de un horario
+     */
+    @GET("dias_horarios")
+    suspend fun obtenerDiasDeHorario(
+        @Query("idhorario") idHorario: String,
+        @Query("select") select: String = "*"
+    ): Response<List<DiasHorario>>
+    
+    /**
+     * Crear relación día-horario
+     */
+    @POST("dias_horarios")
+    suspend fun crearDiaHorario(
+        @Body diaHorario: DiasHorario
+    ): Response<List<DiasHorario>>
+    
+    /**
+     * Eliminar relación día-horario por horario y día
+     */
+    /**
+     * Eliminar relación día-horario por horario y día
+     */
+    @DELETE("dias_horarios")
+    suspend fun eliminarDiaHorario(
+        @Query("idhorario") idHorario: String,
+        @Query("iddia") idDia: String
+    ): Response<Void>
+
+    // ==================== EVENTOS (CALENDARIO) ====================
+    
+    /**
+     * Obtener eventos de un usuario
+     */
+    @GET("eventos")
+    suspend fun obtenerEventosPorUsuario(
+        @Query("id_usuario") idUsuario: String,
+        @Query("select") select: String = "*"
+    ): Response<List<Evento>>
+    
+    /**
+     * Crear nuevo evento
+     */
+    @POST("eventos")
+    suspend fun crearEvento(
+        @Body evento: Evento
+    ): Response<List<Evento>>
+    
+    /**
+     * Eliminar evento
+     */
+    @DELETE("eventos")
+    suspend fun eliminarEvento(
+        @Query("id") id: String
+    ): Response<Void>
+
+    // ==================== CONEXIÓN PARENTALES ====================
+
+    /**
+     * Crear conexión padre-hijo
+     */
+    @POST("conexion_parentales")
+    suspend fun crearConexionParental(
+        @Body conexion: ConexionParental
+    ): Response<Void>
+
+    /**
+     * Obtener conexiones por padre
+     */
+    @GET("conexion_parentales")
+    suspend fun obtenerConexionesPorPadre(
+        @Query("idpadre") idPadre: String,
+        @Query("select") select: String = "*"
+    ): Response<List<ConexionParental>>
 }

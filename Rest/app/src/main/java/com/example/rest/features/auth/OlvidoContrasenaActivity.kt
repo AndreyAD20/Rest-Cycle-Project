@@ -1,4 +1,4 @@
-package com.example.rest
+package com.example.rest.features.auth
 
 import android.content.Intent
 import android.os.Bundle
@@ -6,7 +6,6 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,34 +23,36 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rest.BaseComposeActivity
+import com.example.rest.R
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.data.repository.RecuperacionRepository
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.launch
 
-class OlvidoContraseñaComposeActivity : BaseComposeActivity() {
+class OlvidoContrasenaActivity : BaseComposeActivity() {
     
     private val recuperacionRepository = RecuperacionRepository()
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
         setContent {
             TemaRest {
                 var cargando by remember { mutableStateOf(false) }
                 
-                PantallaOlvidoContraseña(
+                PantallaOlvidoContrasena(
                     alClickRegresar = {
                         finish()
                     },
-                    alClickEnviarCodigo = { correo ->
-                        // Validaciones
+                    alClickEnviar = { correo ->
                         when {
                             correo.isBlank() || !correo.contains("@") -> {
                                 Toast.makeText(this, "Por favor ingresa un correo válido", Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 cargando = true
-                                solicitarCodigo(correo) {
+                                enviarCodigo(correo) {
                                     cargando = false
                                 }
                             }
@@ -63,20 +64,20 @@ class OlvidoContraseñaComposeActivity : BaseComposeActivity() {
         }
     }
     
-    private fun solicitarCodigo(correo: String, onComplete: () -> Unit) {
+    private fun enviarCodigo(correo: String, onComplete: () -> Unit) {
         lifecycleScope.launch {
             try {
                 when (val resultado = recuperacionRepository.solicitarCodigo(correo)) {
-                    is RecuperacionRepository.Result.Success -> {
+                    is RecuperacionRepository.Result.Success<*> -> {
                         runOnUiThread {
                             Toast.makeText(
-                                this@OlvidoContraseñaComposeActivity,
-                                "Código enviado a tu correo electrónico",
+                                this@OlvidoContrasenaActivity,
+                                "Código enviado a $correo",
                                 Toast.LENGTH_LONG
                             ).show()
                             
-                            // Navegar a pantalla de verificación de código
-                            val intent = Intent(this@OlvidoContraseñaComposeActivity, CodigoRecuperacionActivity::class.java)
+                            // Navegar a pantalla de código
+                            val intent = Intent(this@OlvidoContrasenaActivity, CodigoRecuperacionActivity::class.java)
                             intent.putExtra("correo", correo)
                             startActivity(intent)
                             finish()
@@ -85,20 +86,20 @@ class OlvidoContraseñaComposeActivity : BaseComposeActivity() {
                     is RecuperacionRepository.Result.Error -> {
                         runOnUiThread {
                             Toast.makeText(
-                                this@OlvidoContraseñaComposeActivity,
+                                this@OlvidoContrasenaActivity,
                                 resultado.message,
                                 Toast.LENGTH_LONG
                             ).show()
                         }
                     }
                     is RecuperacionRepository.Result.Loading -> {
-                        // Ya manejado por el estado cargando
+                        // Ya manejado
                     }
                 }
             } catch (e: Exception) {
                 runOnUiThread {
                     Toast.makeText(
-                        this@OlvidoContraseñaComposeActivity,
+                        this@OlvidoContrasenaActivity,
                         "Error inesperado: ${e.message}",
                         Toast.LENGTH_LONG
                     ).show()
@@ -111,15 +112,13 @@ class OlvidoContraseñaComposeActivity : BaseComposeActivity() {
 }
 
 @Composable
-fun PantallaOlvidoContraseña(
+fun PantallaOlvidoContrasena(
     alClickRegresar: () -> Unit,
-    alClickEnviarCodigo: (String) -> Unit,
+    alClickEnviar: (String) -> Unit,
     cargando: Boolean = false
 ) {
-    var nombresApellidos by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
 
-    // Gradiente de fondo cyan/turquesa como en la imagen
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
             Primario,
@@ -134,7 +133,7 @@ fun PantallaOlvidoContraseña(
             .fillMaxSize()
             .background(brochaGradiente)
     ) {
-        // Botón de regresar en la esquina superior izquierda
+        // Botón de regresar
         IconButton(
             onClick = alClickRegresar,
             modifier = Modifier
@@ -156,7 +155,7 @@ fun PantallaOlvidoContraseña(
                 .fillMaxSize()
                 .padding(horizontal = 32.dp)
         ) {
-            // Logo del búho con el bocadillo de texto
+            // Logo del búho con bocadillo
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -164,7 +163,6 @@ fun PantallaOlvidoContraseña(
                     .fillMaxWidth()
                     .padding(bottom = 40.dp)
             ) {
-                // Logo del búho
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
                     contentDescription = "Logo Búho",
@@ -173,7 +171,6 @@ fun PantallaOlvidoContraseña(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Bocadillo de texto
                 Surface(
                     shape = RoundedCornerShape(20.dp),
                     color = Blanco,
@@ -186,7 +183,7 @@ fun PantallaOlvidoContraseña(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "Aquí puedes recuperar\ntu contraseña!",
+                            text = "Pon tu correo y te\nenviaremos un codigo",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Negro,
                             textAlign = TextAlign.Center,
@@ -196,43 +193,13 @@ fun PantallaOlvidoContraseña(
                 }
             }
 
-            // Campo de Nombres y Apellidos
-            OutlinedTextField(
-                value = nombresApellidos,
-                onValueChange = { nombresApellidos = it },
-                placeholder = {
-                    Text(
-                        "Nombres y Apellidos",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
-                    )
-                },
-                modifier = Modifier
-                    .width(330.dp)
-                    .height(56.dp),
-                shape = RoundedCornerShape(30.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
-                ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Campo de Correo Electrónico
+            // Campo de Correo
             OutlinedTextField(
                 value = correo,
                 onValueChange = { correo = it },
                 placeholder = {
                     Text(
-                        "Correo Electronico",
+                        "Correo Electrónico",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -256,11 +223,11 @@ fun PantallaOlvidoContraseña(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Botón Enviar Código de Recuperación con icono
+            // Botón Enviar Código
             Button(
-                onClick = { alClickEnviarCodigo(correo) },
+                onClick = { alClickEnviar(correo) },
                 modifier = Modifier
-                    .width(280.dp)
+                    .width(200.dp)
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -273,6 +240,12 @@ fun PantallaOlvidoContraseña(
                         modifier = Modifier.size(24.dp),
                         color = Blanco,
                         strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Enviar Código",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Blanco
                     )
                 } else {
                     Row(

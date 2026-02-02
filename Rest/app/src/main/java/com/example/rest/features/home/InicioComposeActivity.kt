@@ -1,17 +1,18 @@
-@file:JvmName("InicioComposeActivityKt")
+package com.example.rest.features.home
 
-package com.example.rest
-
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -22,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rest.BaseComposeActivity
+import com.example.rest.R
 import com.example.rest.ui.theme.*
 
 class InicioComposeActivity : BaseComposeActivity() {
@@ -29,20 +32,57 @@ class InicioComposeActivity : BaseComposeActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TemaRest {
+                var mostrarDialogoCerrarSesion by remember { mutableStateOf(false) }
+                
                 PantallaModosDeUso(
                     alClickRegresar = {
-                        finish()
+                        // Mostrar diálogo de confirmación
+                        mostrarDialogoCerrarSesion = true
                     },
                     alClickConfiguracion = {
                         // TODO: Navegar a pantalla de configuración
                     },
                     alClickControlParental = {
-                        // TODO: Navegar a Control Parental
+                        // Navegar a Control Parental
+                        val intent = Intent(this, com.example.rest.features.parental.GestionHijosComposeActivity::class.java)
+                        startActivity(intent)
                     },
                     alClickHabitosSaludables = {
-                        // TODO: Navegar a Hábitos Saludables
+                        // Navegar a Perfil
+                        val intent = Intent(this, com.example.rest.features.home.PerfilComposeActivity::class.java)
+                        startActivity(intent)
                     }
                 )
+                
+                // Diálogo de confirmación para cerrar sesión
+                if (mostrarDialogoCerrarSesion) {
+                    AlertDialog(
+                        onDismissRequest = { mostrarDialogoCerrarSesion = false },
+                        title = { Text("Cerrar sesión") },
+                        text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    mostrarDialogoCerrarSesion = false
+                                    // Cerrar sesión y volver a login
+                                    val intent = Intent(this, com.example.rest.features.auth.LoginComposeActivity::class.java)
+                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    startActivity(intent)
+                                    finish()
+                                }
+                            ) {
+                                Text("Sí, cerrar sesión")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = { mostrarDialogoCerrarSesion = false }
+                            ) {
+                                Text("Cancelar")
+                            }
+                        }
+                    )
+                }
             }
         }
     }

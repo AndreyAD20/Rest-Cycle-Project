@@ -1,7 +1,7 @@
-package com.example.rest
+package com.example.rest.features.tools
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import com.example.rest.BaseComposeActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.rest.ui.theme.*
 
-class BloqueoAppsComposeActivity : ComponentActivity() {
+class BloqueoAppsComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -243,3 +243,8 @@ fun AppBloqueoItem(app: AppBloqueo) {
         }
     }
 }
+
+
+
+
+
