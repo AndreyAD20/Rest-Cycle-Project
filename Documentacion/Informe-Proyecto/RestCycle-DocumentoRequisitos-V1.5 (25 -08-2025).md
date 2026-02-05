@@ -210,7 +210,6 @@ Proveer comunicación y ayuda en caso de errores con la aplicación.
 
 RF.61 [Alta] RESTABLECIMIENTO DE CUENTA  
 Permitir el proceso de recuperación de cuentas bloqueadas o eliminadas accidentalmente.
-Permitir el proceso de recuperación de cuentas bloqueadas o eliminadas accidentalmente.
 
 ## Normativas Aplicables
 
