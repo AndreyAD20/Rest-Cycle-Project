@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.rest.features.habits.*
 import com.example.rest.ui.theme.*
+import com.example.rest.ui.components.dialogs.DialogoNota
 
 class PerfilComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -138,22 +139,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                             )
                         )
                         
-                        // 5. Tareas y Actividades
-                        NavigationDrawerItem(
-                            label = { Text("Tareas y Actividades", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.tools.TareasComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.CheckCircle, null, tint = Blanco) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 6. Calendario
+                        // 5. Calendario
                         NavigationDrawerItem(
                             label = { Text("Calendario", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
                             selected = false,
@@ -168,15 +154,42 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                             )
                         )
                         
-                        // 7. Control Parental
+                        // 6. Control Parental
                         NavigationDrawerItem(
                             label = { Text("Control Parental", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
                             selected = false,
                             onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.parental.GestionHijosComposeActivity::class.java))
                             },
                             icon = { Icon(Icons.Default.Person, null, tint = Blanco) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent,
+                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.weight(1f)) // Empujar hacia abajo
+
+                        Divider(color = Blanco.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 8.dp))
+
+                        // 7. Cerrar Sesión
+                        NavigationDrawerItem(
+                            label = { Text("Cerrar Sesión", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
+                            selected = false,
+                            onClick = {
+                                // Borrar sesión y volver al login
+                                val sharedAction = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+                                with(sharedAction.edit()) {
+                                    clear()
+                                    apply()
+                                }
+                                val intent = android.content.Intent(context, com.example.rest.features.auth.LoginComposeActivity::class.java)
+                                intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                context.startActivity(intent)
+                                (context as? android.app.Activity)?.finish()
+                            },
+                            icon = { Icon(Icons.Default.ExitToApp, null, tint = Blanco) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(bottom = 16.dp),
                             colors = NavigationDrawerItemDefaults.colors(
                                 unselectedContainerColor = Color.Transparent,
                                 selectedContainerColor = Blanco.copy(alpha = 0.2f)
@@ -348,7 +361,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     
                     // Diálogo para editar la nota reciente sin salir
                     if (mostrarDialogoNota && ultimaNota != null) {
-                        com.example.rest.ui.components.DialogoNota(
+                        DialogoNota(
                             nota = ultimaNota,
                             onDismiss = { mostrarDialogoNota = false },
                             onConfirmar = { titulo, contenido, color ->

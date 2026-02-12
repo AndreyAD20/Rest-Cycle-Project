@@ -356,25 +356,6 @@ fun PantallaVerificacionCodigo(
                     color = Color(0xFF6B4EFF)
                 )
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Nota sobre logs
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = Color(0xFFFFF9C4),
-                modifier = Modifier
-                    .width(330.dp)
-                    .padding(8.dp)
-            ) {
-                Text(
-                    text = "💡 Nota: En modo desarrollo, el código también se muestra en los logs de la aplicación.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF827717),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
         }
     }
 }

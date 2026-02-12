@@ -358,6 +358,15 @@ interface SupabaseApi {
     ): Response<List<Evento>>
     
     /**
+     * Actualizar evento
+     */
+    @PATCH("eventos")
+    suspend fun actualizarEvento(
+        @Query("id") id: String,
+        @Body evento: Evento
+    ): Response<List<Evento>>
+    
+    /**
      * Eliminar evento
      */
     @DELETE("eventos")

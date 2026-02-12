@@ -111,4 +111,31 @@ class NotaRepository {
             }
         }
     }
+    
+    /**
+     * Actualizar solo el estado de favorito de una nota
+     */
+    suspend fun actualizarFavorito(idNota: Int, favorito: Boolean): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Crear un objeto Nota con solo el campo favorito
+                val notaParcial = Nota(
+                    idUsuario = null,
+                    titulo = null,
+                    contenido = null,
+                    color = null,
+                    fecha_actualizacion = null,
+                    favorito = favorito
+                )
+                val response = api.actualizarNota(id = "eq.$idNota", nota = notaParcial)
+                if (response.isSuccessful) {
+                    Result.Success("Favorito actualizado")
+                } else {
+                    Result.Error("Error al actualizar favorito: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
 }

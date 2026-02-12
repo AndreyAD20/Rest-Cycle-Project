@@ -64,8 +64,15 @@ class InicioComposeActivity : BaseComposeActivity() {
                             TextButton(
                                 onClick = {
                                     mostrarDialogoCerrarSesion = false
+                                    // Borrar sesión
+                                    val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+                                    with(sharedPref.edit()) {
+                                        clear()
+                                        apply()
+                                    }
+                                    
                                     // Cerrar sesión y volver a login
-                                    val intent = Intent(this, com.example.rest.features.auth.LoginComposeActivity::class.java)
+                                    val intent = Intent(this@InicioComposeActivity, com.example.rest.features.auth.LoginComposeActivity::class.java)
                                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                     startActivity(intent)
                                     finish()

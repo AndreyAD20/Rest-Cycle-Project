@@ -37,6 +37,19 @@ class LoginComposeActivity : BaseComposeActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Verificar si ya hay una sesión activa
+        val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+        val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+
+        if (idUsuario != -1) {
+            // Ya existe una sesión, ir directo al inicio
+            val intent = Intent(this, InicioComposeActivity::class.java)
+            startActivity(intent)
+            finish()
+            return // Importante para no cargar la UI de login
+        }
+
         setContent {
             TemaRest {
                 var cargando by remember { mutableStateOf(false) }

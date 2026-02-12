@@ -22,5 +22,8 @@ data class Nota(
     val color: String? = "#FFFFFF",
 
     @SerializedName("fecha_actualizacion")
-    val fecha_actualizacion: String? = null
+    val fecha_actualizacion: String? = null,
+
+    @SerializedName("favorito")
+    val favorito: Boolean? = false
 )

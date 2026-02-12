@@ -26,6 +26,7 @@ import com.example.rest.BaseComposeActivity
 import com.example.rest.data.models.RegistroRequest
 import com.example.rest.data.repository.UsuarioRepository
 import com.example.rest.ui.theme.*
+import com.example.rest.ui.components.inputs.CampoFechaAutoFormato
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Period
@@ -147,9 +148,11 @@ fun PantallaCrearHijo(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
             Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = fechaNacimiento, onValueChange = { fechaNacimiento = it },
-                label = { Text("Fecha Nacimiento (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth()
+            CampoFechaAutoFormato(
+                value = fechaNacimiento,
+                onValueChange = { fechaNacimiento = it },
+                label = "Fecha Nacimiento (YYYY-MM-DD)",
+                modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
@@ -174,11 +177,18 @@ fun PantallaCrearHijo(
 
             Button(
                 onClick = {
+                    // Convertir fecha de dígitos (YYYYMMDD) a formato YYYY-MM-DD
+                    val fechaFormateada = if (fechaNacimiento.length == 8) {
+                        "${fechaNacimiento.substring(0, 4)}-${fechaNacimiento.substring(4, 6)}-${fechaNacimiento.substring(6, 8)}"
+                    } else {
+                        fechaNacimiento
+                    }
+                    
                     val request = RegistroRequest(
                         nombre = nombre,
                         apellido = apellido.ifBlank { null },
                         correo = correo,
-                        fechaNacimiento = fechaNacimiento,
+                        fechaNacimiento = fechaFormateada,
                         contraseña = contrasena,
                         rol = "hijo",
                         mayorEdad = false

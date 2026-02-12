@@ -1,10 +1,11 @@
-package com.example.rest.ui.components
+package com.example.rest.ui.components.dialogs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
@@ -38,7 +39,15 @@ fun DialogoNota(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (nota == null) "Nueva Nota" else "Editar Nota") },
+        title = { Text(if (nota == null) "Nueva Nota" else "Editar Nota", color = Color.White) },
+        containerColor = Color(0xFF0097A7), // Azul oscuro que combina con el tema
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 8.dp,
+        modifier = Modifier.border(
+            width = 2.dp,
+            color = Color(0xFF00BCD4), // Borde cian que combina con el tema
+            shape = RoundedCornerShape(16.dp)
+        ),
         text = {
             Column {
                 OutlinedTextField(
@@ -46,7 +55,13 @@ fun DialogoNota(
                     onValueChange = { titulo = it },
                     label = { Text("Título") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = Color(0xFF00BCD4),
+                        unfocusedBorderColor = Color(0xFFB0BEC5)
+                    )
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -56,10 +71,16 @@ fun DialogoNota(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp),
-                    maxLines = 10
+                    maxLines = 10,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = Color(0xFF00BCD4),
+                        unfocusedBorderColor = Color(0xFFB0BEC5)
+                    )
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Elige un color:", style = MaterialTheme.typography.bodyMedium)
+                Text("Elige un color:", style = MaterialTheme.typography.bodyMedium, color = Color.White)
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Color Picker
@@ -75,8 +96,8 @@ fun DialogoNota(
                                 .clip(CircleShape)
                                 .background(color)
                                 .border(
-                                    width = if (colorSeleccionado == colorHex) 2.dp else 1.dp,
-                                    color = if (colorSeleccionado == colorHex) Negro else Color.Gray,
+                                    width = if (colorSeleccionado == colorHex) 3.dp else 1.dp,
+                                    color = if (colorSeleccionado == colorHex) Color(0xFF00BCD4) else Color.Gray,
                                     shape = CircleShape
                                 )
                                 .clickable { colorSeleccionado = colorHex },
@@ -86,7 +107,7 @@ fun DialogoNota(
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = "Seleccionado",
-                                    tint = Negro,
+                                    tint = if (colorHex == "#FFFFFF") Color(0xFF00BCD4) else Negro,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -96,18 +117,27 @@ fun DialogoNota(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     if (titulo.isNotBlank() && contenido.isNotBlank()) {
                         onConfirmar(titulo, contenido, colorSeleccionado)
                     }
-                }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF00BCD4),
+                    contentColor = Color.White
+                )
             ) {
                 Text(if (nota == null) "Crear" else "Guardar")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = Color.White
+                )
+            ) {
                 Text("Cancelar")
             }
         }

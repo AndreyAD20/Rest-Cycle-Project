@@ -242,12 +242,6 @@ fun PantallaOlvidoContrasena(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text(
-                        text = "Enviar Código",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Blanco
-                    )
-                } else {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center

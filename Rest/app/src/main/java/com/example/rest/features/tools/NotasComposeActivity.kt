@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -25,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.BaseComposeActivity
@@ -40,7 +43,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import com.example.rest.ui.components.DialogoNota
+import com.example.rest.ui.components.dialogs.DialogoNota
 
 class NotasComposeActivity : BaseComposeActivity() {
     
@@ -102,6 +105,15 @@ class NotasComposeActivity : BaseComposeActivity() {
                     onEditarNota = { nota, titulo, contenido, color ->
                         lifecycleScope.launch {
                             actualizarNota(nota, titulo, contenido, color) {
+                                cargarNotas { notasCargadas ->
+                                    notas = notasCargadas
+                                }
+                            }
+                        }
+                    },
+                    onToggleFavorito = { nota ->
+                        lifecycleScope.launch {
+                            toggleFavorito(nota) {
                                 cargarNotas { notasCargadas ->
                                     notas = notasCargadas
                                 }
@@ -219,6 +231,25 @@ class NotasComposeActivity : BaseComposeActivity() {
         sdf.timeZone = TimeZone.getTimeZone("UTC")
         return sdf.format(Date())
     }
+    
+    private fun toggleFavorito(nota: Nota, onComplete: () -> Unit) {
+        lifecycleScope.launch {
+            nota.id?.let { idNota ->
+                val nuevoEstadoFavorito = !(nota.favorito ?: false)
+                when (val resultado = notaRepository.actualizarFavorito(idNota, nuevoEstadoFavorito)) {
+                    is NotaRepository.Result.Success<*> -> {
+                        val mensaje = if (nuevoEstadoFavorito) "★ Agregada a favoritos" else "Removida de favoritos"
+                        Toast.makeText(this@NotasComposeActivity, mensaje, Toast.LENGTH_SHORT).show()
+                        onComplete()
+                    }
+                    is NotaRepository.Result.Error -> {
+                        Toast.makeText(this@NotasComposeActivity, resultado.message, Toast.LENGTH_SHORT).show()
+                    }
+                    is NotaRepository.Result.Loading -> {}
+                }
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -229,7 +260,8 @@ fun PantallaNotas(
     onBackClick: () -> Unit,
     onCrearNota: (String, String, String) -> Unit,
     onEliminarNota: (Nota) -> Unit,
-    onEditarNota: (Nota, String, String, String) -> Unit
+    onEditarNota: (Nota, String, String, String) -> Unit,
+    onToggleFavorito: (Nota) -> Unit
 ) {
     // Estado para búsqueda
     var textoBusqueda by remember { mutableStateOf("") }
@@ -237,8 +269,12 @@ fun PantallaNotas(
     // Estado para edición
     var notaEnEdicion by remember { mutableStateOf<Nota?>(null) }
     var mostrarDialogo by remember { mutableStateOf(false) }
+    
+    // Estado para confirmación de eliminación
+    var notaAEliminar by remember { mutableStateOf<Nota?>(null) }
+    var mostrarDialogoEliminar by remember { mutableStateOf(false) }
 
-    // Filtrar notas
+    // Filtrar y ordenar notas (favoritos primero)
     val notasFiltradas = if (textoBusqueda.isBlank()) {
         notas
     } else {
@@ -246,7 +282,10 @@ fun PantallaNotas(
             (it.titulo?.contains(textoBusqueda, ignoreCase = true) == true) || 
             (it.contenido?.contains(textoBusqueda, ignoreCase = true) == true)
         }
-    }
+    }.sortedWith(
+        compareByDescending<Nota> { it.favorito ?: false }
+            .thenByDescending { it.fecha_actualizacion }
+    )
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(Color(0xFF80DEEA), Primario),
@@ -351,7 +390,11 @@ fun PantallaNotas(
                                 notaEnEdicion = nota
                                 mostrarDialogo = true
                             },
-                            onEliminar = { onEliminarNota(nota) }
+                            onEliminar = { 
+                                notaAEliminar = nota
+                                mostrarDialogoEliminar = true
+                            },
+                            onLongPress = { onToggleFavorito(nota) }
                         )
                     }
                 }
@@ -376,13 +419,72 @@ fun PantallaNotas(
             }
         )
     }
+    
+    // Diálogo de confirmación para eliminar
+    if (mostrarDialogoEliminar && notaAEliminar != null) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoEliminar = false },
+            title = { 
+                Text(
+                    "Eliminar nota",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Negro
+                ) 
+            },
+            text = { 
+                Column {
+                    Text(
+                        "¿Estás seguro de que deseas eliminar esta nota?",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Negro
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        notaAEliminar?.titulo ?: "Sin título",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF6B4EFF)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onEliminarNota(notaAEliminar!!)
+                        mostrarDialogoEliminar = false
+                        notaAEliminar = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE53935),
+                        contentColor = Blanco
+                    )
+                ) {
+                    Text("Eliminar", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        mostrarDialogoEliminar = false
+                        notaAEliminar = null
+                    }
+                ) {
+                    Text("Cancelar", color = Negro, fontWeight = FontWeight.Medium)
+                }
+            },
+            containerColor = Blanco,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
 }
 
 @Composable
 fun NotaCard(
     nota: Nota,
     onClick: () -> Unit,
-    onEliminar: () -> Unit
+    onEliminar: () -> Unit,
+    onLongPress: () -> Unit
 ) {
     val colorFondo = try {
         Color(android.graphics.Color.parseColor(nota.color ?: "#FFFFFF"))
@@ -398,59 +500,73 @@ fun NotaCard(
             .fillMaxWidth()
             .clickable { onClick() }
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            // Título
-            nota.titulo?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Negro
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            
-            // Contenido
-            nota.contenido?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Negro,
-                    maxLines = 5,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Divider(color = Color.Black.copy(alpha = 0.1f))
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        Box {
+            Column(
+                modifier = Modifier.padding(16.dp)
             ) {
-                // Fecha
-                val fechaFormateada = formatearFecha(nota.fecha_actualizacion)
-                Text(
-                    text = fechaFormateada,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Negro.copy(alpha = 0.6f)
-                )
+                // Título
+                nota.titulo?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Negro
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                // Contenido
+                nota.contenido?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Negro,
+                        maxLines = 5,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Divider(color = Color.Black.copy(alpha = 0.1f))
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Fecha
+                    val fechaFormateada = formatearFecha(nota.fecha_actualizacion)
+                    Text(
+                        text = fechaFormateada,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Negro.copy(alpha = 0.6f)
+                    )
 
-                // Botón eliminar
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = Color.Red.copy(alpha = 0.7f),
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable { onEliminar() }
-                )
+                    // Botón eliminar
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        tint = Color.Red.copy(alpha = 0.7f),
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { onEliminar() }
+                    )
+                }
             }
+            
+            // Icono de estrella para favoritos (siempre visible)
+            Icon(
+                imageVector = if (nota.favorito == true) Icons.Default.Star else Icons.Outlined.StarBorder,
+                contentDescription = if (nota.favorito == true) "Quitar de favoritos" else "Agregar a favoritos",
+                tint = if (nota.favorito == true) Color(0xFFFFD700) else Color.Gray,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(28.dp)
+                    .clickable { onLongPress() } // Reutilizamos el callback
+            )
         }
     }
 }
@@ -484,5 +600,4 @@ fun formatearFecha(fechaIso: String?): String {
     // Devolvemos vacío para no ensuciar la UI, pero si quieres debuguear cambia a: return fechaIso
     return "" 
 }
-
 

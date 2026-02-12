@@ -10,20 +10,27 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
@@ -32,6 +39,7 @@ import com.example.rest.R
 import com.example.rest.data.models.RegistroRequest
 import com.example.rest.data.repository.UsuarioRepository
 import com.example.rest.ui.theme.*
+import com.example.rest.ui.components.inputs.CampoFechaAutoFormato
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Period
@@ -176,8 +184,17 @@ fun PantallaRegistro(
     var fechaNacimiento by remember { mutableStateOf("") }
     var pin by remember { mutableStateOf("") }
     var confirmarPin by remember { mutableStateOf("") }
+    var mostrarPin by remember { mutableStateOf(false) }
+    var mostrarConfirmarPin by remember { mutableStateOf(false) }
     var aceptaTerminos by remember { mutableStateOf(false) }
     var rol by remember { mutableStateOf("hijo") } // Por defecto "hijo"
+
+    // FocusRequesters para navegación entre campos
+    val apellidoFocus = remember { FocusRequester() }
+    val correoFocus = remember { FocusRequester() }
+    val fechaFocus = remember { FocusRequester() }
+    val pinFocus = remember { FocusRequester() }
+    val confirmarPinFocus = remember { FocusRequester() }
 
     // Gradiente de fondo cyan/turquesa
     val brochaGradiente = Brush.linearGradient(
@@ -275,6 +292,12 @@ fun PantallaRegistro(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { 
+                        apellidoFocus.requestFocus()
+                    }
+                ),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
             )
@@ -294,7 +317,8 @@ fun PantallaRegistro(
                 },
                 modifier = Modifier
                     .width(330.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .focusRequester(apellidoFocus),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Blanco,
@@ -304,6 +328,8 @@ fun PantallaRegistro(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { correoFocus.requestFocus() }),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
             )
@@ -323,7 +349,8 @@ fun PantallaRegistro(
                 },
                 modifier = Modifier
                     .width(330.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .focusRequester(correoFocus),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Blanco,
@@ -333,38 +360,36 @@ fun PantallaRegistro(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(onNext = { fechaFocus.requestFocus() }),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo de Fecha de Nacimiento
-            OutlinedTextField(
+            // Campo de Fecha de Nacimiento con formato automático
+            CampoFechaAutoFormato(
                 value = fechaNacimiento,
                 onValueChange = { fechaNacimiento = it },
-                placeholder = { 
-                    Text(
-                        "Fecha de Nacimiento (YYYY-MM-DD)",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
-                    ) 
-                },
+                label = "Fecha de Nacimiento",
                 modifier = Modifier
                     .width(330.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .focusRequester(fechaFocus),
                 shape = RoundedCornerShape(30.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
-                ),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
+                focusedContainerColor = Blanco,
+                unfocusedContainerColor = Blanco,
+                focusedBorderColor = Color(0xFF6B4EFF),
+                unfocusedBorderColor = Color(0xFFB0BEC5),
+                focusedTextColor = Negro,
+                unfocusedTextColor = Negro,
+                placeholderColor = Color(0xFF757575),
+                textStyle = MaterialTheme.typography.bodyLarge,
+                keyboardActions = KeyboardActions(onNext = { pinFocus.requestFocus() })
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -382,7 +407,8 @@ fun PantallaRegistro(
                 },
                 modifier = Modifier
                     .width(330.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .focusRequester(pinFocus),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Blanco,
@@ -392,10 +418,23 @@ fun PantallaRegistro(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                visualTransformation = if (mostrarPin) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(onNext = { confirmarPinFocus.requestFocus() }),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
+                textStyle = MaterialTheme.typography.bodyLarge,
+                trailingIcon = {
+                    IconButton(onClick = { mostrarPin = !mostrarPin }) {
+                        Icon(
+                            imageVector = if (mostrarPin) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = if (mostrarPin) "Ocultar contraseña" else "Mostrar contraseña",
+                            tint = Color(0xFF757575)
+                        )
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -413,7 +452,8 @@ fun PantallaRegistro(
                 },
                 modifier = Modifier
                     .width(330.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .focusRequester(confirmarPinFocus),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Blanco,
@@ -423,10 +463,22 @@ fun PantallaRegistro(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                visualTransformation = if (mostrarConfirmarPin) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
+                textStyle = MaterialTheme.typography.bodyLarge,
+                trailingIcon = {
+                    IconButton(onClick = { mostrarConfirmarPin = !mostrarConfirmarPin }) {
+                        Icon(
+                            imageVector = if (mostrarConfirmarPin) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = if (mostrarConfirmarPin) "Ocultar contraseña" else "Mostrar contraseña",
+                            tint = Color(0xFF757575)
+                        )
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -436,15 +488,18 @@ fun PantallaRegistro(
                 modifier = Modifier
                     .width(330.dp)
                     .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
                 Checkbox(
                     checked = aceptaTerminos,
                     onCheckedChange = { aceptaTerminos = it },
                     colors = CheckboxDefaults.colors(
                         checkedColor = Color(0xFF6B4EFF),
-                        uncheckedColor = Color(0xFFB0BEC5)
-                    )
+                        uncheckedColor = Color(0xFF424242),
+                        checkmarkColor = Blanco
+                    ),
+                    modifier = Modifier.size(32.dp)
                 )
                 Text(
                     text = "Acepto los Términos y Condiciones",
@@ -490,14 +545,21 @@ fun PantallaRegistro(
                             alMostrarError("❌ Debes aceptar los Términos y Condiciones")
                         }
                         else -> {
+                            // Convertir fecha de dígitos (YYYYMMDD) a formato YYYY-MM-DD
+                            val fechaFormateada = if (fechaNacimiento.length == 8) {
+                                "${fechaNacimiento.substring(0, 4)}-${fechaNacimiento.substring(4, 6)}-${fechaNacimiento.substring(6, 8)}"
+                            } else {
+                                fechaNacimiento
+                            }
+                            
                             // Validar formato de fecha
                             val mayorEdad = try {
                                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-                                val fechaNac = LocalDate.parse(fechaNacimiento, formatter)
+                                val fechaNac = LocalDate.parse(fechaFormateada, formatter)
                                 val edad = Period.between(fechaNac, LocalDate.now()).years
                                 edad >= 18
                             } catch (e: Exception) {
-                                alMostrarError("❌ Formato de fecha inválido. Usa YYYY-MM-DD (ej: 2000-01-15)")
+                                alMostrarError("❌ Formato de fecha inválido. Usa AAAA-MM-DD (ej: 20000115)")
                                 return@Button
                             }
 
@@ -505,7 +567,7 @@ fun PantallaRegistro(
                                 nombre = nombre,
                                 apellido = apellido.ifBlank { null },
                                 correo = correo,
-                                fechaNacimiento = fechaNacimiento,
+                                fechaNacimiento = fechaFormateada,
                                 contraseña = pin,
                                 rol = rol,
                                 mayorEdad = mayorEdad

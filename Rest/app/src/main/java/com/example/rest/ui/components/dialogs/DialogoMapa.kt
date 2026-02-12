@@ -1,4 +1,4 @@
-package com.example.rest.ui.components
+package com.example.rest.ui.components.dialogs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

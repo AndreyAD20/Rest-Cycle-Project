@@ -3,30 +3,31 @@ package com.example.rest.features.tools
 import android.os.Bundle
 import com.example.rest.BaseComposeActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.example.rest.ui.theme.*
+import com.example.rest.data.models.Evento
+import com.example.rest.network.SupabaseClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class TareasComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,13 +40,6 @@ class TareasComposeActivity : BaseComposeActivity() {
     }
 }
 
-data class Tarea(
-    val id: Int,
-    val titulo: String,
-    val hora: String,
-    val completada: Boolean = false
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaTareas(onBackClick: () -> Unit) {
@@ -55,13 +49,43 @@ fun PantallaTareas(onBackClick: () -> Unit) {
         end = Offset(0f, 2000f)
     )
 
-    val tareas = remember {
-        mutableStateListOf(
-            Tarea(1, "Hacer ejercicio", "07:00 AM"),
-            Tarea(2, "Reunión de trabajo", "10:00 AM"),
-            Tarea(3, "Comprar víveres", "05:00 PM"),
-            Tarea(4, "Leer un libro", "09:00 PM", true)
-        )
+    var eventosPendientes by remember { mutableStateOf<List<Evento>>(emptyList()) }
+    var cargando by remember { mutableStateOf(true) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(Unit) {
+        val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+        val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+
+        if (idUsuario != -1) {
+            withContext(Dispatchers.IO) {
+                try {
+                    val response = SupabaseClient.api.obtenerEventosPorUsuario("eq.$idUsuario")
+                    if (response.isSuccessful) {
+                        val todosEventos = response.body() ?: emptyList()
+                        
+                        // Filtrar eventos futuros o de hoy
+                        val ahora = LocalDateTime.now().minusHours(2) // Margen de 2 horas para no borrar inmediato
+                        
+                        eventosPendientes = todosEventos.filter { evento ->
+                            try {
+                                // Formato esperado: 2026-01-01T10:00:00Z (Naive)
+                                val fechaEvento = LocalDateTime.parse(evento.fechaInicio.replace("Z", ""))
+                                fechaEvento.isAfter(ahora)
+                            } catch (e: Exception) {
+                                false // Si falla parseo, ignorar
+                            }
+                        }.sortedBy { it.fechaInicio } // Ordenar por fecha más próxima
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    cargando = false
+                }
+            }
+        } else {
+            cargando = false
+        }
     }
 
     Scaffold(
@@ -69,7 +93,7 @@ fun PantallaTareas(onBackClick: () -> Unit) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "Mis Tareas",
+                        "Actividades Pendientes",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 },
@@ -81,15 +105,6 @@ fun PantallaTareas(onBackClick: () -> Unit) {
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { /* TODO: Add Task */ },
-                containerColor = Color(0xFF00BCD4),
-                contentColor = Negro
-            ) {
-                Icon(Icons.Default.Add, "Nueva Tarea")
-            }
-        },
         containerColor = Color.Transparent
     ) { paddingValues ->
         Box(
@@ -98,43 +113,64 @@ fun PantallaTareas(onBackClick: () -> Unit) {
                 .background(brochaGradiente)
                 .padding(paddingValues)
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-                
-                items(tareas) { tarea ->
-                    TareaItem(
-                        tarea = tarea,
-                        onCheckedChange = { isChecked ->
-                            val index = tareas.indexOf(tarea)
-                            if (index != -1) {
-                                tareas[index] = tarea.copy(completada = isChecked)
-                            }
-                        }
-                    )
+            if (cargando) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Negro)
                 }
-                
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+            } else if (eventosPendientes.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange, 
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = Blanco.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "No tienes actividades pendientes",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Negro
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
+                    
+                    items(eventosPendientes) { evento ->
+                        ActividadItem(evento)
+                    }
+                    
+                    item { Spacer(modifier = Modifier.height(40.dp)) }
+                }
             }
         }
     }
 }
 
 @Composable
-fun TareaItem(tarea: Tarea, onCheckedChange: (Boolean) -> Unit) {
-    val alpha by animateFloatAsState(targetValue = if (tarea.completada) 0.5f else 1f)
+fun ActividadItem(evento: Evento) {
+    // Formatear fecha y hora
+    val (fechaTexto, horaTexto) = try {
+        val fecha = LocalDateTime.parse(evento.fechaInicio.replace("Z", ""))
+        val fmtFecha = DateTimeFormatter.ofPattern("dd MMM")
+        val fmtHora = DateTimeFormatter.ofPattern("hh:mm a")
+        Pair(fecha.format(fmtFecha), fecha.format(fmtHora))
+    } catch (e: Exception) {
+        Pair(evento.fechaInicio.take(10), "")
+    }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f)),
+        colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.95f)),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(alpha)
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -142,27 +178,28 @@ fun TareaItem(tarea: Tarea, onCheckedChange: (Boolean) -> Unit) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = tarea.completada,
-                onCheckedChange = onCheckedChange,
-                colors = CheckboxDefaults.colors(
-                    checkedColor = Primario,
-                    uncheckedColor = Color.Gray,
-                    checkmarkColor = Blanco
-                )
+            // Indicador de color por tipo
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .height(40.dp)
+                    .background(
+                        when(evento.tipo) {
+                           "Reunión" -> Color(0xFF5C6BC0)
+                           "Trabajo" -> Color(0xFFEF5350)
+                           "Salud" -> Color(0xFF66BB6A)
+                           else -> Primario
+                        }, 
+                        RoundedCornerShape(3.dp)
+                    )
             )
             
             Spacer(modifier = Modifier.width(16.dp))
             
             Column {
                 Text(
-                    text = tarea.titulo,
-                    style = TextStyle(
-                        fontFamily = MaterialTheme.typography.bodyLarge.fontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize,
-                        textDecoration = if (tarea.completada) TextDecoration.LineThrough else TextDecoration.None
-                    ),
+                    text = evento.titulo,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = Negro
                 )
                 
@@ -170,24 +207,28 @@ fun TareaItem(tarea: Tarea, onCheckedChange: (Boolean) -> Unit) {
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.DateRange,
+                        Icons.Default.DateRange, // Reloj o Calendario
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = Color.Gray
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = tarea.hora,
-                        style = MaterialTheme.typography.labelMedium,
+                        text = "$fechaTexto, $horaTexto",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
+                    )
+                }
+                
+                if (!evento.tipo.isNullOrBlank()) {
+                     Text(
+                        text = evento.tipo,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Primario,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
             }
         }
     }
 }
-
-
-
-
-
