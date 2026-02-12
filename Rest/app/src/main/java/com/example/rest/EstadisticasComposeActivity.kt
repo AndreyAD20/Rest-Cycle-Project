@@ -406,53 +406,53 @@ fun getUsageStats(context: Context, period: Int): List<AppUsageInfo> {
     // Calcular tiempo de inicio según el período seleccionado
     // Tipo: Expresión when (similar a switch en otros lenguajes)
     calendar.apply {
+        // Primero restar los días
         when (period) {
-            0 -> add(Calendar.DAY_OF_YEAR, -1)   // Diario: restar 1 día
+            0 -> { /* Diario: no restamos días, es hoy */ }
             1 -> add(Calendar.DAY_OF_YEAR, -7)   // Semanal: restar 7 días
             else -> add(Calendar.DAY_OF_YEAR, -30) // Mensual: restar 30 días
         }
+        
+        // Para TODOS los periodos, iniciamos a las 00:00:00 del día de inicio calculado
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
     }
     val startTime = calendar.timeInMillis  // Tiempo inicial = hace X días
     
     Log.d("EstadisticasApp", "Consultando stats desde: $startTime hasta: $endTime")
     
     // --- PASO 3: Consultar estadísticas al sistema ---
-    // Esta llamada le pide a Android todas las apps que se usaron en el período
+    // Usamos INTERVAL_BEST para que el sistema elija el mejor intervalo que se ajuste a nuestro rango
     val usageStatsList = usageStatsManager.queryUsageStats(
-        UsageStatsManager.INTERVAL_DAILY,  // Agrupar por día
-        startTime,                          // Desde cuándo
-        endTime                             // Hasta cuándo
+        UsageStatsManager.INTERVAL_BEST,  
+        startTime,                          
+        endTime                             
     )
     
     Log.d("EstadisticasApp", "UsageStats obtenidos: ${usageStatsList?.size ?: 0}")
     
     // --- PASO 4: Filtrar y agrupar apps ---
-    // Crear un mapa (diccionario) para acumular tiempos por app
-    // Tipo: Mutable Map (colección clave-valor modificable)
     val usageMap = mutableMapOf<String, Long>()
     
-    // Iterar sobre cada estadística recibida
-    // Tipo: forEach (bucle/loop)
     usageStatsList?.forEach { usageStats ->
-        val packageName = usageStats.packageName      // Ej: "com.whatsapp"
-        val totalTime = usageStats.totalTimeInForeground  // Tiempo en milisegundos
-        
-        // Solo procesar apps que se usaron (tiempo > 0)
-        // Tipo: Condicional if
-        if (totalTime > 0) {
-            // Verificar si la app es "lanzable" (tiene interfaz de usuario)
-            // ESTO ES LA CLAVE: getLaunchIntentForPackage retorna null si la app no se puede abrir
+        val packageName = usageStats.packageName
+        val totalTime = usageStats.totalTimeInForeground
+        val lastTimeUsed = usageStats.lastTimeUsed
+
+        // FILTRO CRÍTICO: 
+        // 1. Que tenga tiempo de uso (> 0)
+        // 2. Que se haya usado DENTRO del periodo solicitado (lastTimeUsed >= startTime)
+        //    Esto elimina apps que el sistema incluye en el "bucket" pero no se tocaron hoy.
+        if (totalTime > 0 && lastTimeUsed >= startTime) {
+            
+            // Verificar si la app es "lanzable"
             val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
             
-            // Tipo: Condicional if-else
             if (launchIntent != null) {
-                // La app SÍ se puede abrir (WhatsApp, YouTube, etc.)
-                // Acumular el tiempo (si ya existía, sumar; si no, crear nueva entrada)
                 usageMap[packageName] = (usageMap[packageName] ?: 0) + totalTime
-                Log.d("EstadisticasApp", "-> App AGREGADA (tiene LaunchIntent): $packageName - Tiempo: ${totalTime}ms")
-            } else {
-                // La app NO se puede abrir (servicios del sistema, etc.)
-                Log.d("EstadisticasApp", "-> App DESCARTADA (Sin LaunchIntent): $packageName")
+                Log.d("EstadisticasApp", "-> App AGREGADA: $packageName - Tiempo: ${totalTime}ms")
             }
         }
     }

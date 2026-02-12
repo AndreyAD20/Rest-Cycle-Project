@@ -7,6 +7,10 @@ import android.content.Intent
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
+import androidx.core.app.NotificationCompat
 import java.util.Calendar
 
 class UsageMonitorService : Service() {
@@ -19,12 +23,45 @@ class UsageMonitorService : Service() {
             handler.postDelayed(this, 3000) // Check every 3 seconds
         }
     }
+    
+    companion object {
+        private const val NOTIFICATION_ID = 1001
+        private const val CHANNEL_ID = "usage_monitor_channel"
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, createNotification())
         handler.post(checkRunnable)
         return START_STICKY
+    }
+    
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Monitoreo de Uso de Apps",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Monitorea el uso de aplicaciones para aplicar límites de tiempo"
+                setShowBadge(false)
+            }
+            
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+    
+    private fun createNotification(): android.app.Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Bloqueo de Apps Activo")
+            .setContentText("Monitoreando uso de aplicaciones")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .build()
     }
 
     override fun onDestroy() {
@@ -64,7 +101,7 @@ class UsageMonitorService : Service() {
                      // Si excede el límite, bloquear
                      // (Eliminamos la verificación de < 2000ms porque falla si el usuario no interactúa con la pantalla)
                      if (totalTime > limitMillis) {
-                         blockApp()
+                         blockApp(currentApp.packageName)
                      }
                 }
             }
@@ -185,12 +222,22 @@ class UsageMonitorService : Service() {
         return calendar.timeInMillis
     }
     
-    private fun blockApp() {
-        val intent = Intent(this, BloqueoOverlayActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        // Avoid launching multiple overlays if one is already on top?
-        // Android handles singleTask logic if defined in Manifest, or we rely on the flags.
-        startActivity(intent)
+    
+    private fun blockApp(packageName: String) {
+        // Primero, cerrar la app enviándola al home screen
+        val homeIntent = Intent(Intent.ACTION_MAIN)
+        homeIntent.addCategory(Intent.CATEGORY_HOME)
+        homeIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        startActivity(homeIntent)
+        
+        // Pequeño delay para asegurar que la app se cierra antes de mostrar el overlay
+        handler.postDelayed({
+            // Luego mostrar el overlay de bloqueo
+            val overlayIntent = Intent(this, BloqueoOverlayActivity::class.java)
+            overlayIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            overlayIntent.putExtra("blocked_package", packageName)
+            startActivity(overlayIntent)
+        }, 300) // 300ms delay
     }
 
     private fun hasUsageStatsPermission(): Boolean {

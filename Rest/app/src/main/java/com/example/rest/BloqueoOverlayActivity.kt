@@ -17,9 +17,14 @@ import com.example.rest.ui.theme.TemaRest
 class BloqueoOverlayActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        val blockedPackage = intent.getStringExtra("blocked_package")
+        val appName = blockedPackage?.let { getAppName(it) } ?: "esta aplicación"
+        
         setContent {
             TemaRest {
                 PantallaOverlay(
+                    appName = appName,
                     onCloseApp = {
                         val startMain = Intent(Intent.ACTION_MAIN)
                         startMain.addCategory(Intent.CATEGORY_HOME)
@@ -32,6 +37,15 @@ class BloqueoOverlayActivity : ComponentActivity() {
         }
     }
     
+    private fun getAppName(packageName: String): String {
+        return try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(appInfo).toString()
+        } catch (e: Exception) {
+            packageName
+        }
+    }
+    
     override fun onBackPressed() {
         val startMain = Intent(Intent.ACTION_MAIN)
         startMain.addCategory(Intent.CATEGORY_HOME)
@@ -41,7 +55,7 @@ class BloqueoOverlayActivity : ComponentActivity() {
 }
 
 @Composable
-fun PantallaOverlay(onCloseApp: () -> Unit) {
+fun PantallaOverlay(appName: String, onCloseApp: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color(0xFF121212)
@@ -59,9 +73,11 @@ fun PantallaOverlay(onCloseApp: () -> Unit) {
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                "Has alcanzado tu límite diario para esta aplicación.",
+                "Has alcanzado tu límite diario para $appName.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.LightGray.copy(alpha = 0.8f)
+                color = Color.LightGray.copy(alpha = 0.8f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
             )
             Spacer(Modifier.height(32.dp))
             Button(onClick = onCloseApp) {

@@ -186,7 +186,20 @@ fun PantallaTareas(context: Context, onBackClick: () -> Unit) {
                     
                     // Programar alarma si tiene hora asignada
                     if (tareaConId.tieneHora) {
-                        TaskNotificationManager.scheduleTaskAlarm(context, tareaConId)
+                        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                            // Si no tiene permiso de alarmas exactas, avisar y redirigir
+                            android.widget.Toast.makeText(context, "Se necesita permiso para alarmas exactas para que las notificaciones funcionen bien", android.widget.Toast.LENGTH_LONG).show()
+                            val intent = android.content.Intent().apply {
+                                action = android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+                            }
+                            context.startActivity(intent)
+                        } else {
+                            TaskNotificationManager.scheduleTaskAlarm(context, tareaConId)
+                            android.widget.Toast.makeText(context, "Tarea guardada con recordatorio", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        android.widget.Toast.makeText(context, "Tarea guardada", android.widget.Toast.LENGTH_SHORT).show()
                     }
                     
                     mostrarDialogoTarea = false
@@ -433,7 +446,27 @@ fun AgregarTareaDialog(
                     }
                     Switch(
                         checked = vibracion,
-                        onCheckedChange = { vibracion = it },
+                        onCheckedChange = { isChecked ->
+                            if (isChecked) {
+                                // Solicitar permiso de notificaciones si es necesario (Android 13+)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                                        // Aquí deberíamos idealmente usar el launcher registrado en la activity, 
+                                        // pero como estamos en un dialog, podemos pedir al usuario que lo habilite.
+                                        // Una opción rápida es mostrar un toast o intentar pedirlo si tenemos acceso al launcher.
+                                        // En este caso, asumimos que se pidió en onCreate, pero si no, avisamos.
+                                        android.widget.Toast.makeText(context, "Habilita las notificaciones para usar la vibración", android.widget.Toast.LENGTH_LONG).show()
+                                        // (Opcional) Intentar abrir configuración si es crítico
+                                    } else {
+                                        vibracion = true
+                                    }
+                                } else {
+                                    vibracion = true
+                                }
+                            } else {
+                                vibracion = false
+                            }
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
                             checkedTrackColor = Color(0xFF00BCD4),
@@ -469,7 +502,21 @@ fun AgregarTareaDialog(
                     }
                     Switch(
                         checked = sonido,
-                        onCheckedChange = { sonido = it },
+                        onCheckedChange = { isChecked ->
+                            if (isChecked) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                                        android.widget.Toast.makeText(context, "Habilita las notificaciones para usar el sonido", android.widget.Toast.LENGTH_LONG).show()
+                                    } else {
+                                        sonido = true
+                                    }
+                                } else {
+                                    sonido = true
+                                }
+                            } else {
+                                sonido = false
+                            }
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
                             checkedTrackColor = Color(0xFF00BCD4),

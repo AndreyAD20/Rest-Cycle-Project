@@ -62,8 +62,14 @@ class BloqueoAppsComposeActivity : ComponentActivity() {
         }
 
 
+
         val serviceIntent = android.content.Intent(this, UsageMonitorService::class.java)
-        startService(serviceIntent)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
+
 
         setContent {
             TemaRest {
