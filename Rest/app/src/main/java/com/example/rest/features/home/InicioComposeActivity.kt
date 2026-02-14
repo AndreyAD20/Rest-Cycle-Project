@@ -95,6 +95,24 @@ class InicioComposeActivity : BaseComposeActivity() {
     }
 }
 
+
+// Funciones auxiliares para permisos
+fun checkUsageStatsPermission(context: android.content.Context): Boolean {
+    val appOps = context.getSystemService(android.content.Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+    val mode = appOps.checkOpNoThrow(
+        android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+        android.os.Process.myUid(),
+        context.packageName
+    )
+    return mode == android.app.AppOpsManager.MODE_ALLOWED
+}
+
+fun requestUsageStatsPermission(context: android.content.Context) {
+    val intent = Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)
+    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    context.startActivity(intent)
+}
+
 @Composable
 fun PantallaModosDeUso(
     alClickRegresar: () -> Unit,
@@ -102,6 +120,44 @@ fun PantallaModosDeUso(
     alClickControlParental: () -> Unit,
     alClickHabitosSaludables: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var showPermissionDialog by remember { mutableStateOf(false) }
+
+    // Verificar permiso al iniciar
+    LaunchedEffect(Unit) {
+        if (!checkUsageStatsPermission(context)) {
+            showPermissionDialog = true
+        }
+    }
+
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { /* No permitir cerrar sin decidir */ },
+            title = { Text("Permiso Requerido") },
+            text = { Text("Para que la aplicación funcione correctamente y registre tus estadísticas, necesitamos acceso a los datos de uso. Por favor activa el permiso para 'Rest Cycle'.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPermissionDialog = false
+                        requestUsageStatsPermission(context)
+                    }
+                ) {
+                    Text("Activar Permiso")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showPermissionDialog = false 
+                        android.widget.Toast.makeText(context, "Algunas funciones no estarán disponibles", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                ) {
+                    Text("Ahora no")
+                }
+            }
+        )
+    }
+
     // Gradiente de fondo cyan/turquesa
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(

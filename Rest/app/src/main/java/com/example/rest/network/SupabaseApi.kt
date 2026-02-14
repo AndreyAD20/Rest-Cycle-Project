@@ -392,4 +392,38 @@ interface SupabaseApi {
         @Query("idpadre") idPadre: String,
         @Query("select") select: String = "*"
     ): Response<List<ConexionParental>>
+    // ==================== APPS VINCULADAS (ESTADÍSTICAS) ====================
+
+    /**
+     * Obtener apps vinculadas de un dispositivo
+     */
+    @GET("apps_vinculadas")
+    suspend fun obtenerAppsVinculadas(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("select") select: String = "*"
+    ): Response<List<AppVinculada>>
+
+    /**
+     * Crear app vinculada
+     */
+    @POST("apps_vinculadas")
+    suspend fun crearAppVinculada(
+        @Body app: AppVinculada
+    ): Response<List<AppVinculada>>
+
+    /**
+     * Actualizar app vinculada (tiempo uso, limite)
+     */
+    @PATCH("apps_vinculadas")
+    suspend fun actualizarAppVinculada(
+        @Query("id") id: String,
+        @Body app: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<AppVinculada>>
+    
+    /**
+     * Upsert app vinculada (Insertar o Actualizar si conflicto en ID)
+     * Nota: Supabase requiere header Prefer: resolution=merge-duplicates para UPSERT real, 
+     * pero Retrofit lo maneja mejor con lógica en repositorio.
+     * Aquí definimos endpoints básicos.
+     */
 }

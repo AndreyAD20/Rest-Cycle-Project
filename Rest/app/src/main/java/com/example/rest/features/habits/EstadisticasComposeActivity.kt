@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,12 +37,89 @@ import com.example.rest.BaseComposeActivity
 import com.example.rest.ui.theme.*
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.shape.CircleShape
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.io.File
+import java.io.FileOutputStream
+import java.util.Date
+import android.os.Build
+import android.provider.MediaStore
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import com.example.rest.data.models.AppUsageInfo
+import kotlinx.coroutines.launch
 
-data class AppUsageInfo(
-    val appName: String,
-    val packageName: String,
-    val totalTimeInMillis: Long
-)
+// Constantes para notificaciones
+const val CHANNEL_ID = "REPORTE_CHANNEL"
+const val CHANNEL_NAME = "Informes"
+const val NOTIFICATION_ID = 1001
+
+fun createNotificationChannel(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
+            description = "Notificaciones de descarga de reportes"
+        }
+        val notificationManager: NotificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+}
+
+fun showDownloadNotification(context: Context, uri: android.net.Uri) {
+    createNotificationChannel(context)
+    
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/pdf")
+        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+    }
+    
+    val pendingIntent: PendingIntent = PendingIntent.getActivity(
+        context, 
+        0, 
+        intent, 
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
+    val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        .setSmallIcon(android.R.drawable.stat_sys_download_done) // Icono genérico por ahora
+        .setContentTitle("Informe Descargado")
+        .setContentText("Toca para abrir el reporte PDF")
+        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        .setContentIntent(pendingIntent)
+        .setAutoCancel(true)
+
+    try {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.POST_NOTIFICATIONS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < 33
+        ) {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
+        } else {
+             Toast.makeText(context, "Informe guardado (Permiso de notificación no otorgado)", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: SecurityException) {
+        Log.e("Notification", "Error mostrando notificación: ${e.message}")
+    }
+}
+
+
 
 class EstadisticasComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,7 +138,17 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
     val context = LocalContext.current
     var hasPermission by remember { mutableStateOf(checkUsageStatsPermission(context)) }
     var periodoSeleccionado by remember { mutableStateOf(0) }
+    var showDownloadDialog by remember { mutableStateOf(false) }
     val periodos = listOf("Diario", "Semanal", "Mensual")
+    
+    // Launcher para notificación (Android 13+)
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            Toast.makeText(context, "Sin permiso, no recibirás notificaciones de descarga.", Toast.LENGTH_SHORT).show()
+        }
+    }
     
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(Color(0xFF80DEEA), Primario),
@@ -67,8 +156,63 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
         end = Offset(0f, 2000f)
     )
 
+    // Repositorio para sincronizar
+    val estadisticasRepo = remember { com.example.rest.data.repository.EstadisticasRepository() }
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(Unit) {
         hasPermission = checkUsageStatsPermission(context)
+        // Solicitar POST_NOTIFICATIONS en Android 13+
+        if (Build.VERSION.SDK_INT >= 33) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        
+        // SINCRONIZACIÓN AUTOMÁTICA CON SUPABASE
+        // Subimos las estadísticas de HOY al entrar a la pantalla
+        if (hasPermission) {
+            scope.launch {
+                try {
+                    val statsHoy = getUsageStats(context, 0) // 0 = Hoy
+                    // Obtener nombre real del dispositivo si se puede, o usar modelo
+                    val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}"
+                    estadisticasRepo.sincronizarEstadisticas(context, statsHoy, deviceName)
+                    // Opcional: Toast para debug
+                    // Toast.makeText(context, "Sincronizando...", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Log.e("Sync", "Error sync auto: ${e.message}")
+                }
+            }
+        }
+    }
+
+    // Obtener nombre de usuario
+    val nombreUsuario = remember {
+        val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
+        sharedPref.getString("NOMBRE_USUARIO", "Usuario") ?: "Usuario"
+    }
+
+    if (showDownloadDialog) {
+        AlertDialog(
+            onDismissRequest = { showDownloadDialog = false },
+            title = { Text("Descargar Informe", fontWeight = FontWeight.Bold) },
+            text = { Text("¿Deseas descargar el reporte de uso en PDF?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDownloadDialog = false
+                    val stats = getUsageStats(context, periodoSeleccionado)
+                    generarReportePDF(context, stats, getPeriodoFecha(periodoSeleccionado), nombreUsuario)
+                }) {
+                    Text("Descargar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDownloadDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -119,24 +263,48 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                         Spacer(modifier = Modifier.height(16.dp))
                         TabRow(
                             selectedTabIndex = periodoSeleccionado,
-                            containerColor = Blanco.copy(alpha = 0.3f),
-                            contentColor = Blanco,
+                            containerColor = Blanco.copy(alpha = 0.3f), // Mantener sutil
+                            // contentColor = Color.DarkGray, // Cambiar a oscuro por default
                             divider = {}
                         ) {
                             periodos.forEachIndexed { index, titulo ->
                                 Tab(
                                     selected = periodoSeleccionado == index,
                                     onClick = { periodoSeleccionado = index },
-                                    text = { 
+                                    text = {
                                         Text(
-                                            titulo, 
+                                            titulo,
                                             fontWeight = if (periodoSeleccionado == index) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (periodoSeleccionado == index) Primario else Blanco
-                                        ) 
+                                            // COLORES OSCUROS: Primario para seleccionado (es oscuro), Gris oscuro para no seleccionado
+                                            color = if (periodoSeleccionado == index) Primario else Color.DarkGray
+                                        )
                                     }
                                 )
                             }
                         }
+                        
+                        // FECHA
+                         Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = getPeriodoFecha(periodoSeleccionado),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Negro,
+                            textAlign = TextAlign.Center
+                        )
+                        
+                        // BOTÓN DE DESCARGA EXTENDIDO
+                        Spacer(modifier = Modifier.height(16.dp))
+                        ExtendedFloatingActionButton(
+                            onClick = { showDownloadDialog = true },
+                            icon = { Icon(Icons.Default.Download, "Descargar") },
+                            text = { Text("DESCARGAR REPORTE", fontWeight = FontWeight.Bold) },
+                            containerColor = Primario, // Color llamativo
+                            contentColor = Blanco,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                        )
                         Spacer(modifier = Modifier.height(32.dp))
                     }
 
@@ -291,51 +459,140 @@ fun getUsageStats(context: Context, period: Int): List<AppUsageInfo> {
     val calendar = Calendar.getInstance()
     val endTime = calendar.timeInMillis
     
-    calendar.apply {
-        when (period) {
-            0 -> { /* Diario */ }
-            1 -> add(Calendar.DAY_OF_YEAR, -7)
-            else -> add(Calendar.DAY_OF_YEAR, -30)
-        }
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
+    val startCalendar = Calendar.getInstance()
+    startCalendar.set(Calendar.HOUR_OF_DAY, 0)
+    startCalendar.set(Calendar.MINUTE, 0)
+    startCalendar.set(Calendar.SECOND, 0)
+    startCalendar.set(Calendar.MILLISECOND, 0)
+    
+    when (period) {
+        0 -> { /* Diario - desde las 00:00 de HOY */ }
+        1 -> startCalendar.add(Calendar.DAY_OF_YEAR, -7)
+        else -> startCalendar.set(Calendar.DAY_OF_MONTH, 1) // Mensual: Desde el 1 del mes
     }
-    val startTime = calendar.timeInMillis
     
-    val usageStatsList = usageStatsManager.queryUsageStats(
-        UsageStatsManager.INTERVAL_BEST,
-        startTime,
-        endTime
-    )
+    val startTime = startCalendar.timeInMillis
     
-    val usageMap = mutableMapOf<String, Long>()
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    Log.d("EstadisticasDebug", "=== INICIO CONSULTA ===")
+    Log.d("EstadisticasDebug", "Periodo: $period")
+    Log.d("EstadisticasDebug", "Desde: ${dateFormat.format(startTime)}")
+    Log.d("EstadisticasDebug", "Hasta: ${dateFormat.format(endTime)}")
     
-    usageStatsList?.forEach { usageStats ->
-        val packageName = usageStats.packageName
-        val totalTime = usageStats.totalTimeInForeground
-        val lastTimeUsed = usageStats.lastTimeUsed
+    try {
+        val usageMap = mutableMapOf<String, Long>()
 
-        if (totalTime > 0 && lastTimeUsed >= startTime) {
-            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-            if (launchIntent != null) {
-                usageMap[packageName] = (usageMap[packageName] ?: 0) + totalTime
+        if (period == 0) {
+            // Lógica ESTRICTA para DIARIO
+            Log.d("EstadisticasDebug", "Usando lógica ESTRICTA para DIARIO")
+            val usageStatsList = usageStatsManager.queryUsageStats(
+                UsageStatsManager.INTERVAL_DAILY,
+                startTime,
+                endTime
+            )
+
+            if (usageStatsList.isNullOrEmpty()) {
+                Log.d("EstadisticasDebug", "Lista diaria vacía, intentando fallback a INTERVAL_BEST")
+                // throw Exception("Lista diaria vacía") // Comentado para evitar crash, mejor log
+            }
+
+            var filteredCount = 0
+            usageStatsList.forEach { stats ->
+                if (stats.firstTimeStamp >= startTime) {
+                     val current = usageMap[stats.packageName] ?: 0
+                     usageMap[stats.packageName] = current + stats.totalTimeInForeground
+                     filteredCount++
+                }
+            }
+            Log.d("EstadisticasDebug", "Stats válidos (post-filtro): $filteredCount / ${usageStatsList.size}")
+
+        } else {
+             // Lógica estándar para SEMANAL/MENSUAL
+            val aggregatedStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+            aggregatedStats?.forEach { (packageName, usageStats) ->
+                val totalTime = usageStats.totalTimeInForeground
+                if (totalTime > 0) {
+                     usageMap[packageName] = totalTime
+                }
             }
         }
-    }
+        
+        Log.d("EstadisticasDebug", "Total apps con uso: ${usageMap.size}")
     
-    val appUsageList = usageMap.mapNotNull { (packageName, totalTime) ->
-        try {
-            val appInfo = packageManager.getApplicationInfo(packageName, 0)
-            val appName = packageManager.getApplicationLabel(appInfo).toString()
-            AppUsageInfo(appName, packageName, totalTime)
-        } catch (e: Exception) {
-            AppUsageInfo(packageName, packageName, totalTime)
+        val appUsageList = usageMap.mapNotNull { (packageName, totalTime) ->
+            try {
+                val appInfo = packageManager.getApplicationInfo(packageName, 0)
+                
+                val isSystemApp = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                val isUpdatedSystemApp = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                
+                val isWhitelisted = packageName.contains("com.google.android.youtube") || 
+                                   packageName.contains("com.google.android.apps.maps") || 
+                                   packageName.contains("com.google.android.gm") || 
+                                   packageName.contains("com.android.chrome") || 
+                                   packageName.contains("com.google.android.apps.photos") || 
+                                   packageName.contains("com.whatsapp") || 
+                                   packageName.contains("com.facebook") ||
+                                   packageName.contains("com.instagram") ||
+                                   packageName.contains("com.twitter")
+                                   
+                val isBlacklisted = packageName.contains("launcher") || 
+                                   packageName.contains("systemui") || 
+                                   packageName.contains("settings") || 
+                                   packageName.contains("wallpaper") ||
+                                   packageName.contains("inputmethod") || 
+                                   packageName.contains("provider") ||
+                                   packageName.contains("service") ||
+                                   packageName == "android" ||
+                                   packageName.startsWith("com.android.internal") ||
+                                   packageName.contains("com.motorola.ccc") || 
+                                   packageName.contains("com.motorola.android")
+                
+                
+                val appName = packageManager.getApplicationLabel(appInfo).toString()
+                
+                // FILTRO DE BLACKLIST (Aplicaciones ocultas por solicitud del usuario)
+                val blacklist = listOf(
+                    "clima local", 
+                    "moto secure", 
+                    "family space", 
+                    "widgets moto", 
+                    "moto widget",
+                    "cámara", // A veces son procesos de sistema
+                    "teclado"
+                )
+                
+                // Normalizar nombre para comparación
+                val normalizedName = appName.lowercase()
+                val isBlocked = blacklist.any { normalizedName.contains(it) }
+
+                // FILTRO ESTRICTO: Si es de sistema (original o actualizada), SOLO permitir whitelist
+                if ((isSystemApp || isUpdatedSystemApp) && !isWhitelisted) {
+                    return@mapNotNull null
+                }
+
+                // Además, aplicar blacklist por si acaso alguna se escapa o es de usuario pero no deseada
+                if (isBlacklisted || isBlocked) return@mapNotNull null
+                
+                val appIcon = packageManager.getApplicationIcon(packageName)
+                
+                AppUsageInfo(appName, packageName, totalTime, appIcon)
+            } catch (e: Exception) {
+                Log.w("EstadisticasDebug", "No se pudo obtener info de $packageName: ${e.message}")
+                null
+            }
         }
+        
+        Log.d("EstadisticasDebug", "Apps procesadas: ${appUsageList.size}")
+        Log.d("EstadisticasDebug", "=== FIN CONSULTA ===")
+        
+        return appUsageList.sortedByDescending { it.totalTimeInMillis }
+
+    } catch (e: Exception) {
+        Log.e("EstadisticasDebug", "Error fatal en getUsageStats: ${e.message}")
+        e.printStackTrace()
+        return emptyList()
     }
-    
-    return appUsageList.sortedByDescending { it.totalTimeInMillis }
 }
 
 fun formatUsageTime(timeInMillis: Long): String {
@@ -350,6 +607,173 @@ fun formatUsageTime(timeInMillis: Long): String {
     }
 }
 
+// Helper para obtener el texto de la fecha según el periodo (CON AÑO)
+fun getPeriodoFecha(periodo: Int): String {
+    val calendar = Calendar.getInstance()
+    // Locale español para nombres de meses
+    val formatoDia = SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
+    val hoyStr = formatoDia.format(calendar.time)
+
+    return when (periodo) {
+        0 -> "Hoy, $hoyStr"
+        1 -> {
+            val fin = calendar.time
+            calendar.add(Calendar.DAY_OF_YEAR, -7)
+            val inicio = calendar.time
+            "${formatoDia.format(inicio)} - ${formatoDia.format(fin)}"
+        }
+        else -> {
+            val fin = calendar.time
+            calendar.set(Calendar.DAY_OF_MONTH, 1) // Inicio de mes
+            val inicio = calendar.time
+            "${formatoDia.format(inicio)} - ${formatoDia.format(fin)}"
+        }
+    }
+}
+
+fun generarReportePDF(context: Context, stats: List<AppUsageInfo>, periodoStr: String, nombreUsuario: String) {
+    val pdfDocument = android.graphics.pdf.PdfDocument()
+    val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 size
+    val page = pdfDocument.startPage(pageInfo)
+    val canvas = page.canvas
+    val paint = android.graphics.Paint()
+    val titlePaint = android.graphics.Paint()
+    val watermarkPaint = android.graphics.Paint()
+
+    // 1. MARCA DE AGUA (FONDO)
+    watermarkPaint.color = android.graphics.Color.BLUE
+    watermarkPaint.alpha = 40 // Muy transparente (0-255)
+    watermarkPaint.textSize = 80f
+    watermarkPaint.textAlign = android.graphics.Paint.Align.CENTER
+    watermarkPaint.isFakeBoldText = true
+    
+    canvas.save()
+    canvas.translate(pageInfo.pageWidth / 2f, pageInfo.pageHeight / 2f)
+    canvas.rotate(-45f)
+    canvas.drawText("REST CYCLE", 0f, 0f, watermarkPaint)
+    canvas.restore()
+
+    // Configuración de pinceles de texto
+    titlePaint.textSize = 24f
+    titlePaint.isFakeBoldText = true
+    titlePaint.color = android.graphics.Color.BLACK
+    
+    paint.textSize = 14f
+    paint.color = android.graphics.Color.BLACK
+
+    var y = 50f
+    val startX = 50f
+    
+    // 2. LOGO DE LA APP (Izquierda)
+    try {
+        val appIcon = context.packageManager.getApplicationIcon(context.packageName)
+        val bitmap = if (appIcon is BitmapDrawable) {
+            appIcon.bitmap
+        } else {
+            val bmp = Bitmap.createBitmap(appIcon.intrinsicWidth, appIcon.intrinsicHeight, Bitmap.Config.ARGB_8888)
+            val iconCanvas = Canvas(bmp)
+            appIcon.setBounds(0, 0, iconCanvas.width, iconCanvas.height)
+            appIcon.draw(iconCanvas)
+            bmp
+        }
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 60, 60, false)
+        canvas.drawBitmap(scaledBitmap, startX, y, null)
+    } catch (e: Exception) {
+        Log.e("PDF", "Error dibujando icono: ${e.message}")
+    }
+
+    // 3. ENCABEZADO (Derecha del logo)
+    val textStartX = 130f
+    canvas.drawText("Reporte de Uso - Rest Cycle", textStartX, y + 25f, titlePaint)
+    y += 80f
+    
+    // Información del Usuario y Fecha
+    paint.isFakeBoldText = true
+    canvas.drawText("Usuario: $nombreUsuario", startX, y, paint)
+    y += 20f
+    canvas.drawText("Periodo: $periodoStr", startX, y, paint)
+    y += 30f
+    paint.isFakeBoldText = false
+    
+    // Línea separadora azul
+    paint.color = android.graphics.Color.BLUE
+    paint.strokeWidth = 2f
+    canvas.drawLine(startX, y, pageInfo.pageWidth - 50f, y, paint)
+    paint.color = android.graphics.Color.BLACK // Reset color
+    paint.strokeWidth = 1f
+    y += 30f
+    
+    // 4. LISTA DE APPS
+    stats.forEachIndexed { index, app ->
+        if (y > pageInfo.pageHeight - 50f) { // Paginación simple (corte)
+            return@forEachIndexed
+        }
+        val nombre = if (app.appName.length > 30) app.appName.take(30) + "..." else app.appName
+        val tiempo = formatUsageTime(app.totalTimeInMillis)
+        val texto = "${index + 1}. $nombre"
+        
+        // Dibujar nombre a la izquierda
+        canvas.drawText(texto, startX, y, paint)
+        
+        // Dibujar tiempo a la derecha (alineado)
+        val timeWidth = paint.measureText(tiempo)
+        canvas.drawText(tiempo, pageInfo.pageWidth - 50f - timeWidth, y, paint)
+        
+        y += 25f
+    }
+    
+    pdfDocument.finishPage(page)
+
+    // Guardar archivo
+    val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    val fileName = "Reporte_RestCycle_$timeStamp.pdf"
+    
+    // Guardar en Downloads
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val contentValues = android.content.ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "application/pdf")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS)
+        }
+        val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+        uri?.let {
+            try {
+                context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                    pdfDocument.writeTo(outputStream)
+                }
+                Toast.makeText(context, "PDF guardado en Descargas", Toast.LENGTH_LONG).show()
+                // Intentar abrir el archivo
+                // val openIntent = Intent(Intent.ACTION_VIEW).apply {
+                //     setDataAndType(it, "application/pdf")
+                //     flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                // }
+                // context.startActivity(openIntent) 
+                
+                // MOSTRAR NOTIFICACIÓN
+                showDownloadNotification(context, it)
+                
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "Error al guardar PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    } else {
+        val file = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), fileName)
+        try {
+            pdfDocument.writeTo(FileOutputStream(file))
+            Toast.makeText(context, "PDF guardado: ${file.absolutePath}", Toast.LENGTH_LONG).show()
+            
+            // Notificación para legacy (cuidado con FileUriExposedException en >= N)
+            // Por seguridad en este entorno rápido, solo mostramos Toast en legacy
+            // o podríamos usar FileProvider si estuviera configurado.
+        } catch (e: Exception) {
+             e.printStackTrace()
+             Toast.makeText(context, "Error legacy: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    pdfDocument.close()
+}
+
 @Composable
 fun GraficoUso(periodo: Int, context: Context) {
     val usageStats = remember(periodo) { getUsageStats(context, periodo) }
@@ -357,12 +781,13 @@ fun GraficoUso(periodo: Int, context: Context) {
     
     val maxTime = topApps.maxOfOrNull { it.totalTimeInMillis } ?: 1L
     
+    // Paleta AZUL (Oscuro a Claro)
     val colores = listOf(
-        Color(0xFF6750A4), 
-        Color(0xFF4CAF50), 
-        Color(0xFFFFEB3B), 
-        Color(0xFFFF9800), 
-        Color(0xFFF44336)
+        Color(0xFF0D47A1), // Azul muy oscuro 
+        Color(0xFF1565C0), 
+        Color(0xFF1976D2), 
+        Color(0xFF2196F3), 
+        Color(0xFF64B5F6)  // Azul claro
     )
 
     Card(
@@ -477,6 +902,33 @@ fun ListaUsoApps(periodo: Int, context: Context) {
                                 modifier = Modifier.width(24.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
+                            
+                            // App Icon
+                            appInfo.icon?.let { drawable ->
+                                val bitmap = if (drawable is BitmapDrawable) {
+                                    drawable.bitmap
+                                } else {
+                                    val bmp = Bitmap.createBitmap(
+                                        drawable.intrinsicWidth.coerceAtLeast(1),
+                                        drawable.intrinsicHeight.coerceAtLeast(1),
+                                        Bitmap.Config.ARGB_8888
+                                    )
+                                    val canvas = Canvas(bmp)
+                                    drawable.setBounds(0, 0, canvas.width, canvas.height)
+                                    drawable.draw(canvas)
+                                    bmp
+                                }
+                                
+                                Image(
+                                    bitmap = bitmap.asImageBitmap(),
+                                    contentDescription = appInfo.appName,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                            }
+                            
                             Text(
                                 appInfo.appName,
                                 style = MaterialTheme.typography.bodyLarge
