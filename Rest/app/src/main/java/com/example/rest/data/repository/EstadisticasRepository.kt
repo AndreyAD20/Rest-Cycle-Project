@@ -19,13 +19,16 @@ class EstadisticasRepository {
 
     /**
      * Sincronizar estadísticas de uso con la base de datos
+     * Ahora usa historial_apps para estadísticas (no apps_vinculadas)
+     * También crea sesiones sintéticas en sesiones_app
      * 1. Verifica/Crea el dispositivo.
-     * 2. Recorre las apps y actualiza o crea los registros en apps_vinculadas.
+     * 2. Registra el uso de apps en historial_apps para el día actual.
+     * 3. Crea sesiones sintéticas para cada app usada.
      */
     suspend fun sincronizarEstadisticas(context: Context, stats: List<AppUsageInfo>, nombreDispositivo: String = "Android Device") {
         withContext(Dispatchers.IO) {
             try {
-                // 1. Obtener ID del usuario actual (desde SharedPreferences o similar, aquí asumiremos que está logueado y guardado)
+                // 1. Obtener ID del usuario actual
                 val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
                 val userId = sharedPref.getInt("ID_USUARIO", -1)
                 
@@ -36,65 +39,143 @@ class EstadisticasRepository {
 
                 // 2. Gestionar Dispositivo
                 val dispositivoId = obtenerOregistrarDispositivo(userId, nombreDispositivo) ?: return@withContext
+                
+                // Guardar ID de dispositivo en SharedPreferences para el servicio
+                with(sharedPref.edit()) {
+                    putInt("ID_DISPOSITIVO", dispositivoId)
+                    apply()
+                }
 
-                // 3. Sincronizar cada App
-                // Primero obtenemos las apps existentes para saber si hacer update o insert
-                val appsExistentesResponse = api.obtenerAppsVinculadas(idDispositivo = "eq.$dispositivoId")
-                val appsExistentes = if (appsExistentesResponse.isSuccessful) {
-                    appsExistentesResponse.body() ?: emptyList()
+                // 3. Obtener fecha actual
+                val fechaHoy = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                    .format(java.util.Date())
+                val timestampFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
+
+                // 4. Obtener historial existente de hoy
+                val historialHoyResponse = api.obtenerHistorialAppsPorFecha(
+                    idDispositivo = "eq.$dispositivoId",
+                    fecha = "eq.$fechaHoy"
+                )
+                
+                val historialHoy = if (historialHoyResponse.isSuccessful) {
+                    historialHoyResponse.body() ?: emptyList()
                 } else {
                     emptyList()
                 }
 
-                val appsMap = appsExistentes.associateBy { it.nombre.lowercase() }
+                val historialMap = historialHoy.associateBy { it.nombrePaquete }
 
-                Log.d(TAG, "Sincronizando ${stats.size} apps. Apps existentes en BD: ${appsExistentes.size}")
+                // 4b. Obtener sesiones de hoy (OPTIMIZACIÓN: UNA SOLA LLAMADA)
+                val sesionesResponse = api.obtenerSesionesPorFecha(
+                    idDispositivo = "eq.$dispositivoId",
+                    inicio = "gte.${fechaHoy}T00:00:00"
+                )
+                
+                val sesionesHoy = if (sesionesResponse.isSuccessful) {
+                    sesionesResponse.body() ?: emptyList()
+                } else {
+                    emptyList()
+                }
+                
+                val sesionesMap = sesionesHoy.groupBy { it.nombrePaquete }
 
-                stats.forEach { appStat ->
-                    // Convertir tiempo a minutos (schema es integer)
-                    val tiempoMinutos = (appStat.totalTimeInMillis / 60000).toInt()
+                Log.d(TAG, "Sincronizando stats (${stats.size}) + sesiones (${sesionesMap.size})")
+
+                // 4c. COMBINAR DATOS: UsageStats + Sesiones
+                // Crear un set con todos los paquetes (de stats y de sesiones)
+                val allPackages = stats.map { it.packageName }.toMutableSet()
+                allPackages.addAll(sesionesMap.keys)
+                
+                allPackages.forEach { packageName ->
+                    // Buscar en stats (puede ser null si solo está en sesiones)
+                    val appStat = stats.find { it.packageName == packageName }
                     
-                    val appExistente = appsMap[appStat.appName.lowercase()]
-                    val categoria = inferirCategoria(context, appStat.packageName)
+                    // Calcular tiempo y nombre
+                    val tiempoMinutos = ((appStat?.totalTimeInMillis ?: 0) / 60000).toInt()
+                    val tiempoSegundos = ((appStat?.totalTimeInMillis ?: 0) / 1000).toInt()
                     
-                    if (appExistente != null) {
-                        // UPDATE
-                        Log.d(TAG, "Actualizando: ${appStat.appName} (${tiempoMinutos}min, cat: $categoria)")
-                        // Actualizar si el tiempo cambió O si la categoría es diferente
-                        val needsUpdate = appExistente.tiempoUso != tiempoMinutos || 
-                                         appExistente.categoria != categoria
-                        
-                        if (needsUpdate) {
-                             val updateData = mutableMapOf<String, Any>(
-                                "tiempouso" to tiempoMinutos,
-                                "categoria" to categoria // Siempre actualizar categoría
-                            )
-                            
-                            val updateResponse = api.actualizarAppVinculada("eq.${appExistente.id}", updateData)
-                            if (!updateResponse.isSuccessful) {
-                                Log.e(TAG, "Error actualizando ${appStat.appName}: ${updateResponse.code()}")
-                            } else {
-                                Log.d(TAG, "✓ Actualizado correctamente")
-                            }
-                        } else {
-                            Log.d(TAG, "Sin cambios, omitiendo actualización")
+                    // Si no está en stats, intentamos sacar nombre del primer registro de sesión o usar el paquete
+                    val appName = appStat?.appName ?: sesionesMap[packageName]?.firstOrNull()?.nombrePaquete ?: packageName
+                    
+                    // Calcular número de aperturas real basado en sesiones
+                    val sesionesApp = sesionesMap[packageName] ?: emptyList()
+                    val numeroAperturasReal = if (sesionesApp.isNotEmpty()) sesionesApp.size else 1
+                    
+                    // IMPORTANTE: Procesar si tiene tiempo en UsageStats O si tiene sesiones registradas
+                    // Si tiene sesiones, significa que HUBO uso, aunque UsageStats diga 0
+                    if (tiempoSegundos == 0 && sesionesApp.isEmpty()) {
+                        return@forEach
+                    }
+                    
+                    Log.d(TAG, "Procesando: $appName - ${tiempoMinutos}min ${tiempoSegundos}seg, ${numeroAperturasReal} opens")
+                    
+                    val categoria = inferirCategoria(context, packageName)
+                    val historialExistente = historialMap[packageName]
+                    
+                    // Guardar en historial
+                    if (historialExistente != null) {
+                        // UPDATE - Actualizar si cambiaron los datos
+                        if (historialExistente.tiempoUso != tiempoMinutos || historialExistente.numeroAperturas != numeroAperturasReal) {
+                             // Log.d(TAG, "Actualizando historial: $appName...") // Reducir log spam
+                             
+                             val updateData = mapOf<String, Any>(
+                                 "tiempo_uso" to tiempoMinutos,
+                                 "numero_aperturas" to numeroAperturasReal
+                             )
+                             
+                             val updateResponse = api.actualizarHistorialApp("eq.${historialExistente.id}", updateData)
+                             if (updateResponse.isSuccessful) {
+                                 Log.d(TAG, "Actualizado: $appName ($tiempoMinutos min, $numeroAperturasReal opens)")
+                             } else {
+                                 Log.e(TAG, "Error actualizando $appName: ${updateResponse.code()}")
+                             }
                         }
                     } else {
-                        // INSERT
-                        Log.d(TAG, "Insertando nueva app: ${appStat.appName} (${tiempoMinutos}min, cat: $categoria)")
-                        val nuevaApp = AppVinculada(
+                        // INSERT - Crear nuevo registro
+                        Log.d(TAG, "Insertando: $appName ($tiempoMinutos min, $numeroAperturasReal opens)")
+                        
+                        val nuevoHistorial = com.example.rest.data.models.HistorialApp(
                             idDispositivo = dispositivoId,
-                            nombre = appStat.appName,
-                            tiempoUso = tiempoMinutos,
+                            nombre = appName,
+                            nombrePaquete = packageName,
                             categoria = categoria,
-                            tiempoLimite = 0 // Default
+                            tiempoUso = tiempoMinutos,
+                            numeroAperturas = numeroAperturasReal,
+                            fecha = fechaHoy
                         )
-                        val createResponse = api.crearAppVinculada(nuevaApp)
+                        
+                        val createResponse = api.registrarUsoApp(nuevoHistorial)
                         if (!createResponse.isSuccessful) {
-                            Log.e(TAG, "Error insertando ${appStat.appName}: ${createResponse.code()}")
+                            Log.e(TAG, "Error insertando $appName: ${createResponse.code()}")
                         }
                     }
+                    
+                    // 5. Crear sesión sintética (Solo si NO existe sesión y SÍ hubo tiempo)
+                    try {
+                        val tieneSesion = sesionesApp.isNotEmpty()
+                        
+                        if (!tieneSesion && tiempoSegundos > 0) {
+                            // Crear sesión sintética
+                            val ahora = java.util.Date()
+                            val inicioSesion = java.util.Date(ahora.time - (appStat?.totalTimeInMillis ?: 0))
+                            
+                            val nuevaSesion = com.example.rest.data.models.SesionAppInput(
+                                idDispositivo = dispositivoId,
+                                nombrePaquete = packageName,
+                                inicio = timestampFormat.format(inicioSesion),
+                                fin = timestampFormat.format(ahora),
+                                duracion = tiempoSegundos,
+                                activa = false
+                            )
+                            
+                            // Log.d(TAG, "Creando sesión sintética para $appName")
+                            val sesionResponse = api.iniciarSesion(nuevaSesion)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error sesión sintética: ${e.message}")
+                    }
                 }
+                
                 Log.d(TAG, "Sincronización completada con éxito.")
 
             } catch (e: Exception) {

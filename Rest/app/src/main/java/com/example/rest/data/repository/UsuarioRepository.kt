@@ -478,4 +478,30 @@ class UsuarioRepository {
             }
         }
     }
+
+    /**
+     * Actualizar foto de perfil del usuario
+     * @param userId ID del usuario
+     * @param fotoBase64 Imagen en formato Base64 (null para eliminar)
+     * @return Result indicando éxito o error
+     */
+    suspend fun actualizarFotoPerfil(userId: Int, fotoBase64: String?): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val updateData = mapOf("foto_perfil" to fotoBase64)
+                val response = api.actualizarFotoPerfil(
+                    id = "eq.$userId",
+                    update = updateData
+                )
+                
+                if (response.isSuccessful) {
+                    Result.Success(true)
+                } else {
+                    Result.Error("Error al actualizar foto: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Result.Error("Excepción al actualizar foto: ${e.message}")
+            }
+        }
+    }
 }

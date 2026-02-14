@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
@@ -274,12 +275,20 @@ fun DialogoEvento(
             Row {
                 // Botón Eliminar (solo en modo edición)
                 if (esEdicion && onEliminar != null) {
-                    TextButton(
+                    Button(
                         onClick = onEliminar,
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color(0xFFFF5252)
-                        )
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFEF5350), // Rojo más suave
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text("Eliminar")
                     }
                     Spacer(modifier = Modifier.width(8.dp))

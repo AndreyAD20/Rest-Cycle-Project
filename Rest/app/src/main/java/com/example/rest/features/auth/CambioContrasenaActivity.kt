@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
+import androidx.activity.compose.BackHandler
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import com.example.rest.data.repository.RecuperacionRepository
@@ -49,10 +50,34 @@ class CambioContrasenaActivity : BaseComposeActivity() {
         setContent {
             TemaRest {
                 var cargando by remember { mutableStateOf(false) }
+                var mostrarDialogoSalir by remember { mutableStateOf(false) }
+                
+                if (mostrarDialogoSalir) {
+                    AlertDialog(
+                        onDismissRequest = { mostrarDialogoSalir = false },
+                        title = { Text("¿Cancelar cambio de contraseña?") },
+                        text = { Text("Si sales ahora, perderás el progreso y tendrás que solicitar un nuevo código.") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    mostrarDialogoSalir = false
+                                    finish()
+                                }
+                            ) {
+                                Text("Sí, salir")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { mostrarDialogoSalir = false }) {
+                                Text("Cancelar")
+                            }
+                        }
+                    )
+                }
                 
                 PantallaCambioContrasena(
                     alClickRegresar = {
-                        finish()
+                        mostrarDialogoSalir = true
                     },
                     alClickConfirmar = { nuevaContrasena, confirmarContrasena ->
                         when {
@@ -131,6 +156,11 @@ fun PantallaCambioContrasena(
 ) {
     var nuevaContrasena by remember { mutableStateOf("") }
     var confirmarContrasena by remember { mutableStateOf("") }
+    
+    // Interceptar botón atrás del sistema
+    BackHandler {
+        alClickRegresar()
+    }
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
@@ -196,7 +226,7 @@ fun PantallaCambioContrasena(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "Cambia a tu nuevo Pin\nque no se te olvide",
+                            text = "Cambia tu contraseña\nque no se te olvide",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Negro,
                             textAlign = TextAlign.Center,
@@ -212,7 +242,7 @@ fun PantallaCambioContrasena(
                 onValueChange = { nuevaContrasena = it },
                 placeholder = {
                     Text(
-                        "Nuevo Pin",
+                        "Nueva Contraseña",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -243,7 +273,7 @@ fun PantallaCambioContrasena(
                 onValueChange = { confirmarContrasena = it },
                 placeholder = {
                     Text(
-                        "Confirmar Pin",
+                        "Confirmar Contraseña",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -276,7 +306,7 @@ fun PantallaCambioContrasena(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF004D40)
+                    containerColor = Primario
                 ),
                 enabled = !cargando
             ) {

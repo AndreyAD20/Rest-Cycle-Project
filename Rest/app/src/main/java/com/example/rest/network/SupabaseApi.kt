@@ -82,6 +82,15 @@ interface SupabaseApi {
     ): Response<List<Usuario>>
     
     /**
+     * Actualizar foto de perfil de usuario
+     */
+    @PATCH("usuario")
+    suspend fun actualizarFotoPerfil(
+        @Query("id") id: String,
+        @Body update: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<List<Usuario>>
+    
+    /**
      * Marcar usuario como verificado
      */
     @PATCH("usuario")
@@ -426,4 +435,90 @@ interface SupabaseApi {
      * pero Retrofit lo maneja mejor con lógica en repositorio.
      * Aquí definimos endpoints básicos.
      */
+    
+    // ==================== HISTORIAL APPS (ESTADÍSTICAS) ====================
+    
+    /**
+     * Obtener historial de apps por dispositivo
+     */
+    @GET("historial_apps")
+    suspend fun obtenerHistorialApps(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("select") select: String = "*"
+    ): Response<List<HistorialApp>>
+    
+    /**
+     * Obtener historial de apps por dispositivo y fecha
+     */
+    @GET("historial_apps")
+    suspend fun obtenerHistorialAppsPorFecha(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("fecha") fecha: String,
+        @Query("select") select: String = "*"
+    ): Response<List<HistorialApp>>
+    
+    /**
+     * Registrar uso de app en historial
+     */
+    @POST("historial_apps")
+    suspend fun registrarUsoApp(
+        @Body historial: HistorialApp
+    ): Response<List<HistorialApp>>
+    
+    /**
+     * Actualizar registro de historial
+     */
+    @PATCH("historial_apps")
+    suspend fun actualizarHistorialApp(
+        @Query("id") id: String,
+        @Body update: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<HistorialApp>>
+    
+    // ==================== SESIONES APP ====================
+    
+    /**
+     * Obtener sesiones activas de un dispositivo
+     */
+    @GET("sesiones_app")
+    suspend fun obtenerSesionesActivas(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("activa") activa: String = "eq.true",
+        @Query("select") select: String = "*"
+    ): Response<List<SesionApp>>
+    
+    /**
+     * Obtener todas las sesiones de un dispositivo
+     */
+    @GET("sesiones_app")
+    suspend fun obtenerSesiones(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("select") select: String = "*"
+    ): Response<List<SesionApp>>
+    
+    /**
+     * Iniciar nueva sesión de app
+     */
+    @POST("sesiones_app")
+    suspend fun iniciarSesion(
+        @Body sesion: SesionAppInput
+    ): Response<List<SesionApp>>
+    
+    /**
+     * Finalizar sesión de app
+     */
+    @PATCH("sesiones_app")
+    suspend fun finalizarSesion(
+        @Query("id") id: String,
+        @Body update: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<SesionApp>>
+    
+    /**
+     * Obtener sesiones por rango de fechas
+     */
+    @GET("sesiones_app")
+    suspend fun obtenerSesionesPorFecha(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("inicio") inicio: String,
+        @Query("select") select: String = "*"
+    ): Response<List<SesionApp>>
 }

@@ -47,12 +47,20 @@ object SupabaseClient {
         .build()
     
     /**
+     * Gson configurado para serializar nulos (necesario para eliminar campos en PATCH)
+     */
+    private val gson = com.google.gson.GsonBuilder()
+        .serializeNulls()
+        .setDateFormat("yyyy-MM-dd'T'HH:mm:ss")
+        .create()
+
+    /**
      * Instancia de Retrofit configurada para Supabase
      */
     private val retrofit: Retrofit = Retrofit.Builder()
         .baseUrl(SupabaseConfig.REST_API_URL)
         .client(okHttpClient)
-        .addConverterFactory(GsonConverterFactory.create())
+        .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
     
     /**

@@ -231,7 +231,7 @@ fun PantallaOlvidoContrasena(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF004D40)
+                    containerColor = Primario
                 ),
                 enabled = !cargando
             ) {

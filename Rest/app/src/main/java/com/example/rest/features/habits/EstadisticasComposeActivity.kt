@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -125,7 +127,8 @@ class EstadisticasComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            TemaRest {
+            val isDarkMode = com.example.rest.utils.ThemeManager.isDarkMode(this)
+            TemaRest(temaOscuro = isDarkMode) {
                 PantallaEstadisticas(onBackClick = { finish() })
             }
         }
@@ -138,6 +141,7 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
     val context = LocalContext.current
     var hasPermission by remember { mutableStateOf(checkUsageStatsPermission(context)) }
     var periodoSeleccionado by remember { mutableStateOf(0) }
+    var semanaOffset by remember { mutableStateOf(0) } // 0 = Actual, -1 = Anterior
     var showDownloadDialog by remember { mutableStateOf(false) }
     val periodos = listOf("Diario", "Semanal", "Mensual")
     
@@ -169,17 +173,13 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
             }
         }
         
-        // SINCRONIZACIÓN AUTOMÁTICA CON SUPABASE
-        // Subimos las estadísticas de HOY al entrar a la pantalla
+        // SINCRONIZACIÓN AUTOMÁTICA CON SUPABASE (Solo hoy)
         if (hasPermission) {
             scope.launch {
                 try {
                     val statsHoy = getUsageStats(context, 0) // 0 = Hoy
-                    // Obtener nombre real del dispositivo si se puede, o usar modelo
                     val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}"
                     estadisticasRepo.sincronizarEstadisticas(context, statsHoy, deviceName)
-                    // Opcional: Toast para debug
-                    // Toast.makeText(context, "Sincronizando...", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Log.e("Sync", "Error sync auto: ${e.message}")
                 }
@@ -201,8 +201,8 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
             confirmButton = {
                 TextButton(onClick = {
                     showDownloadDialog = false
-                    val stats = getUsageStats(context, periodoSeleccionado)
-                    generarReportePDF(context, stats, getPeriodoFecha(periodoSeleccionado), nombreUsuario)
+                    val stats = getUsageStats(context, periodoSeleccionado, semanaOffset)
+                    generarReportePDF(context, stats, getPeriodoFecha(periodoSeleccionado, semanaOffset), nombreUsuario)
                 }) {
                     Text("Descargar")
                 }
@@ -263,19 +263,20 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                         Spacer(modifier = Modifier.height(16.dp))
                         TabRow(
                             selectedTabIndex = periodoSeleccionado,
-                            containerColor = Blanco.copy(alpha = 0.3f), // Mantener sutil
-                            // contentColor = Color.DarkGray, // Cambiar a oscuro por default
+                            containerColor = Blanco.copy(alpha = 0.3f),
                             divider = {}
                         ) {
                             periodos.forEachIndexed { index, titulo ->
                                 Tab(
                                     selected = periodoSeleccionado == index,
-                                    onClick = { periodoSeleccionado = index },
+                                    onClick = { 
+                                        periodoSeleccionado = index 
+                                        semanaOffset = 0 // Resetear offset al cambiar tabs
+                                    },
                                     text = {
                                         Text(
                                             titulo,
                                             fontWeight = if (periodoSeleccionado == index) FontWeight.Bold else FontWeight.Normal,
-                                            // COLORES OSCUROS: Primario para seleccionado (es oscuro), Gris oscuro para no seleccionado
                                             color = if (periodoSeleccionado == index) Primario else Color.DarkGray
                                         )
                                     }
@@ -283,15 +284,52 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                             }
                         }
                         
-                        // FECHA
-                         Spacer(modifier = Modifier.height(24.dp))
-                        Text(
-                            text = getPeriodoFecha(periodoSeleccionado),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Negro,
-                            textAlign = TextAlign.Center
-                        )
+                        // FECHA CON NAVEGACIÓN (Solo si es semanal)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (periodoSeleccionado == 1) { // Semanal
+                                IconButton(
+                                    onClick = { 
+                                        if (semanaOffset > -1) semanaOffset-- 
+                                    },
+                                    enabled = semanaOffset > -1
+                                ) {
+                                    Icon(
+                                        Icons.Default.KeyboardArrowLeft, 
+                                        "Anterior",
+                                        tint = if (semanaOffset > -1) Negro else Color.Gray.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                            
+                            Text(
+                                text = getPeriodoFecha(periodoSeleccionado, semanaOffset),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Negro,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                            
+                            if (periodoSeleccionado == 1) { // Semanal
+                                IconButton(
+                                    onClick = { 
+                                        if (semanaOffset < 0) semanaOffset++ 
+                                    },
+                                    enabled = semanaOffset < 0
+                                ) {
+                                    Icon(
+                                        Icons.Default.KeyboardArrowRight, 
+                                        "Siguiente",
+                                        tint = if (semanaOffset < 0) Negro else Color.Gray.copy(alpha = 0.5f)
+                                    )
+                                }
+                            }
+                        }
                         
                         // BOTÓN DE DESCARGA EXTENDIDO
                         Spacer(modifier = Modifier.height(16.dp))
@@ -299,7 +337,7 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                             onClick = { showDownloadDialog = true },
                             icon = { Icon(Icons.Default.Download, "Descargar") },
                             text = { Text("DESCARGAR REPORTE", fontWeight = FontWeight.Bold) },
-                            containerColor = Primario, // Color llamativo
+                            containerColor = Primario,
                             contentColor = Blanco,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -309,12 +347,26 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                     }
 
                     item {
-                        GraficoUso(periodoSeleccionado, context)
+                        // Mostrar gráfico diferente según el periodo
+                        if (periodoSeleccionado == 1) {
+                            // Vista semanal: Mostrar gráfico de barras diario
+                            val datosDiarios = remember(semanaOffset) { getUsageStatsDiario(context, semanaOffset) }
+                            // Calcular fechas para el gráfico
+                             val fechaTexto = getPeriodoFecha(1, semanaOffset)
+                             val splitted = fechaTexto.split(" - ")
+                             val inicio = splitted.getOrElse(0) { "" }
+                             val fin = splitted.getOrElse(1) { "" }
+                            
+                            GraficoBarrasSemanal(datosDiarios, inicio, fin)
+                        } else {
+                            // Vista diaria y mensual: Gráfico top apps
+                            GraficoUso(periodoSeleccionado, semanaOffset, context)
+                        }
                         Spacer(modifier = Modifier.height(32.dp))
                     }
 
                     item {
-                        ListaUsoApps(periodoSeleccionado, context)
+                        ListaUsoApps(periodoSeleccionado, semanaOffset, context)
                         Spacer(modifier = Modifier.height(32.dp))
                     }
                     
@@ -452,12 +504,12 @@ fun requestUsageStatsPermission(context: Context) {
     context.startActivity(intent)
 }
 
-fun getUsageStats(context: Context, period: Int): List<AppUsageInfo> {
+fun getUsageStats(context: Context, period: Int, offset: Int = 0): List<AppUsageInfo> {
     val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
     val packageManager = context.packageManager
     
     val calendar = Calendar.getInstance()
-    val endTime = calendar.timeInMillis
+    var endTime = calendar.timeInMillis // Default to now
     
     val startCalendar = Calendar.getInstance()
     startCalendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -466,9 +518,51 @@ fun getUsageStats(context: Context, period: Int): List<AppUsageInfo> {
     startCalendar.set(Calendar.MILLISECOND, 0)
     
     when (period) {
-        0 -> { /* Diario - desde las 00:00 de HOY */ }
-        1 -> startCalendar.add(Calendar.DAY_OF_YEAR, -7)
-        else -> startCalendar.set(Calendar.DAY_OF_MONTH, 1) // Mensual: Desde el 1 del mes
+        0 -> { /* Diario - desde las 00:00 de HOY */ 
+            startCalendar.add(Calendar.DAY_OF_YEAR, offset)
+            endTime = startCalendar.timeInMillis + 86400000L - 1 // Final del día (aprox)
+            
+            // Re-ajustar startCalendar para el inicio del día específico
+            val specificStart = Calendar.getInstance()
+            specificStart.timeInMillis = startCalendar.timeInMillis
+            // Ya está en 00:00:00 del día con offset
+            
+            // Ajustar endTime al final de ese día
+            val specificEnd = Calendar.getInstance()
+            specificEnd.timeInMillis = startCalendar.timeInMillis
+            specificEnd.set(Calendar.HOUR_OF_DAY, 23)
+            specificEnd.set(Calendar.MINUTE, 59)
+            specificEnd.set(Calendar.SECOND, 59)
+            endTime = specificEnd.timeInMillis
+        }
+        1 -> { // Semanal
+            startCalendar.firstDayOfWeek = Calendar.MONDAY
+            startCalendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+            startCalendar.add(Calendar.WEEK_OF_YEAR, offset)
+            
+            val endCalendar = Calendar.getInstance()
+            endCalendar.timeInMillis = startCalendar.timeInMillis
+            endCalendar.add(Calendar.DAY_OF_YEAR, 6)
+            endCalendar.set(Calendar.HOUR_OF_DAY, 23)
+            endCalendar.set(Calendar.MINUTE, 59)
+            endCalendar.set(Calendar.SECOND, 59)
+            
+            endTime = endCalendar.timeInMillis
+        }
+        else -> { // Mensual
+            startCalendar.set(Calendar.DAY_OF_MONTH, 1)
+            startCalendar.add(Calendar.MONTH, offset)
+            
+            val endCalendar = Calendar.getInstance()
+            endCalendar.timeInMillis = startCalendar.timeInMillis
+            endCalendar.add(Calendar.MONTH, 1)
+            endCalendar.add(Calendar.DAY_OF_YEAR, -1) // Último día del mes
+            endCalendar.set(Calendar.HOUR_OF_DAY, 23)
+            endCalendar.set(Calendar.MINUTE, 59)
+            endCalendar.set(Calendar.SECOND, 59)
+            
+            endTime = endCalendar.timeInMillis
+        }
     }
     
     val startTime = startCalendar.timeInMillis
@@ -608,27 +702,141 @@ fun formatUsageTime(timeInMillis: Long): String {
 }
 
 // Helper para obtener el texto de la fecha según el periodo (CON AÑO)
-fun getPeriodoFecha(periodo: Int): String {
+fun getPeriodoFecha(periodo: Int, offset: Int = 0): String {
     val calendar = Calendar.getInstance()
     // Locale español para nombres de meses
-    val formatoDia = SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
-    val hoyStr = formatoDia.format(calendar.time)
+    val formatoDia = SimpleDateFormat("dd MMM", Locale("es", "ES"))
+    val formatoDiaFull = SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
 
     return when (periodo) {
-        0 -> "Hoy, $hoyStr"
+        0 -> {
+            calendar.add(Calendar.DAY_OF_YEAR, offset)
+            if (offset == 0) "Hoy, ${formatoDiaFull.format(calendar.time)}"
+            else formatoDiaFull.format(calendar.time)
+        }
         1 -> {
-            val fin = calendar.time
-            calendar.add(Calendar.DAY_OF_YEAR, -7)
+            calendar.firstDayOfWeek = Calendar.MONDAY
+            calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+            calendar.add(Calendar.WEEK_OF_YEAR, offset)
+            
             val inicio = calendar.time
+            calendar.add(Calendar.DAY_OF_YEAR, 6)
+            val fin = calendar.time
             "${formatoDia.format(inicio)} - ${formatoDia.format(fin)}"
         }
         else -> {
-            val fin = calendar.time
             calendar.set(Calendar.DAY_OF_MONTH, 1) // Inicio de mes
+            calendar.add(Calendar.MONTH, offset)
             val inicio = calendar.time
+            
+            calendar.add(Calendar.MONTH, 1)
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+            val fin = calendar.time
             "${formatoDia.format(inicio)} - ${formatoDia.format(fin)}"
         }
     }
+}
+
+/**
+ * Obtiene el uso diario para la gráfica semanal
+ * Retorna un mapa con los días de la semana y el tiempo en milisegundos
+ */
+fun getUsageStatsDiario(context: Context, offset: Int = 0): Map<String, Long> {
+    val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+    val calendar = Calendar.getInstance()
+    
+    // Configurar al Lunes de la semana seleccionada
+    calendar.firstDayOfWeek = Calendar.MONDAY
+    calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    calendar.add(Calendar.WEEK_OF_YEAR, offset)
+    
+    val diasSemana = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+    val resultado = mutableMapOf<String, Long>()
+    
+    // Iterar por los 7 días
+    val packageManager = context.packageManager
+    for (i in 0 until 7) {
+        val startDay = calendar.timeInMillis
+        calendar.add(Calendar.DAY_OF_YEAR, 1)
+        val endDay = calendar.timeInMillis - 1
+        
+        // Usar queryAndAggregateUsageStats para mayor precisión
+        val statsMap = usageStatsManager.queryAndAggregateUsageStats(startDay, endDay)
+        
+        var totalDia = 0L
+        if (statsMap != null) {
+             statsMap.forEach { (packageName, stats) ->
+                 try {
+                     // Obtener información de la app
+                     val appInfo = packageManager.getApplicationInfo(packageName, 0)
+                     
+                     // Definiciones idénticas a getUsageStats para consistencia
+                     val isSystemApp = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                     val isUpdatedSystemApp = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                     
+                     val isWhitelisted = packageName.contains("com.google.android.youtube") || 
+                                       packageName.contains("com.google.android.apps.maps") || 
+                                       packageName.contains("com.google.android.gm") || 
+                                       packageName.contains("com.android.chrome") || 
+                                       packageName.contains("com.google.android.apps.photos") || 
+                                       packageName.contains("com.whatsapp") || 
+                                       packageName.contains("com.facebook") ||
+                                       packageName.contains("com.instagram") ||
+                                       packageName.contains("com.twitter")
+                                       
+                     val isBlacklisted = packageName.contains("launcher") || 
+                                       packageName.contains("systemui") || 
+                                       packageName.contains("settings") || 
+                                       packageName.contains("wallpaper") ||
+                                       packageName.contains("inputmethod") || 
+                                       packageName.contains("provider") ||
+                                       packageName.contains("service") ||
+                                       packageName == "android" ||
+                                       packageName.startsWith("com.android.internal") ||
+                                       packageName.contains("com.motorola.ccc") || 
+                                       packageName.contains("com.motorola.android")
+                     
+                     val appName = packageManager.getApplicationLabel(appInfo).toString()
+                     val blacklist = listOf(
+                         "clima local", "moto secure", "family space", "widgets moto", 
+                         "moto widget", "cámara", "teclado"
+                     )
+                     val normalizedName = appName.lowercase()
+                     val isBlocked = blacklist.any { normalizedName.contains(it) }
+
+                     // Lógica de filtrado
+                     var shouldInclude = true
+                     
+                     // 1. Si es sistema y NO está en whitelist -> Excluir
+                     if ((isSystemApp || isUpdatedSystemApp) && !isWhitelisted) {
+                         shouldInclude = false
+                     }
+                     
+                     // 2. Si está en blacklist -> Excluir
+                     if (isBlacklisted || isBlocked) {
+                         shouldInclude = false
+                     }
+                     
+                     // NOTA: NO excluimos context.packageName para ser consistentes con la lista
+                     
+                     if (shouldInclude) {
+                         totalDia += stats.totalTimeInForeground
+                     }
+                     
+                 } catch (e: Exception) {
+                     // Si falla obtener info (ej. app desinstalada), ignorar para no inflar stats con basura
+                 }
+             }
+        }
+        
+        resultado[diasSemana[i]] = totalDia
+    }
+    
+    return resultado
 }
 
 fun generarReportePDF(context: Context, stats: List<AppUsageInfo>, periodoStr: String, nombreUsuario: String) {
@@ -775,8 +983,8 @@ fun generarReportePDF(context: Context, stats: List<AppUsageInfo>, periodoStr: S
 }
 
 @Composable
-fun GraficoUso(periodo: Int, context: Context) {
-    val usageStats = remember(periodo) { getUsageStats(context, periodo) }
+fun GraficoUso(periodo: Int, offset: Int, context: Context) {
+    val usageStats = remember(periodo, offset) { getUsageStats(context, periodo, offset) }
     val topApps = usageStats.take(5)
     
     val maxTime = topApps.maxOfOrNull { it.totalTimeInMillis } ?: 1L
@@ -860,8 +1068,8 @@ fun GraficoUso(periodo: Int, context: Context) {
 }
 
 @Composable
-fun ListaUsoApps(periodo: Int, context: Context) {
-    val usageStats = remember(periodo) { getUsageStats(context, periodo) }
+fun ListaUsoApps(periodo: Int, offset: Int, context: Context) {
+    val usageStats = remember(periodo, offset) { getUsageStats(context, periodo, offset) }
     val topApps = usageStats.take(10)
     
     Card(

@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +54,8 @@ class PerfilComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            TemaRest {
+            val isDarkMode = com.example.rest.utils.ThemeManager.isDarkMode(this)
+            TemaRest(temaOscuro = isDarkMode) {
                 PantallaPerfil(onBackClick = { finish() })
             }
         }
@@ -73,9 +76,22 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
 
     // Cargar imagen guardada al inicio
     LaunchedEffect(Unit) {
-        val bitmap = getProfileImageBitmap(context)
-        if (bitmap != null) {
-            profileImageBitmap = bitmap
+        val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
+        val userId = sharedPref.getInt("ID_USUARIO", -1)
+        
+        if (userId != -1) {
+            // Primero intentar cargar desde almacenamiento local
+            val bitmap = getProfileImageBitmap(context, userId)
+            if (bitmap != null) {
+                profileImageBitmap = bitmap
+            } else {
+                // Si no existe localmente, intentar descargar desde Supabase
+                scope.launch {
+                    descargarFotoDeSupabase(context, userId)?.let {
+                        profileImageBitmap = it
+                    }
+                }
+            }
         }
     }
 
@@ -99,15 +115,39 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
     // Launchers para cámara y galería
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success && tempCameraUri != null) {
-            saveImageToInternalStorage(context, tempCameraUri!!)
-            profileImageBitmap = getProfileImageBitmap(context)
+            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
+            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            
+            if (userId != -1) {
+                saveImageToInternalStorage(context, tempCameraUri!!, userId)
+                profileImageBitmap = getProfileImageBitmap(context, userId)
+                
+                // Subir a Supabase
+                scope.launch {
+                    profileImageBitmap?.let { bitmap ->
+                        subirFotoASupabase(context, bitmap)
+                    }
+                }
+            }
         }
     }
     
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
-            saveImageToInternalStorage(context, uri)
-            profileImageBitmap = getProfileImageBitmap(context)
+            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
+            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            
+            if (userId != -1) {
+                saveImageToInternalStorage(context, uri, userId)
+                profileImageBitmap = getProfileImageBitmap(context, userId)
+                
+                // Subir a Supabase
+                scope.launch {
+                    profileImageBitmap?.let { bitmap ->
+                        subirFotoASupabase(context, bitmap)
+                    }
+                }
+            }
         }
     }
 
@@ -141,27 +181,85 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { showImageSourceDialog = false },
-            title = { Text("Cambiar Foto de Perfil") },
-            text = { Text("Elige una opción:") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showImageSourceDialog = false
-                    val permissionCheckResult = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                    if (permissionCheckResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        launchCamera()
-                    } else {
-                        permissionLauncher.launch(Manifest.permission.CAMERA)
+            title = { Text("Foto de Perfil") },
+            text = {
+                Column {
+                    Text("Elige una opción:")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Botón Cámara
+                    Button(
+                        onClick = {
+                            showImageSourceDialog = false
+                            val permissionCheckResult = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                            if (permissionCheckResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                launchCamera()
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Primario)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Tomar Foto")
                     }
-                }) {
-                    Text("Cámara")
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Botón Galería
+                    Button(
+                        onClick = {
+                            showImageSourceDialog = false
+                            galleryLauncher.launch("image/*")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Primario)
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Elegir de Galería")
+                    }
+                    
+                    // Mostrar botón de eliminar solo si hay foto
+                    if (profileImageBitmap != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Button(
+                            onClick = {
+                                showImageSourceDialog = false
+                                // Eliminar foto
+                                val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
+                                val userId = sharedPref.getInt("ID_USUARIO", -1)
+                                
+                                if (userId != -1) {
+                                    // Eliminar localmente
+                                    deleteProfileImage(context, userId)
+                                    profileImageBitmap = null
+                                    
+                                    // Eliminar de Supabase
+                                    scope.launch {
+                                        eliminarFotoDeSupabase(context)
+                                    }
+                                    
+                                    Toast.makeText(context, "Foto eliminada", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF5350))
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Eliminar Foto")
+                        }
+                    }
                 }
             },
+            confirmButton = {},
             dismissButton = {
-                TextButton(onClick = {
-                    showImageSourceDialog = false
-                    galleryLauncher.launch("image/*")
-                }) {
-                    Text("Galería")
+                TextButton(onClick = { showImageSourceDialog = false }) {
+                    Text("Cancelar")
                 }
             }
         )
@@ -302,6 +400,17 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                             label = { Text("Cerrar Sesión", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
                             selected = false,
                             onClick = {
+                                // Limpiar fotos de perfil locales
+                                try {
+                                    context.filesDir.listFiles()?.forEach { file ->
+                                        if (file.name.startsWith("profile_image_")) {
+                                            file.delete()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("PerfilDebug", "Error al limpiar fotos: ${e.message}")
+                                }
+                                
                                 // Borrar sesión y volver al login
                                 val sharedAction = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
                                 with(sharedAction.edit()) {
@@ -541,10 +650,10 @@ fun createImageFile(context: Context): File {
     return File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
 }
 
-fun saveImageToInternalStorage(context: Context, uri: Uri) {
+fun saveImageToInternalStorage(context: Context, uri: Uri, userId: Int) {
     try {
         val inputStream = context.contentResolver.openInputStream(uri)
-        val outputStream = context.openFileOutput("profile_image.jpg", Context.MODE_PRIVATE)
+        val outputStream = context.openFileOutput("profile_image_$userId.jpg", Context.MODE_PRIVATE)
         inputStream?.use { input ->
             outputStream.use { output ->
                 input.copyTo(output)
@@ -555,8 +664,8 @@ fun saveImageToInternalStorage(context: Context, uri: Uri) {
     }
 }
 
-fun getProfileImageBitmap(context: Context): Bitmap? {
-    val file = File(context.filesDir, "profile_image.jpg")
+fun getProfileImageBitmap(context: Context, userId: Int): Bitmap? {
+    val file = File(context.filesDir, "profile_image_$userId.jpg")
     return if (file.exists()) {
         try {
             val bitmap = BitmapFactory.decodeFile(file.absolutePath)
@@ -586,5 +695,155 @@ fun getProfileImageBitmap(context: Context): Bitmap? {
         }
     } else {
         null
+    }
+}
+
+/**
+ * Subir foto de perfil a Supabase como Base64
+ */
+suspend fun subirFotoASupabase(context: Context, bitmap: Bitmap) {
+    withContext(Dispatchers.IO) {
+        try {
+            // Obtener ID del usuario desde SharedPreferences
+            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
+            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            
+            if (userId == -1) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+                }
+                return@withContext
+            }
+            
+            // Convertir bitmap a Base64
+            val byteArrayOutputStream = java.io.ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream)
+            val byteArray = byteArrayOutputStream.toByteArray()
+            val base64String = android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
+            
+            // Subir a Supabase
+            val repository = com.example.rest.data.repository.UsuarioRepository()
+            val result = repository.actualizarFotoPerfil(userId, "data:image/jpeg;base64,$base64String")
+            
+            withContext(Dispatchers.Main) {
+                when (result) {
+                    is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                        Toast.makeText(context, "Foto de perfil actualizada", Toast.LENGTH_SHORT).show()
+                    }
+                    is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
+                        Toast.makeText(context, "Error: ${result.message}", Toast.LENGTH_LONG).show()
+                    }
+                    else -> {}
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Error al subir foto: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+}
+
+/**
+ * Descargar foto de perfil desde Supabase
+ */
+suspend fun descargarFotoDeSupabase(context: Context, userId: Int): Bitmap? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val repository = com.example.rest.data.repository.UsuarioRepository()
+            val result = repository.obtenerUsuarioPorId(userId)
+            
+            when (result) {
+                is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                    val usuario = result.data
+                    val fotoBase64 = usuario.fotoPerfil
+                    
+                    if (!fotoBase64.isNullOrBlank()) {
+                        // Remover el prefijo "data:image/jpeg;base64," si existe
+                        val base64Data = if (fotoBase64.startsWith("data:image")) {
+                            fotoBase64.substring(fotoBase64.indexOf(",") + 1)
+                        } else {
+                            fotoBase64
+                        }
+                        
+                        // Decodificar Base64 a Bitmap
+                        val decodedBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT)
+                        val bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                        
+                        // Guardar localmente para uso futuro
+                        if (bitmap != null) {
+                            val file = File(context.filesDir, "profile_image_$userId.jpg")
+                            FileOutputStream(file).use { out ->
+                                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                            }
+                        }
+                        
+                        bitmap
+                    } else {
+                        null
+                    }
+                }
+                else -> null
+            }
+        } catch (e: Exception) {
+            Log.e("PerfilDebug", "Error al descargar foto: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+    }
+}
+
+/**
+ * Eliminar foto de perfil del almacenamiento local
+ */
+fun deleteProfileImage(context: Context, userId: Int) {
+    try {
+        val file = File(context.filesDir, "profile_image_$userId.jpg")
+        if (file.exists()) {
+            file.delete()
+            Log.d("PerfilDebug", "Foto local eliminada correctamente")
+        }
+    } catch (e: Exception) {
+        Log.e("PerfilDebug", "Error al eliminar foto local: ${e.message}")
+        e.printStackTrace()
+    }
+}
+
+/**
+ * Eliminar foto de perfil de Supabase (establecer como null)
+ */
+suspend fun eliminarFotoDeSupabase(context: Context) {
+    withContext(Dispatchers.IO) {
+        try {
+            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
+            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            
+            if (userId == -1) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+                }
+                return@withContext
+            }
+            
+            // Actualizar con null en Supabase
+            val repository = com.example.rest.data.repository.UsuarioRepository()
+            val result = repository.actualizarFotoPerfil(userId, null)
+            
+            withContext(Dispatchers.Main) {
+                when (result) {
+                    is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                        Log.d("PerfilDebug", "Foto eliminada de Supabase")
+                    }
+                    is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
+                        Toast.makeText(context, "Error al eliminar de servidor: ${result.message}", Toast.LENGTH_LONG).show()
+                    }
+                    else -> {}
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Error al eliminar foto: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }

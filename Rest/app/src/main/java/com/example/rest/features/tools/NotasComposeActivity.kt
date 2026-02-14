@@ -65,7 +65,8 @@ class NotasComposeActivity : BaseComposeActivity() {
         }
 
         setContent {
-            TemaRest {
+            val isDarkMode = com.example.rest.utils.ThemeManager.isDarkMode(this)
+            TemaRest(temaOscuro = isDarkMode) {
                 var notas by remember { mutableStateOf<List<Nota>>(emptyList()) }
                 var cargando by remember { mutableStateOf(true) }
                 var mostrarDialogoCrear by remember { mutableStateOf(false) }

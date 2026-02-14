@@ -57,26 +57,34 @@ class RecuperacionRepository {
                 val response = api.crearCodigoRecuperacion(request)
                 
                 if (response.isSuccessful) {
-                    // Enviar código por email usando Edge Function
+                    // Enviar código por email usando EmailService
+                    android.util.Log.d("RecuperacionRepo", "✅ Código guardado en BD: $codigo")
+                    android.util.Log.d("RecuperacionRepo", "📧 Intentando enviar correo a: $correo")
+                    
                     try {
-                        val emailRequest = mapOf(
-                            "email" to correo,
-                            "codigo" to codigo
+                        val emailEnviado = com.example.rest.utils.EmailService.enviarCodigoRecuperacion(
+                            correo = correo,
+                            codigo = codigo
                         )
-                        val emailResponse = api.enviarCodigoPorEmail(emailRequest)
                         
-                        if (emailResponse.isSuccessful) {
+                        android.util.Log.d("RecuperacionRepo", "📩 Resultado envío: $emailEnviado")
+                        
+                        if (emailEnviado) {
+                            android.util.Log.d("RecuperacionRepo", "✅ Email enviado correctamente")
                             Result.Success(true)
                         } else {
+                            android.util.Log.w("RecuperacionRepo", "⚠️ Email NO enviado, pero código guardado")
                             // Si falla el envío de email, aún así retornamos éxito
                             // porque el código está guardado en la BD
                             Result.Success(true)
                         }
                     } catch (e: Exception) {
+                        android.util.Log.e("RecuperacionRepo", "❌ Excepción al enviar email: ${e.message}", e)
                         // Si falla el envío de email, aún así retornamos éxito
                         Result.Success(true)
                     }
                 } else {
+                    android.util.Log.e("RecuperacionRepo", "❌ Error al guardar código en BD: ${response.code()}")
                     Result.Error("Error al generar código: ${response.code()}")
                 }
             } catch (e: Exception) {

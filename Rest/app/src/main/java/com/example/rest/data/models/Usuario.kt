@@ -40,7 +40,10 @@ data class Usuario(
     val codigoVerificacion: String? = null,
     
     @SerializedName("codigo_expiracion")
-    val codigoExpiracion: String? = null
+    val codigoExpiracion: String? = null,
+
+    @SerializedName("foto_perfil")
+    val fotoPerfil: String? = null
 )
 
 /**

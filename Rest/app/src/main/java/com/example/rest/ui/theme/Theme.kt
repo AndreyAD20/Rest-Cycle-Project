@@ -42,34 +42,34 @@ private val LightColorScheme = lightColorScheme(
     outlineVariant = Borde
 )
 
-// Esquema de colores oscuro (opcional, usando los mismos colores por ahora)
+// Esquema de colores oscuro con tonos NEGROS y muy oscuros
 private val DarkColorScheme = darkColorScheme(
-    primary = Primario,
-    onPrimary = Negro,
-    primaryContainer = Primario,
-    onPrimaryContainer = Blanco,
+    primary = Color(0xFF00E5FF), // Cyan muy brillante para contraste
+    onPrimary = Color(0xFF000000),
+    primaryContainer = Color(0xFF004D56), // Cyan muy oscuro
+    onPrimaryContainer = Color(0xFFE0F7FA),
     
-    secondary = Acento,
-    onSecondary = Negro,
-    secondaryContainer = AcentoClaro,
-    onSecondaryContainer = Blanco,
+    secondary = Color(0xFFFF4081), // Rosa brillante
+    onSecondary = Color(0xFF000000),
+    secondaryContainer = Color(0xFF4A0E2F),
+    onSecondaryContainer = Color(0xFFFCE4EC),
     
-    tertiary = CyanRest,
-    onTertiary = Negro,
+    tertiary = Color(0xFF26C6DA),
+    onTertiary = Color(0xFF000000),
     
-    background = TextoSecundario,
-    onBackground = Blanco,
+    background = Color(0xFF000000), // NEGRO PURO
+    onBackground = Color(0xFFFFFFFF), // Texto blanco puro
     
-    surface = TextoSecundario,
-    onSurface = Blanco,
-    surfaceVariant = TextoPrimario,
-    onSurfaceVariant = FondoSecundario,
+    surface = Color(0xFF0A0A0A), // Casi negro
+    onSurface = Color(0xFFF5F5F5), // Texto casi blanco
+    surfaceVariant = Color(0xFF1A1A1A), // Gris muy oscuro
+    onSurfaceVariant = Color(0xFFE0E0E0),
     
-    error = EstadoError,
-    onError = Blanco,
+    error = Color(0xFFFF5252),
+    onError = Color(0xFF000000),
     
-    outline = Borde,
-    outlineVariant = Borde
+    outline = Color(0xFF424242),
+    outlineVariant = Color(0xFF212121)
 )
 
 @Composable

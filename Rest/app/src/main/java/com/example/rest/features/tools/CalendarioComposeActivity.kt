@@ -143,7 +143,19 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                     currentMonth = currentMonth,
                     selectedDate = selectedDate,
                     eventos = eventos,
-                    onMonthChange = { currentMonth = it },
+                    onMonthChange = { newMonth ->
+                        currentMonth = newMonth
+                        // Mantener el mismo día del mes al cambiar de mes
+                        try {
+                            val dayOfMonth = selectedDate.dayOfMonth
+                            val maxDayInNewMonth = newMonth.lengthOfMonth()
+                            val newDay = if (dayOfMonth <= maxDayInNewMonth) dayOfMonth else maxDayInNewMonth
+                            selectedDate = newMonth.atDay(newDay)
+                        } catch (e: Exception) {
+                            // Si hay algún error, usar el primer día del mes
+                            selectedDate = newMonth.atDay(1)
+                        }
+                    },
                     onDateSelected = { selectedDate = it },
                     onEventoClick = { evento ->
                         eventoAEditar = evento
@@ -152,7 +164,13 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                 )
             } else {
                 // Vista de Lista de Eventos Futuros
-                VistaListaEventosFuturos(eventos = eventos)
+                VistaListaEventosFuturos(
+                    eventos = eventos,
+                    onEventoClick = { evento ->
+                        eventoAEditar = evento
+                        mostrarDialogo = true
+                    }
+                )
             }
             
             // Diálogo de creación/edición
@@ -274,37 +292,84 @@ fun VistaCalendarioDia(
     onEventoClick: (Evento) -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        // Calendar Header
-        Row(
+        // Calendar Header con Card
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White.copy(alpha = 0.95f)
+            ),
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            IconButton(onClick = { onMonthChange(currentMonth.minusMonths(1)) }) {
-                Icon(Icons.Default.ArrowBack, "Mes Anterior")
-            }
-            Text(
-                text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale("es", "ES"))).uppercase(),
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = Negro
-            )
-            IconButton(onClick = { onMonthChange(currentMonth.plusMonths(1)) }) {
-                Icon(Icons.Default.ArrowForward, "Mes Siguiente")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = { onMonthChange(currentMonth.minusMonths(1)) },
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(Primario.copy(alpha = 0.1f))
+                ) {
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        "Mes Anterior",
+                        tint = Primario
+                    )
+                }
+                Text(
+                    text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale("es", "ES"))).uppercase(),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = Negro
+                )
+                IconButton(
+                    onClick = { onMonthChange(currentMonth.plusMonths(1)) },
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(Primario.copy(alpha = 0.1f))
+                ) {
+                    Icon(
+                        Icons.Default.ArrowForward,
+                        "Mes Siguiente",
+                        tint = Primario
+                    )
+                }
             }
         }
 
         // Days of Week Header
-        Row(modifier = Modifier.fillMaxWidth()) {
-            listOf("DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB").forEach { day ->
-                Text(
-                    text = day,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray
-                )
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF004D40).copy(alpha = 0.1f) // Fondo más sutil
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                listOf("DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB").forEach { day ->
+                    Text(
+                        text = day,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Color(0xFF004D40) // Color oscuro
+                    )
+                }
             }
         }
 
@@ -366,7 +431,10 @@ fun VistaCalendarioDia(
 }
 
 @Composable
-fun VistaListaEventosFuturos(eventos: List<Evento>) {
+fun VistaListaEventosFuturos(
+    eventos: List<Evento>,
+    onEventoClick: (Evento) -> Unit = {}
+) {
     // Filtrar y ordenar eventos futuros
     val eventosFuturos = remember(eventos) {
         val ahora = LocalDateTime.now()
@@ -427,7 +495,10 @@ fun VistaListaEventosFuturos(eventos: List<Evento>) {
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(eventosFuturos) { evento ->
-                        EventoItemConFecha(evento)
+                        EventoItemConFecha(
+                            evento = evento,
+                            onClick = { onEventoClick(evento) }
+                        )
                     }
                 }
             }
@@ -523,7 +594,7 @@ fun EventoItem(evento: Evento, onClick: () -> Unit = {}) {
 }
 
 @Composable
-fun EventoItemConFecha(evento: Evento) {
+fun EventoItemConFecha(evento: Evento, onClick: () -> Unit = {}) {
     // Formatear fecha y hora completa
     val (fechaTexto, horaTexto) = try {
         val fecha = LocalDateTime.parse(evento.fechaInicio.replace("Z", ""))
@@ -537,7 +608,9 @@ fun EventoItemConFecha(evento: Evento) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F7FA)), 
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -616,13 +689,16 @@ fun CalendarGrid(
 ) {
     val daysInMonth = yearMonth.lengthOfMonth()
     val startOffset = yearMonth.atDay(1).dayOfWeek.value % 7
+    val today = LocalDate.now()
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(7),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .height(280.dp)
+            .height(300.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(startOffset) { Box(modifier = Modifier.aspectRatio(1f)) }
 
@@ -630,33 +706,63 @@ fun CalendarGrid(
             val day = index + 1
             val date = yearMonth.atDay(day)
             val isSelected = date == selectedDate
+            val isToday = date == today
             val hasEvent = eventos.any { 
                  try { it.fechaInicio.take(10) == date.toString() } catch (e: Exception) { false }
             }
 
-            Box(
+            Card(
                 modifier = Modifier
                     .aspectRatio(1f)
-                    .padding(4.dp)
-                    .clip(CircleShape)
-                    .background(if (isSelected) Primario else Color.Transparent)
                     .clickable { onDateSelected(date) },
-                contentAlignment = Alignment.Center
+                colors = CardDefaults.cardColors(
+                    containerColor = when {
+                        isSelected -> Primario
+                        isToday -> Color(0xFFFDD835) // Amarillo más sólido
+                        else -> Color.White.copy(alpha = 0.9f)
+                    }
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = if (isSelected) 8.dp else if (isToday) 4.dp else 2.dp
+                ),
+                border = if (isToday && !isSelected) {
+                    androidx.compose.foundation.BorderStroke(2.dp, Color(0xFFF57F17)) // Borde amarillo oscuro
+                } else null
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = day.toString(),
-                        color = if (isSelected) Blanco else Negro,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    )
-                    if (hasEvent) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(4.dp)
-                                .clip(CircleShape)
-                                .background(if (isSelected) Blanco else Color(0xFFFF5252))
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = day.toString(),
+                            color = when {
+                                isSelected -> Blanco
+                                isToday -> Color(0xFF6A1B00) // Marrón oscuro para contraste con amarillo
+                                else -> Negro
+                            },
+                            fontWeight = when {
+                                isSelected || isToday -> FontWeight.Bold
+                                else -> FontWeight.Normal
+                            },
+                            style = MaterialTheme.typography.bodyLarge
                         )
+                        if (hasEvent) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) Blanco 
+                                        else Color(0xFFFF5252)
+                                    )
+                            )
+                        }
                     }
                 }
             }

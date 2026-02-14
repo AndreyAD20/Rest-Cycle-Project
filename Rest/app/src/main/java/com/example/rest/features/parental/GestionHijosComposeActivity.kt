@@ -38,7 +38,8 @@ class GestionHijosComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            TemaRest {
+            val isDarkMode = com.example.rest.utils.ThemeManager.isDarkMode(this)
+            TemaRest(temaOscuro = isDarkMode) {
                 PantallaGestionHijos(
                     onBack = { finish() },
                     onAddChild = { 

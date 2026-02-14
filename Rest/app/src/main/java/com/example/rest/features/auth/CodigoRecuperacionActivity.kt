@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import androidx.lifecycle.lifecycleScope
@@ -45,10 +46,34 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
         setContent {
             TemaRest {
                 var cargando by remember { mutableStateOf(false) }
+                var mostrarDialogoSalir by remember { mutableStateOf(false) }
+                
+                if (mostrarDialogoSalir) {
+                    AlertDialog(
+                        onDismissRequest = { mostrarDialogoSalir = false },
+                        title = { Text("¿Cancelar recuperación?") },
+                        text = { Text("Si sales ahora, tendrás que solicitar un nuevo código de recuperación.") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    mostrarDialogoSalir = false
+                                    finish()
+                                }
+                            ) {
+                                Text("Sí, salir")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { mostrarDialogoSalir = false }) {
+                                Text("Cancelar")
+                            }
+                        }
+                    )
+                }
                 
                 PantallaCodigoRecuperacion(
                     alClickRegresar = {
-                        finish()
+                        mostrarDialogoSalir = true
                     },
                     alClickConfirmar = { codigo ->
                         when {
@@ -64,11 +89,54 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                         }
                     },
                     alClickReenviar = {
-                        // Volver a la pantalla anterior para reenviar cÃ³digo
-                        finish()
+                        // Reenviar código
+                        cargando = true
+                        reenviarCodigo {
+                            cargando = false
+                        }
                     },
                     cargando = cargando
                 )
+            }
+        }
+    }
+    
+    private fun reenviarCodigo(onComplete: () -> Unit) {
+        lifecycleScope.launch {
+            try {
+                when (val resultado = recuperacionRepository.solicitarCodigo(correo)) {
+                    is RecuperacionRepository.Result.Success -> {
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@CodigoRecuperacionActivity,
+                                "Nuevo código enviado a tu correo",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                    is RecuperacionRepository.Result.Error -> {
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@CodigoRecuperacionActivity,
+                                resultado.message,
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    }
+                    is RecuperacionRepository.Result.Loading -> {
+                        // Ya manejado
+                    }
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    Toast.makeText(
+                        this@CodigoRecuperacionActivity,
+                        "Error al reenviar código: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            } finally {
+                onComplete()
             }
         }
     }
@@ -130,6 +198,23 @@ fun PantallaCodigoRecuperacion(
     cargando: Boolean = false
 ) {
     var codigo by remember { mutableStateOf("") }
+    var tiempoRestante by remember { mutableStateOf(60) } // Iniciar con 60 segundos
+    var puedeReenviar by remember { mutableStateOf(false) } // Iniciar deshabilitado
+    
+    // Interceptar botón atrás del sistema
+    BackHandler {
+        alClickRegresar()
+    }
+    
+    // Cooldown timer
+    LaunchedEffect(tiempoRestante) {
+        if (tiempoRestante > 0) {
+            kotlinx.coroutines.delay(1000)
+            tiempoRestante--
+        } else {
+            puedeReenviar = true
+        }
+    }
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
@@ -211,7 +296,7 @@ fun PantallaCodigoRecuperacion(
                 onValueChange = { if (it.length <= 6) codigo = it },
                 placeholder = {
                     Text(
-                        "Codigo de VerificaciÃ³n",
+                        "Código de Recuperación",
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -243,7 +328,7 @@ fun PantallaCodigoRecuperacion(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF004D40)
+                    containerColor = Primario
                 ),
                 enabled = !cargando
             ) {
@@ -264,17 +349,26 @@ fun PantallaCodigoRecuperacion(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Link para reenviar cÃ³digo
+            // Link para reenviar código
             Text(
-                text = "Volver a Enviar Codigo",
+                text = if (puedeReenviar) {
+                    "Volver a Enviar Código"
+                } else {
+                    "Reenviar en ${tiempoRestante}s"
+                },
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF004D40),
-                modifier = Modifier.clickable { alClickReenviar() }
+                color = if (puedeReenviar) Color(0xFF004D40) else Color(0xFF999999),
+                modifier = Modifier.clickable(enabled = puedeReenviar) {
+                    if (puedeReenviar) {
+                        puedeReenviar = false
+                        tiempoRestante = 60
+                        alClickReenviar()
+                    }
+                }
             )
         }
     }
 }
-
 
 
 

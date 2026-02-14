@@ -28,10 +28,28 @@ import com.example.rest.R
 import com.example.rest.ui.theme.*
 
 class InicioComposeActivity : BaseComposeActivity() {
+    
+    // Launcher para pedir permiso de notificaciones
+    private val notificationPermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            // Permiso concedido, iniciar servicio
+            com.example.rest.services.AppMonitorService.startService(this)
+        } else {
+            android.widget.Toast.makeText(
+                this,
+                "El permiso de notificaciones es necesario para el monitoreo en tiempo real",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            TemaRest {
+            val isDarkMode = com.example.rest.utils.ThemeManager.isDarkMode(this)
+            TemaRest(temaOscuro = isDarkMode) {
                 var mostrarDialogoCerrarSesion by remember { mutableStateOf(false) }
                 
                 PantallaModosDeUso(
@@ -40,7 +58,8 @@ class InicioComposeActivity : BaseComposeActivity() {
                         mostrarDialogoCerrarSesion = true
                     },
                     alClickConfiguracion = {
-                        // TODO: Navegar a pantalla de configuración
+                        val intent = Intent(this, com.example.rest.features.settings.ConfiguracionComposeActivity::class.java)
+                        startActivity(intent)
                     },
                     alClickControlParental = {
                         // Navegar a Control Parental
@@ -51,6 +70,15 @@ class InicioComposeActivity : BaseComposeActivity() {
                         // Navegar a Perfil
                         val intent = Intent(this, com.example.rest.features.home.PerfilComposeActivity::class.java)
                         startActivity(intent)
+                    },
+                    onRequestNotificationPermission = {
+                        // Pedir permiso de notificaciones
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            // Android < 13 no necesita permiso explícito
+                            com.example.rest.services.AppMonitorService.startService(this)
+                        }
                     }
                 )
                 
@@ -64,6 +92,10 @@ class InicioComposeActivity : BaseComposeActivity() {
                             TextButton(
                                 onClick = {
                                     mostrarDialogoCerrarSesion = false
+                                    
+                                    // Detener servicio de monitoreo
+                                    com.example.rest.services.AppMonitorService.stopService(this@InicioComposeActivity)
+                                    
                                     // Borrar sesión
                                     val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
                                     with(sharedPref.edit()) {
@@ -118,23 +150,53 @@ fun PantallaModosDeUso(
     alClickRegresar: () -> Unit,
     alClickConfiguracion: () -> Unit,
     alClickControlParental: () -> Unit,
-    alClickHabitosSaludables: () -> Unit
+    alClickHabitosSaludables: () -> Unit,
+    onRequestNotificationPermission: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showNotificationPermissionDialog by remember { mutableStateOf(false) }
 
-    // Verificar permiso al iniciar
+    // Verificar permisos al iniciar
     LaunchedEffect(Unit) {
-        if (!checkUsageStatsPermission(context)) {
+        val hasUsagePermission = checkUsageStatsPermission(context)
+        android.util.Log.d("InicioActivity", "Permiso de uso: $hasUsagePermission")
+        
+        if (!hasUsagePermission) {
+            android.util.Log.d("InicioActivity", "Mostrando diálogo de permiso de uso")
             showPermissionDialog = true
+        } else {
+            // Si ya tiene permiso de uso, verificar permiso de notificaciones
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                val hasNotificationPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                
+                android.util.Log.d("InicioActivity", "Permiso de notificaciones: $hasNotificationPermission (Android ${android.os.Build.VERSION.SDK_INT})")
+                
+                if (!hasNotificationPermission) {
+                    android.util.Log.d("InicioActivity", "Mostrando diálogo de permiso de notificaciones")
+                    showNotificationPermissionDialog = true
+                } else {
+                    // Tiene ambos permisos, iniciar servicio
+                    android.util.Log.d("InicioActivity", "Tiene ambos permisos, iniciando servicio")
+                    com.example.rest.services.AppMonitorService.startService(context)
+                }
+            } else {
+                // Android < 13, solo iniciar servicio
+                android.util.Log.d("InicioActivity", "Android < 13, iniciando servicio sin permiso de notificaciones")
+                com.example.rest.services.AppMonitorService.startService(context)
+            }
         }
     }
 
+    // Diálogo de permiso de uso de estadísticas
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { /* No permitir cerrar sin decidir */ },
             title = { Text("Permiso Requerido") },
-            text = { Text("Para que la aplicación funcione correctamente y registre tus estadísticas, necesitamos acceso a los datos de uso. Por favor activa el permiso para 'Rest Cycle'.") },
+            text = { Text("Para que la aplicación funcione correctamente y registre tus estadísticas en tiempo real, necesitamos acceso a los datos de uso. Por favor activa el permiso para 'Rest Cycle'.") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -149,7 +211,36 @@ fun PantallaModosDeUso(
                 TextButton(
                     onClick = { 
                         showPermissionDialog = false 
-                        android.widget.Toast.makeText(context, "Algunas funciones no estarán disponibles", android.widget.Toast.LENGTH_LONG).show()
+                        android.widget.Toast.makeText(context, "El monitoreo en tiempo real no estará disponible", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                ) {
+                    Text("Ahora no")
+                }
+            }
+        )
+    }
+    
+    // Diálogo de permiso de notificaciones
+    if (showNotificationPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { /* No permitir cerrar sin decidir */ },
+            title = { Text("Permiso de Notificaciones") },
+            text = { Text("Para monitorear tus aplicaciones en tiempo real, necesitamos mostrar una notificación persistente. Esto es requerido por Android para servicios en segundo plano.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showNotificationPermissionDialog = false
+                        onRequestNotificationPermission()
+                    }
+                ) {
+                    Text("Permitir")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        showNotificationPermissionDialog = false 
+                        android.widget.Toast.makeText(context, "El monitoreo en tiempo real no estará disponible", android.widget.Toast.LENGTH_LONG).show()
                     }
                 ) {
                     Text("Ahora no")
@@ -161,8 +252,8 @@ fun PantallaModosDeUso(
     // Gradiente de fondo cyan/turquesa
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            Primario,
-            Color(0xFF80DEEA)
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.primaryContainer
         ),
         start = Offset(0f, 0f),
         end = Offset(1000f, 1000f)
@@ -183,7 +274,7 @@ fun PantallaModosDeUso(
             Icon(
                 imageVector = Icons.Default.ArrowBack,
                 contentDescription = "Regresar",
-                tint = Color(0xFF004D40),
+                tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -198,7 +289,7 @@ fun PantallaModosDeUso(
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = "Configuración",
-                tint = Color(0xFF004D40),
+                tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.size(32.dp)
             )
         }
