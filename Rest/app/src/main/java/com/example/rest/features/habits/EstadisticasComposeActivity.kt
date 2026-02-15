@@ -10,7 +10,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -255,16 +255,26 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                     }
                 )
             } else {
-                // Cargar datos en hilo secundario para evitar ANR
-                val datosDiarios = produceState<Map<String, Long>>(initialValue = emptyMap(), key1 = semanaOffset) {
+                // Estado para datos diarios y carga
+                var datosDiarios by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
+                var cargandoDiario by remember { mutableStateOf(false) }
+
+                LaunchedEffect(semanaOffset, periodoSeleccionado) {
                     if (periodoSeleccionado == 1) { // Solo si es semanal
-                        value = withContext(Dispatchers.IO) { getUsageStatsDiario(context, semanaOffset) }
+                        cargandoDiario = true
+                        datosDiarios = withContext(Dispatchers.IO) { getUsageStatsDiario(context, semanaOffset) }
+                        cargandoDiario = false
                     }
                 }
 
                 // Cargar lista general (Diario/Mensual/Semanal)
-                val usageStats = produceState<List<AppUsageInfo>>(initialValue = emptyList(), key1 = periodoSeleccionado, key2 = semanaOffset) {
-                     value = withContext(Dispatchers.IO) { getUsageStats(context, periodoSeleccionado, semanaOffset) }
+                var usageStats by remember { mutableStateOf<List<AppUsageInfo>>(emptyList()) }
+                var cargandoGeneral by remember { mutableStateOf(false) }
+                
+                LaunchedEffect(periodoSeleccionado, semanaOffset) {
+                     cargandoGeneral = true
+                     usageStats = withContext(Dispatchers.IO) { getUsageStats(context, periodoSeleccionado, semanaOffset) }
+                     cargandoGeneral = false
                 }
 
                 LazyColumn(
@@ -370,17 +380,17 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                              val inicio = splitted.getOrElse(0) { "" }
                              val fin = splitted.getOrElse(1) { "" }
                             
-                            GraficoBarrasSemanal(datosDiarios.value, inicio, fin)
+                            GraficoBarrasSemanal(datosDiarios, inicio, fin, cargando = cargandoDiario)
                         } else {
                             // Vista diaria y mensual: Gráfico top apps
-                            GraficoUso(usageStats.value)
+                            GraficoUso(usageStats, cargando = cargandoGeneral)
                         }
                         Spacer(modifier = Modifier.height(32.dp))
                     }
 
                     item {
                         // Reutilizamos la lista ya cargada arriba
-                        ListaUsoApps(usageStats.value)
+                        ListaUsoApps(usageStats, cargando = cargandoGeneral)
                         Spacer(modifier = Modifier.height(32.dp))
                     }
                     
@@ -978,7 +988,7 @@ fun generarReportePDF(context: Context, stats: List<AppUsageInfo>, periodoStr: S
 }
 
 @Composable
-fun GraficoUso(stats: List<AppUsageInfo>) {
+fun GraficoUso(stats: List<AppUsageInfo>, cargando: Boolean = false) {
     val topApps = stats.take(5)
     
     val maxTime = topApps.maxOfOrNull { it.totalTimeInMillis } ?: 1L
@@ -998,7 +1008,77 @@ fun GraficoUso(stats: List<AppUsageInfo>) {
             .fillMaxWidth()
             .height(250.dp)
     ) {
-        if (topApps.isEmpty()) {
+        if (cargando) {
+            // SHIMMER
+            val transition = rememberInfiniteTransition(label = "shimmer_uso")
+            val translateAnim by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1000f,
+                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                    animation = androidx.compose.animation.core.tween(
+                        durationMillis = 1200,
+                        easing = androidx.compose.animation.core.FastOutSlowInEasing
+                    ),
+                    repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+                ),
+                label = "shimmerTranslate"
+            )
+            
+            val shimmerBrush = Brush.linearGradient(
+                colors = listOf(
+                    Color.LightGray.copy(alpha = 0.3f),
+                    Color.LightGray.copy(alpha = 0.6f),
+                    Color.LightGray.copy(alpha = 0.3f)
+                ),
+                start = Offset.Zero,
+                end = Offset(x = translateAnim, y = translateAnim)
+            )
+
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    repeat(5) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(30.dp)
+                                    .fillMaxHeight(0.2f + (it % 3) * 0.2f)
+                                    .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                                    .background(shimmerBrush)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    repeat(5) {
+                        Box(
+                            modifier = Modifier
+                                .width(30.dp)
+                                .height(10.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(shimmerBrush)
+                        )
+                    }
+                }
+            }
+        } else if (topApps.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -1062,14 +1142,60 @@ fun GraficoUso(stats: List<AppUsageInfo>) {
 }
 
 @Composable
-fun ListaUsoApps(stats: List<AppUsageInfo>) {
+fun ListaUsoApps(stats: List<AppUsageInfo>, cargando: Boolean = false) {
     val topApps = stats.take(10)
     
     Card(
         colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f)),
         modifier = Modifier.fillMaxWidth()
     ) {
-        if (topApps.isEmpty()) {
+        if (cargando) {
+             // SHIMMER LISTA
+            val transition = rememberInfiniteTransition(label = "shimmer_lista")
+            val translateAnim by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1000f,
+                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                    animation = androidx.compose.animation.core.tween(
+                        durationMillis = 1200,
+                        easing = androidx.compose.animation.core.FastOutSlowInEasing
+                    ),
+                    repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+                ),
+                label = "shimmerTranslate"
+            )
+            
+            val shimmerBrush = Brush.linearGradient(
+                colors = listOf(
+                    Color.LightGray.copy(alpha = 0.3f),
+                    Color.LightGray.copy(alpha = 0.6f),
+                    Color.LightGray.copy(alpha = 0.3f)
+                ),
+                start = Offset.Zero,
+                end = Offset(x = translateAnim, y = translateAnim)
+            )
+            
+            Column(modifier = Modifier.padding(16.dp)) {
+                repeat(5) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(shimmerBrush))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Box(modifier = Modifier.width(100.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).background(shimmerBrush))
+                        }
+                        Box(modifier = Modifier.width(60.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).background(shimmerBrush))
+                    }
+                    if (it < 4) HorizontalDivider(color = Color.LightGray.copy(alpha = 0.5f))
+                }
+            }
+
+        } else if (topApps.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

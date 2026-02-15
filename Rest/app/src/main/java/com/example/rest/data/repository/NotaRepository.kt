@@ -118,16 +118,9 @@ class NotaRepository {
     suspend fun actualizarFavorito(idNota: Int, favorito: Boolean): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
-                // Crear un objeto Nota con solo el campo favorito
-                val notaParcial = Nota(
-                    idUsuario = null,
-                    titulo = null,
-                    contenido = null,
-                    color = null,
-                    fecha_actualizacion = null,
-                    favorito = favorito
-                )
-                val response = api.actualizarNota(id = "eq.$idNota", nota = notaParcial)
+                // Usar Map para actualización parcial y evitar enviar nulos
+                val update = mapOf("favorito" to favorito)
+                val response = api.actualizarNotaParcial(id = "eq.$idNota", update = update)
                 if (response.isSuccessful) {
                     Result.Success("Favorito actualizado")
                 } else {

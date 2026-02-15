@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
+import androidx.compose.ui.platform.LocalContext
 import com.example.rest.ui.theme.*
 
 class InicioComposeActivity : BaseComposeActivity() {
@@ -103,21 +104,75 @@ class InicioComposeActivity : BaseComposeActivity() {
                                         apply()
                                     }
                                     
-                                    // Cerrar sesión y volver a login
+                                    // Ir a Login
                                     val intent = Intent(this@InicioComposeActivity, com.example.rest.features.auth.LoginComposeActivity::class.java)
                                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                     startActivity(intent)
                                     finish()
                                 }
                             ) {
-                                Text("Sí, cerrar sesión")
+                                Text("Cerrar Sesión")
                             }
                         },
                         dismissButton = {
-                            TextButton(
-                                onClick = { mostrarDialogoCerrarSesion = false }
-                            ) {
+                            TextButton(onClick = { mostrarDialogoCerrarSesion = false }) {
                                 Text("Cancelar")
+                            }
+                        }
+                    )
+                }
+
+                // Check for Usage Stats Permission
+                var showUsageStatsDialog by remember { mutableStateOf(false) }
+                val context = LocalContext.current
+                
+                // Check on resume/start
+                DisposableEffect(Unit) {
+                    val hasPermission = checkUsageStatsPermission(context)
+                    if (!hasPermission) {
+                        showUsageStatsDialog = true
+                    }
+                    onDispose {}
+                }
+
+                if (showUsageStatsDialog) {
+                    AlertDialog(
+                        onDismissRequest = { /* No dismiss allowed optionally */ },
+                        title = { Text("Permiso Requerido") },
+                        text = { Text("Para que Rest Cycle funcione correctamente y bloquee aplicaciones, necesita acceso a las estadísticas de uso.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showUsageStatsDialog = false
+                                startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            }) {
+                                Text("Conceder Permiso")
+                            }
+                        }
+                    )
+                }
+
+                // Check for Overlay Permission (Android 10+)
+                var showOverlayDialog by remember { mutableStateOf(false) }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
+                    // Only show if usage stats is already granted or dismissed to avoid stacking
+                    if (!showUsageStatsDialog) {
+                         showOverlayDialog = true
+                    }
+                }
+
+                if (showOverlayDialog) {
+                    AlertDialog(
+                        onDismissRequest = { /* No dismiss */ },
+                        title = { Text("Permiso de Superposición") },
+                        text = { Text("Para mostrar la pantalla de bloqueo sobre otras apps, Rest Cycle necesita permiso para mostrarse encima.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showOverlayDialog = false
+                                val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, 
+                                                    android.net.Uri.parse("package:$packageName"))
+                                startActivity(intent)
+                            }) {
+                                Text("Conceder Permiso")
                             }
                         }
                     )

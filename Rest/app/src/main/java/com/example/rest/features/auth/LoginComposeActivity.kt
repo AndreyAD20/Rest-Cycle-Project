@@ -21,6 +21,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
@@ -195,6 +199,7 @@ fun PantallaLogin(
 ) {
     var correo by remember { mutableStateOf("") }
     var contraseña by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
 
     // Gradiente de fondo cyan/turquesa como en la imagen
     val brochaGradiente = Brush.linearGradient(
@@ -281,7 +286,17 @@ fun PantallaLogin(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    val image = if (passwordVisible)
+                        Icons.Filled.Visibility
+                    else
+                        Icons.Filled.VisibilityOff
+
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(imageVector = image, contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
+                    }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge

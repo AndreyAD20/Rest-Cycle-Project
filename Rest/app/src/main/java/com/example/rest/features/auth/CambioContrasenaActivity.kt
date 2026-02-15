@@ -22,6 +22,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -157,6 +160,8 @@ fun PantallaCambioContrasena(
 ) {
     var nuevaContrasena by remember { mutableStateOf("") }
     var confirmarContrasena by remember { mutableStateOf("") }
+    var mostrarNueva by remember { mutableStateOf(false) }
+    var mostrarConfirmar by remember { mutableStateOf(false) }
     
     // Interceptar botón atrás del sistema
     BackHandler {
@@ -260,7 +265,13 @@ fun PantallaCambioContrasena(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (mostrarNueva) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    val image = if (mostrarNueva) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    IconButton(onClick = { mostrarNueva = !mostrarNueva }) {
+                        Icon(imageVector = image, contentDescription = if (mostrarNueva) "Ocultar contraseña" else "Mostrar contraseña")
+                    }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
@@ -291,7 +302,13 @@ fun PantallaCambioContrasena(
                     focusedTextColor = Negro,
                     unfocusedTextColor = Negro
                 ),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (mostrarConfirmar) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    val image = if (mostrarConfirmar) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                    IconButton(onClick = { mostrarConfirmar = !mostrarConfirmar }) {
+                        Icon(imageVector = image, contentDescription = if (mostrarConfirmar) "Ocultar contraseña" else "Mostrar contraseña")
+                    }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge

@@ -1,7 +1,7 @@
 package com.example.rest.features.habits
 
 import android.content.Context
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -27,7 +28,8 @@ import java.util.concurrent.TimeUnit
 fun GraficoBarrasSemanal(
     datosDiarios: Map<String, Long>, // Map<DiaSemana, Millis>
     fechaInicio: String,
-    fechaFin: String
+    fechaFin: String,
+    cargando: Boolean = false
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.95f)),
@@ -63,27 +65,95 @@ fun GraficoBarrasSemanal(
                 }
                 
                 // Total Semanal (cálculo rápido)
-                val totalSemanal = datosDiarios.values.sum()
-                val horasTotal = TimeUnit.MILLISECONDS.toHours(totalSemanal)
-                val minsTotal = TimeUnit.MILLISECONDS.toMinutes(totalSemanal) % 60
-                
-                Surface(
-                    color = Primario.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Text(
-                        text = "Total: ${horasTotal}h ${minsTotal}m",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Primario,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
+                if (!cargando) {
+                    val totalSemanal = datosDiarios.values.sum()
+                    val horasTotal = TimeUnit.MILLISECONDS.toHours(totalSemanal)
+                    val minsTotal = TimeUnit.MILLISECONDS.toMinutes(totalSemanal) % 60
+                    
+                    Surface(
+                        color = Primario.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Text(
+                            text = "Total: ${horasTotal}h ${minsTotal}m",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Primario,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            if (datosDiarios.isEmpty() || datosDiarios.values.all { it == 0L }) {
+            if (cargando) {
+                // EFECTO SHIMMER (CARGANDO)
+                val transition = rememberInfiniteTransition(label = "shimmer")
+                val translateAnim by transition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 1000f,
+                    animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                        animation = androidx.compose.animation.core.tween(
+                            durationMillis = 1200,
+                            easing = androidx.compose.animation.core.FastOutSlowInEasing
+                        ),
+                        repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+                    ),
+                    label = "shimmerTranslate"
+                )
+                
+                val shimmerBrush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.LightGray.copy(alpha = 0.3f),
+                        Color.LightGray.copy(alpha = 0.6f),
+                        Color.LightGray.copy(alpha = 0.3f)
+                    ),
+                    start = Offset.Zero,
+                    end = Offset(x = translateAnim, y = translateAnim)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    repeat(7) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth(),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                // Barra falsa cargando
+                                Box(
+                                    modifier = Modifier
+                                        .width(14.dp)
+                                        .fillMaxHeight(0.3f + (it % 3) * 0.2f) // Alturas variables falsas
+                                        .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 2.dp, bottomEnd = 2.dp))
+                                        .background(shimmerBrush)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // Texto falso cargando
+                            Box(
+                                modifier = Modifier
+                                    .width(20.dp)
+                                    .height(10.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(shimmerBrush)
+                            )
+                        }
+                    }
+                }
+
+            } else if (datosDiarios.isEmpty() || datosDiarios.values.all { it == 0L }) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center

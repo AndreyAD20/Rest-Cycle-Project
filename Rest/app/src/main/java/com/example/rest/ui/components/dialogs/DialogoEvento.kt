@@ -139,7 +139,9 @@ fun DialogoEvento(
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White,
                         focusedBorderColor = Color(0xFF00BCD4),
-                        unfocusedBorderColor = Color(0xFFB0BEC5)
+                        unfocusedBorderColor = Color(0xFFB0BEC5),
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black
                     )
                 )
                 

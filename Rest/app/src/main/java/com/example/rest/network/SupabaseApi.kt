@@ -200,6 +200,15 @@ interface SupabaseApi {
         @Query("id") id: String,
         @Body nota: Nota
     ): Response<List<Nota>>
+
+    /**
+     * Actualizar nota parcialmente (Map)
+     */
+    @PATCH("notas")
+    suspend fun actualizarNotaParcial(
+        @Query("id") id: String,
+        @Body update: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<List<Nota>>
     
     /**
      * Eliminar nota

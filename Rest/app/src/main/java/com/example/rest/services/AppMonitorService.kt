@@ -14,6 +14,10 @@ import androidx.core.app.NotificationCompat
 import com.example.rest.R
 import com.example.rest.data.models.SesionApp
 import com.example.rest.network.SupabaseClient
+import com.example.rest.features.blocking.BloqueoActivity
+import com.example.rest.data.models.AppVinculada
+import com.example.rest.data.repository.LocalBlockingRepository
+import com.example.rest.features.tools.AppBloqueo
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -57,6 +61,17 @@ class AppMonitorService : Service() {
     private var sessionStartTime: Long = 0
     private var dispositivoId: Int = -1
     private var isMonitoring = false
+    
+    // Repositorio local
+    private lateinit var localRepository: LocalBlockingRepository
+    
+    // Lista de apps restringidas (cache local)
+    private var restrictedApps: List<AppBloqueo> = emptyList()
+    
+    // Mapa de uso diario por paquete (minutos)
+    private var dailyUsageMap: MutableMap<String, Int> = mutableMapOf()
+    
+    private var lastRestrictionCheckTime: Long = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -133,6 +148,10 @@ class AppMonitorService : Service() {
         
         if (!isMonitoring) {
             isMonitoring = true
+        
+            // Inicializar repositorio local
+            localRepository = LocalBlockingRepository(this)
+            
             startMonitoring()
         }
         
@@ -178,6 +197,7 @@ class AppMonitorService : Service() {
         handler.post(object : Runnable {
             override fun run() {
                 if (isMonitoring) {
+                    actualizarListaRestricciones()
                     checkForegroundApp()
                     handler.postDelayed(this, CHECK_INTERVAL)
                 }
@@ -243,6 +263,12 @@ class AppMonitorService : Service() {
                     currentPackageName = packageName
                     sessionStartTime = currentTime
                     updateNotification("Usando: ${getAppName(packageName)}")
+                    
+                    // Verificar si debe bloquearse
+                    verificarBloqueo(packageName, getAppName(packageName))
+                } else {
+                    // Si sigue siendo la misma app, verificar si ya se pasó del tiempo
+                    verificarBloqueo(packageName, getAppName(packageName))
                 }
             }
             
@@ -342,7 +368,15 @@ class AppMonitorService : Service() {
             
             if (response.isSuccessful) {
                 Log.d(TAG, "✓ Sesión guardada: $packageName ($duracion s)")
+                
+                // Actualizar mapa local de uso
+                val currentUsage = dailyUsageMap[packageName] ?: 0
+                dailyUsageMap[packageName] = currentUsage + (duracion / 60)
             } else {
+                // Incluso si falla el envío, actualizar localmente para el bloqueo
+                val currentUsage = dailyUsageMap[packageName] ?: 0
+                dailyUsageMap[packageName] = currentUsage + (duracion / 60)
+                
                 Log.e(TAG, "✗ Error guardando sesión: ${response.code()} Body: ${response.errorBody()?.string()}")
             }
             
@@ -397,6 +431,65 @@ class AppMonitorService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
+    }
+    
+    /**
+     * Actualiza la lista de apps restringidas y el uso diario
+     */
+    /**
+     * Actualiza la lista de apps restringidas desde repositorio local
+     */
+    private fun actualizarListaRestricciones() {
+        val now = System.currentTimeMillis()
+        // Actualizar cada n segundos si es necesario, pero local es rápido
+        if (now - lastRestrictionCheckTime < 5000) return
+        lastRestrictionCheckTime = now
+        
+        restrictedApps = localRepository.getBlockedApps()
+        // Log.d(TAG, "Apps restringidas actualizadas: ${restrictedApps.size}")
+    }
+    
+    /**
+     * Verifica si la app actual debe ser bloqueada
+     */
+    /**
+     * Verifica si la app actual debe ser bloqueada
+     */
+    private fun verificarBloqueo(packageName: String, appName: String) {
+        // Buscar si la app está en la lista de restringidas
+        val appRestricted = restrictedApps.find { it.packageName == packageName } ?: return
+
+        var reason = ""
+        var shouldBlock = false
+
+        if (appRestricted.isBlocked) {
+            shouldBlock = true
+            reason = "Esta aplicación ha sido bloqueada manualmente."
+        } else {
+            val limitMinutes = (appRestricted.limitHours * 60) + appRestricted.limitMinutes
+            
+            if (limitMinutes > 0) {
+                // Verificar límite de tiempo
+                val usoAcumuladoMin = dailyUsageMap[packageName] ?: 0
+                
+                // Sumar sesión actual (en minutos)
+                val currentSessionMs = System.currentTimeMillis() - sessionStartTime
+                val currentSessionMin = (currentSessionMs / 60000).toInt()
+                
+                val totalMin = usoAcumuladoMin + currentSessionMin
+                
+                if (totalMin >= limitMinutes) {
+                    shouldBlock = true
+                    reason = "Has excedido el límite de tiempo diario ($limitMinutes min)."
+                }
+            }
+        }
+
+        if (shouldBlock) {
+             val intent = BloqueoActivity.newIntent(this, appName, reason)
+             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+             startActivity(intent)
+        }
     }
 
     /**

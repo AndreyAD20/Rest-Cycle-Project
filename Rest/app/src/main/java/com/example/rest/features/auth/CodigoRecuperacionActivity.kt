@@ -79,7 +79,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                     alClickConfirmar = { codigo ->
                         when {
                             codigo.isBlank() || codigo.length != 6 -> {
-                                Toast.makeText(this, "Por favor ingresa un cÃ³digo de 6 dÃ­gitos", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "Por favor ingresa un código de 6 dígitos", Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 cargando = true
@@ -151,7 +151,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@CodigoRecuperacionActivity,
-                                "CÃ³digo verificado correctamente",
+                                "Código verificado correctamente",
                                 Toast.LENGTH_SHORT
                             ).show()
                             
@@ -263,7 +263,7 @@ fun PantallaCodigoRecuperacion(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
-                    contentDescription = "Logo BÃºho",
+                    contentDescription = "Logo Búho",
                     modifier = Modifier.size(100.dp)
                 )
 
@@ -281,7 +281,7 @@ fun PantallaCodigoRecuperacion(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "Pon tu codigo\nde recuperacion",
+                            text = "Pon tu código\nde recuperación",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Negro,
                             textAlign = TextAlign.Center,
