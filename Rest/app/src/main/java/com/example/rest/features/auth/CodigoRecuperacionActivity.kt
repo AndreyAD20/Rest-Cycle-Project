@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -325,7 +326,12 @@ fun PantallaCodigoRecuperacion(
                 onClick = { alClickConfirmar(codigo) },
                 modifier = Modifier
                     .width(200.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .border(
+                        width = 2.dp,
+                        color = Negro,
+                        shape = RoundedCornerShape(30.dp)
+                    ),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Primario
@@ -342,7 +348,7 @@ fun PantallaCodigoRecuperacion(
                     Text(
                         text = "Confirmar",
                         style = MaterialTheme.typography.labelLarge,
-                        color = Blanco
+                        color = Negro
                     )
                 }
             }

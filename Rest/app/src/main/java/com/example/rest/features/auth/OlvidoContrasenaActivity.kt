@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -228,7 +229,12 @@ fun PantallaOlvidoContrasena(
                 onClick = { alClickEnviar(correo) },
                 modifier = Modifier
                     .width(200.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .border(
+                        width = 2.dp,
+                        color = Negro,
+                        shape = RoundedCornerShape(30.dp)
+                    ),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Primario
@@ -256,7 +262,7 @@ fun PantallaOlvidoContrasena(
                         Text(
                             text = "Enviar Codigo de Recuperacion",
                             style = MaterialTheme.typography.labelLarge,
-                            color = Blanco,
+                            color = Negro,
                             fontSize = 14.sp
                         )
                     }

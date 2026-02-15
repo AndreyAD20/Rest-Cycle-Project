@@ -316,13 +316,13 @@ fun PantallaVerificacionCodigo(
                 },
                 modifier = Modifier
                     .width(200.dp)
-                    .height(48.dp)
+                    .height(56.dp)
                     .border(
                         width = 2.dp,
                         color = Negro,
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(30.dp)
                     ),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Primario
                 ),
