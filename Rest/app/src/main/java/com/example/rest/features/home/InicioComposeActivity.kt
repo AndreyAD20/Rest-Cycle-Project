@@ -179,9 +179,15 @@ fun PantallaModosDeUso(
                     android.util.Log.d("InicioActivity", "Mostrando diálogo de permiso de notificaciones")
                     showNotificationPermissionDialog = true
                 } else {
-                    // Tiene ambos permisos, iniciar servicio
-                    android.util.Log.d("InicioActivity", "Tiene ambos permisos, iniciando servicio")
-                    com.example.rest.services.AppMonitorService.startService(context)
+                    // Tiene ambos permisos, verificar Configuración antes de iniciar
+                    val monitoreoActivo = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE).getBoolean("MONITOREO_ACTIVO", true)
+                    
+                    if (monitoreoActivo) {
+                        android.util.Log.d("InicioActivity", "Iniciando servicio (Config: Activo)")
+                        com.example.rest.services.AppMonitorService.startService(context)
+                    } else {
+                        android.util.Log.d("InicioActivity", "Servicio NO iniciado (Config: Pausado)")
+                    }
                 }
             } else {
                 // Android < 13, solo iniciar servicio

@@ -8,7 +8,7 @@
         <item name="android:windowSplashScreenBackground">@color/azul_splash_fondo</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/buho_background</item>
         <item name="android:windowSplashScreenAnimationDuration">1000</item>
-        <item name="android:windowDiscoveryForceDarkAllowed" tools:targetApi="29">false</item>
+
         <!-- Para versiones anteriores a Android 12 -->
         <item name="android:windowBackground">@color/azul_splash_fondo</item>
         <item name="android:statusBarColor">@color/azul_splash_fondo</item>

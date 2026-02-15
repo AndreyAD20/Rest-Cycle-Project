@@ -120,6 +120,35 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     Spacer(modifier = Modifier.height(24.dp))
                 }
                 
+                // Monitoreo de APPS (con toggle)
+                item {
+                    val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+                    var monitoreoActivo by remember { 
+                        mutableStateOf(sharedPrefs.getBoolean("MONITOREO_ACTIVO", true)) 
+                    }
+                    
+                    OpcionConfiguracionToggle(
+                        icono = Icons.Default.Visibility,
+                        titulo = "Monitoreo de Uso",
+                        activado = monitoreoActivo,
+                        onToggle = { isEnabled ->
+                            monitoreoActivo = isEnabled
+                            // Guardar preferencia
+                            sharedPrefs.edit().putBoolean("MONITOREO_ACTIVO", isEnabled).apply()
+                            
+                            // Activar/Desactivar Servicio
+                            if (isEnabled) {
+                                com.example.rest.services.AppMonitorService.startService(context)
+                                android.widget.Toast.makeText(context, "Monitoreo activado", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                com.example.rest.services.AppMonitorService.stopService(context)
+                                android.widget.Toast.makeText(context, "Monitoreo pausado", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 // Modo Oscuro (con toggle)
                 item {
                     OpcionConfiguracionToggle(

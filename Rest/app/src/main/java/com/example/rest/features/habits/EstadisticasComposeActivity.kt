@@ -65,6 +65,8 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.example.rest.data.models.AppUsageInfo
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // Constantes para notificaciones
 const val CHANNEL_ID = "REPORTE_CHANNEL"
@@ -253,6 +255,18 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                     }
                 )
             } else {
+                // Cargar datos en hilo secundario para evitar ANR
+                val datosDiarios = produceState<Map<String, Long>>(initialValue = emptyMap(), key1 = semanaOffset) {
+                    if (periodoSeleccionado == 1) { // Solo si es semanal
+                        value = withContext(Dispatchers.IO) { getUsageStatsDiario(context, semanaOffset) }
+                    }
+                }
+
+                // Cargar lista general (Diario/Mensual/Semanal)
+                val usageStats = produceState<List<AppUsageInfo>>(initialValue = emptyList(), key1 = periodoSeleccionado, key2 = semanaOffset) {
+                     value = withContext(Dispatchers.IO) { getUsageStats(context, periodoSeleccionado, semanaOffset) }
+                }
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -350,23 +364,23 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                         // Mostrar gráfico diferente según el periodo
                         if (periodoSeleccionado == 1) {
                             // Vista semanal: Mostrar gráfico de barras diario
-                            val datosDiarios = remember(semanaOffset) { getUsageStatsDiario(context, semanaOffset) }
                             // Calcular fechas para el gráfico
                              val fechaTexto = getPeriodoFecha(1, semanaOffset)
                              val splitted = fechaTexto.split(" - ")
                              val inicio = splitted.getOrElse(0) { "" }
                              val fin = splitted.getOrElse(1) { "" }
                             
-                            GraficoBarrasSemanal(datosDiarios, inicio, fin)
+                            GraficoBarrasSemanal(datosDiarios.value, inicio, fin)
                         } else {
                             // Vista diaria y mensual: Gráfico top apps
-                            GraficoUso(periodoSeleccionado, semanaOffset, context)
+                            GraficoUso(usageStats.value)
                         }
                         Spacer(modifier = Modifier.height(32.dp))
                     }
 
                     item {
-                        ListaUsoApps(periodoSeleccionado, semanaOffset, context)
+                        // Reutilizamos la lista ya cargada arriba
+                        ListaUsoApps(usageStats.value)
                         Spacer(modifier = Modifier.height(32.dp))
                     }
                     
@@ -576,36 +590,17 @@ fun getUsageStats(context: Context, period: Int, offset: Int = 0): List<AppUsage
     try {
         val usageMap = mutableMapOf<String, Long>()
 
-        if (period == 0) {
-            // Lógica ESTRICTA para DIARIO
-            Log.d("EstadisticasDebug", "Usando lógica ESTRICTA para DIARIO")
-            val usageStatsList = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                startTime,
-                endTime
-            )
-
-            if (usageStatsList.isNullOrEmpty()) {
-                Log.d("EstadisticasDebug", "Lista diaria vacía, intentando fallback a INTERVAL_BEST")
-                // throw Exception("Lista diaria vacía") // Comentado para evitar crash, mejor log
-            }
-
-            var filteredCount = 0
-            usageStatsList.forEach { stats ->
-                if (stats.firstTimeStamp >= startTime) {
-                     val current = usageMap[stats.packageName] ?: 0
-                     usageMap[stats.packageName] = current + stats.totalTimeInForeground
-                     filteredCount++
-                }
-            }
-            Log.d("EstadisticasDebug", "Stats válidos (post-filtro): $filteredCount / ${usageStatsList.size}")
-
-        } else {
-             // Lógica estándar para SEMANAL/MENSUAL
-            val aggregatedStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
-            aggregatedStats?.forEach { (packageName, usageStats) ->
+        Log.d("EstadisticasDebug", "Usando queryAndAggregateUsageStats para periodo: $period")
+        // Lógica UNIFICADA para TODOS los periodos (Diario/Semanal/Mensual)
+        // Esto simplifica y es más robusto en diferentes dispositivos
+        val aggregatedStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+        
+        if (aggregatedStats != null) {
+            aggregatedStats.forEach { (packageName, usageStats) ->
                 val totalTime = usageStats.totalTimeInForeground
                 if (totalTime > 0) {
+                     // Solo sumar si este periodo tiene tiempo relevante
+                     // (Para diario, startTime filtra correctamente)
                      usageMap[packageName] = totalTime
                 }
             }
@@ -694,10 +689,10 @@ fun formatUsageTime(timeInMillis: Long): String {
     val minutes = TimeUnit.MILLISECONDS.toMinutes(timeInMillis) % 60
     
     return when {
-        hours > 0 && minutes > 0 -> "${hours}h ${minutes}m"
-        hours > 0 -> "${hours}h"
-        minutes > 0 -> "${minutes}m"
-        else -> "< 1m"
+        hours > 0 && minutes > 0 -> "${hours} hrs ${minutes} min"
+        hours > 0 -> "${hours} hrs"
+        minutes > 0 -> "${minutes} min"
+        else -> "< 1 min"
     }
 }
 
@@ -983,9 +978,8 @@ fun generarReportePDF(context: Context, stats: List<AppUsageInfo>, periodoStr: S
 }
 
 @Composable
-fun GraficoUso(periodo: Int, offset: Int, context: Context) {
-    val usageStats = remember(periodo, offset) { getUsageStats(context, periodo, offset) }
-    val topApps = usageStats.take(5)
+fun GraficoUso(stats: List<AppUsageInfo>) {
+    val topApps = stats.take(5)
     
     val maxTime = topApps.maxOfOrNull { it.totalTimeInMillis } ?: 1L
     
@@ -1068,9 +1062,8 @@ fun GraficoUso(periodo: Int, offset: Int, context: Context) {
 }
 
 @Composable
-fun ListaUsoApps(periodo: Int, offset: Int, context: Context) {
-    val usageStats = remember(periodo, offset) { getUsageStats(context, periodo, offset) }
-    val topApps = usageStats.take(10)
+fun ListaUsoApps(stats: List<AppUsageInfo>) {
+    val topApps = stats.take(10)
     
     Card(
         colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f)),
