@@ -33,15 +33,21 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="${mapsApiKey}" />
 
+        <!-- Splash Activity (Launcher) -->
         <activity
-            android:name=".features.auth.LoginComposeActivity"
+            android:name=".features.auth.SplashActivity"
             android:exported="true"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+            android:theme="@style/Theme.Rest.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".features.auth.LoginComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <!-- Auth Activities -->
         <activity android:name=".features.auth.RegistroComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />

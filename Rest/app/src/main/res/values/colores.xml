@@ -46,5 +46,6 @@
     <!-- Colores Específicos de la App -->
     <color name="azul_rest_cycle">#00BCD4</color>
     <color name="cyan_rest">#00BCD4</color>
+    <color name="azul_splash_fondo">#E0F7FA</color>
 
 </resources>
