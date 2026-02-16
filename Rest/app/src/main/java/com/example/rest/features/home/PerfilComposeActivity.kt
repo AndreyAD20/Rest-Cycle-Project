@@ -73,27 +73,35 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
     var profileImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
 
-    // Cargar imagen guardada al inicio
+    // Cargar imagen guardada al inicio y SIEMPRE verificar actualizaciones
     LaunchedEffect(Unit) {
         val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
         val userId = sharedPref.getInt("ID_USUARIO", -1)
         
         if (userId != -1) {
-            // Primero intentar cargar desde almacenamiento local
-            val bitmap = getProfileImageBitmap(context, userId)
-            if (bitmap != null) {
-                profileImageBitmap = bitmap
-            } else {
-                // Si no existe localmente, intentar descargar desde Supabase
-                scope.launch {
-                    descargarFotoDeSupabase(context, userId)?.let {
-                        profileImageBitmap = it
-                    }
+            // 1. Cargar lo que tengamos localmente primero (para velocidad)
+            val localBitmap = getProfileImageBitmap(context, userId)
+            if (localBitmap != null) {
+                profileImageBitmap = localBitmap
+            }
+
+            // 2. SIEMPRE intentar sincronizar con Supabase en segundo plano
+            scope.launch {
+                isCheckingUpdate = true
+                val remoteBitmap = descargarFotoDeSupabase(context, userId)
+                if (remoteBitmap != null) {
+                    // Si hay foto remota, actualizamos la UI y el caché local
+                    profileImageBitmap = remoteBitmap
                 }
+                isCheckingUpdate = false
             }
         }
     }
+
+
+
 
     // Cerrar drawer cuando se vuelve a la actividad
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -489,6 +497,15 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                 tint = Negro
                             )
                         }
+                        
+                        // Indicador de carga (Overlay)
+                        if (isCheckingUpdate) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                color = Primario, 
+                                strokeWidth = 3.dp
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -715,11 +732,14 @@ suspend fun subirFotoASupabase(context: Context, bitmap: Bitmap) {
                 return@withContext
             }
             
+            // Redimensionar imagen si es muy grande (Max 800x800)
+            val resizedBitmap = resizeBitmap(bitmap, 800, 800)
+
             // Convertir bitmap a Base64
             val byteArrayOutputStream = java.io.ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream)
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream) // Calidad 80 es suficiente
             val byteArray = byteArrayOutputStream.toByteArray()
-            val base64String = android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
+            val base64String = android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP) // NO_WRAP para evitar saltos de línea
             
             // Subir a Supabase
             val repository = com.example.rest.data.repository.UsuarioRepository()
@@ -846,4 +866,28 @@ suspend fun eliminarFotoDeSupabase(context: Context) {
             }
         }
     }
+}
+
+/**
+ * Redimensionar bitmap manteniendo la proporción
+ */
+fun resizeBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+    val width = bitmap.width
+    val height = bitmap.height
+    
+    if (width <= maxWidth && height <= maxHeight) return bitmap
+
+    val ratioBitmap = width.toFloat() / height.toFloat()
+    val ratioMax = maxWidth.toFloat() / maxHeight.toFloat()
+
+    var finalWidth = maxWidth
+    var finalHeight = maxHeight
+
+    if (ratioMax > ratioBitmap) {
+        finalWidth = (maxHeight.toFloat() * ratioBitmap).toInt()
+    } else {
+        finalHeight = (maxWidth.toFloat() / ratioBitmap).toInt()
+    }
+
+    return Bitmap.createScaledBitmap(bitmap, finalWidth, finalHeight, true)
 }

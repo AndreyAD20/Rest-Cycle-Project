@@ -159,12 +159,13 @@ class NotasComposeActivity : BaseComposeActivity() {
             // Fecha ISO 8601 actual
             val fechaActual = obtenerFechaActualIso()
             
-            val nuevaNota = Nota(
+            val nuevaNota = com.example.rest.data.models.NotaInput(
                 idUsuario = idUsuarioActual,
                 titulo = titulo,
                 contenido = contenido,
                 color = color,
-                fecha_actualizacion = fechaActual
+                fecha_actualizacion = fechaActual,
+                favorito = false
             )
             
             when (val resultado = notaRepository.crearNota(nuevaNota)) {

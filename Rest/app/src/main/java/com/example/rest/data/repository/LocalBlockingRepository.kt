@@ -27,11 +27,10 @@ class LocalBlockingRepository(private val context: Context) {
 
         for (appInfo in installedApps) {
             // Filtrar apps del sistema que no sean actualizables (básicas traseras)
-            if ((appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0 &&
-                (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
-            ) {
-                // Opcional: Permitir algunas apps de sistema útiles, pero por ahora filtramos la mayoría
-                // continue 
+            // Filtrar apps que no sean lanzables (sin icono en el launcher)
+            // Esto elimina servicios de sistema y procesos de fondo irrelevantes para bloqueo
+            if (pm.getLaunchIntentForPackage(appInfo.packageName) == null) {
+                continue
             }
             
             // Ignorar nuestra propia app

@@ -212,43 +212,71 @@ fun PantallaModosDeUso(
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showNotificationPermissionDialog by remember { mutableStateOf(false) }
 
-    // Verificar permisos al iniciar
-    LaunchedEffect(Unit) {
-        val hasUsagePermission = checkUsageStatsPermission(context)
-        android.util.Log.d("InicioActivity", "Permiso de uso: $hasUsagePermission")
-        
-        if (!hasUsagePermission) {
-            android.util.Log.d("InicioActivity", "Mostrando diálogo de permiso de uso")
+    // Acción pendiente para ejecutar después de otorgar permisos
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    // Función para verificar y pedir permisos antes de navegar
+    val checkAndRequestPermissions = { action: () -> Unit ->
+        val hasUsage = checkUsageStatsPermission(context)
+        if (!hasUsage) {
+            pendingAction = action
             showPermissionDialog = true
         } else {
-            // Si ya tiene permiso de uso, verificar permiso de notificaciones
+            // Verificar Notificaciones (Android 13+)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                val hasNotificationPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                val hasNotif = androidx.core.content.ContextCompat.checkSelfPermission(
                     context,
                     android.Manifest.permission.POST_NOTIFICATIONS
                 ) == android.content.pm.PackageManager.PERMISSION_GRANTED
                 
-                android.util.Log.d("InicioActivity", "Permiso de notificaciones: $hasNotificationPermission (Android ${android.os.Build.VERSION.SDK_INT})")
-                
-                if (!hasNotificationPermission) {
-                    android.util.Log.d("InicioActivity", "Mostrando diálogo de permiso de notificaciones")
+                if (!hasNotif) {
+                    pendingAction = action
                     showNotificationPermissionDialog = true
                 } else {
-                    // Tiene ambos permisos, verificar Configuración antes de iniciar
-                    val monitoreoActivo = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE).getBoolean("MONITOREO_ACTIVO", true)
-                    
-                    if (monitoreoActivo) {
-                        android.util.Log.d("InicioActivity", "Iniciando servicio (Config: Activo)")
-                        com.example.rest.services.AppMonitorService.startService(context)
-                    } else {
-                        android.util.Log.d("InicioActivity", "Servicio NO iniciado (Config: Pausado)")
-                    }
+                    // Todo OK, ejecutar acción e iniciar servicio si no está corriendo
+                    com.example.rest.services.AppMonitorService.startService(context)
+                    action()
                 }
             } else {
-                // Android < 13, solo iniciar servicio
-                android.util.Log.d("InicioActivity", "Android < 13, iniciando servicio sin permiso de notificaciones")
+                // Android < 13
                 com.example.rest.services.AppMonitorService.startService(context)
+                action()
             }
+        }
+    }
+    
+    // Verificar si regresamos de configuración (onResume) y hay acción pendiente
+    // Esto maneja el caso donde el usuario fue a Settings a dar permiso de uso y volvió
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                 if (pendingAction != null && checkUsageStatsPermission(context)) {
+                     // Si ya tiene uso, verificar notif o ejecutar
+                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                         val hasNotif = androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            android.Manifest.permission.POST_NOTIFICATIONS
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        
+                        if (hasNotif) {
+                             val action = pendingAction
+                             pendingAction = null
+                             com.example.rest.services.AppMonitorService.startService(context)
+                             action?.invoke()
+                        }
+                     } else {
+                         val action = pendingAction
+                         pendingAction = null
+                         com.example.rest.services.AppMonitorService.startService(context)
+                         action?.invoke()
+                     }
+                 }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
@@ -375,7 +403,7 @@ fun PantallaModosDeUso(
 
             // Botón Control Parental
             Button(
-                onClick = alClickControlParental,
+                onClick = { checkAndRequestPermissions(alClickControlParental) },
                 modifier = Modifier
                     .width(260.dp)
                     .height(56.dp)
@@ -413,7 +441,7 @@ fun PantallaModosDeUso(
 
             // Botón Hábitos Saludables
             Button(
-                onClick = alClickHabitosSaludables,
+                onClick = { checkAndRequestPermissions(alClickHabitosSaludables) },
                 modifier = Modifier
                     .width(260.dp)
                     .height(56.dp)

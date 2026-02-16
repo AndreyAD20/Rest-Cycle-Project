@@ -563,13 +563,16 @@ fun PantallaRegistro(
                                 return@Button
                             }
 
+                            // Asignación automática de rol según edad
+                            val rolAutomatico = if (mayorEdad) "padre" else "hijo"
+
                             val request = RegistroRequest(
                                 nombre = nombre,
                                 apellido = apellido.ifBlank { null },
                                 correo = correo,
                                 fechaNacimiento = fechaFormateada,
                                 contraseña = pin,
-                                rol = rol,
+                                rol = rolAutomatico,
                                 mayorEdad = mayorEdad
                             )
                             alClickRegistrar(request)

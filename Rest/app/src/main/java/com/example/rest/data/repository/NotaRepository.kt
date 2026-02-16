@@ -61,7 +61,7 @@ class NotaRepository {
     /**
      * Crear una nueva nota
      */
-    suspend fun crearNota(nota: Nota): Result<Nota> {
+    suspend fun crearNota(nota: com.example.rest.data.models.NotaInput): Result<Nota> {
         return withContext(Dispatchers.IO) {
             try {
                 val response = api.crearNota(nota)

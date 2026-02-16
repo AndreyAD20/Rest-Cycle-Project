@@ -65,6 +65,29 @@ val Typography = Typography(
         letterSpacing = 0.sp
     ),
     
+    // Títulos - Itim (Agregar definiciones de Title)
+    titleLarge = TextStyle(
+        fontFamily = itimFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.sp
+    ),
+    titleMedium = TextStyle(
+        fontFamily = itimFontFamily,
+        fontWeight = FontWeight.Normal, // Changed to Normal as Itim only supports 400
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.15.sp
+    ),
+    titleSmall = TextStyle(
+        fontFamily = itimFontFamily,
+        fontWeight = FontWeight.Normal, // Changed to Normal
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.1.sp
+    ),
+    
     // Cuerpo de texto - Istok Web
     bodyLarge = TextStyle(
         fontFamily = istokWebFontFamily,

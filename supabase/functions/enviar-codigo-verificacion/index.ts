@@ -7,7 +7,8 @@ const GMAIL_APP_PASSWORD = Deno.env.get('GMAIL_APP_PASSWORD');
 interface EmailRequest {
   email: string;
   code: string;
-  nombre: string;
+  nombre?: string;
+  tipo?: string; // 'verificacion' o 'recuperacion'
 }
 
 console.info('Edge Function: enviar-codigo-verificacion (Gmail SMTP) iniciada');
@@ -26,13 +27,16 @@ Deno.serve(async (req: Request) => {
 
   try {
     // Parsear request
-    const { email, code, nombre }: EmailRequest = await req.json();
+    const { email, code, nombre, tipo }: EmailRequest = await req.json();
     
-    console.log(`📧 Intentando enviar código a ${email} usando Gmail`);
+    const esRecuperacion = tipo === 'recuperacion';
+    const tipoMensaje = esRecuperacion ? 'recuperación' : 'verificación';
+    
+    console.log(`📧 Intentando enviar código de ${tipoMensaje} a ${email} usando Gmail`);
     
     // Validar datos
-    if (!email || !code || !nombre) {
-      throw new Error('Faltan parámetros requeridos: email, code, nombre');
+    if (!email || !code) {
+      throw new Error('Faltan parámetros requeridos: email, code');
     }
 
     // Validar credenciales
@@ -49,76 +53,20 @@ Deno.serve(async (req: Request) => {
       },
     });
 
-    // Configurar mensaje
+    // Configurar mensaje según el tipo
+    const subject = esRecuperacion 
+      ? 'Código de Recuperación - Rest Cycle'
+      : 'Código de verificación - Rest Cycle';
+    
+    const htmlContent = esRecuperacion 
+      ? generarHTMLRecuperacion(code)
+      : generarHTMLVerificacion(code, nombre || 'Usuario');
+    
     const mailOptions = {
       from: `"Rest Cycle" <${GMAIL_USER}>`,
       to: email,
-      subject: 'Código de verificación - Rest Cycle',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Arial, sans-serif;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
-            <tr>
-              <td align="center">
-                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                  <!-- Header -->
-                  <tr>
-                    <td style="background: linear-gradient(135deg, #00BCD4 0%, #80DEEA 100%); padding: 30px; text-align: center;">
-                      <h1 style="margin: 0; color: #ffffff; font-size: 28px;">Rest Cycle</h1>
-                    </td>
-                  </tr>
-                  
-                  <!-- Content -->
-                  <tr>
-                    <td style="padding: 40px 30px;">
-                      <h2 style="color: #333333; margin: 0 0 20px 0;">¡Hola ${nombre}! 👋</h2>
-                      <p style="color: #666666; font-size: 16px; line-height: 1.5; margin: 0 0 30px 0;">
-                        Gracias por registrarte en Rest Cycle. Para completar tu registro, por favor ingresa el siguiente código de verificación:
-                      </p>
-                      
-                      <!-- Código -->
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                          <td align="center" style="padding: 20px 0;">
-                            <div style="background-color: #f8f9fa; border: 2px dashed #00BCD4; border-radius: 8px; padding: 20px; display: inline-block;">
-                              <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">Tu código de verificación:</p>
-                              <p style="margin: 0; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #00BCD4; font-family: 'Courier New', monospace;">
-                                ${code}
-                              </p>
-                            </div>
-                          </td>
-                        </tr>
-                      </table>
-                      
-                      <p style="color: #999999; font-size: 14px; line-height: 1.5; margin: 30px 0 0 0; text-align: center;">
-                        ⏱️ Este código expirará en <strong>15 minutos</strong>
-                      </p>
-                    </td>
-                  </tr>
-                  
-                  <!-- Footer -->
-                  <tr>
-                    <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
-                      <p style="margin: 0; color: #999999; font-size: 12px;">
-                        Si no solicitaste este código, puedes ignorar este mensaje de forma segura.
-                      </p>
-                      <p style="margin: 10px 0 0 0; color: #cccccc; font-size: 11px;">
-                        © 2026 Rest Cycle. Todos los derechos reservados.
-                      </p>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
-          </table>
-        </body>
-        </html>
-      `
+      subject: subject,
+      html: htmlContent
     };
 
     // Enviar email
@@ -158,3 +106,128 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// Función para generar HTML de verificación
+function generarHTMLVerificacion(code: string, nombre: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Arial, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <tr>
+                <td style="background: linear-gradient(135deg, #00BCD4 0%, #80DEEA 100%); padding: 30px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px;">Rest Cycle</h1>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 40px 30px;">
+                  <h2 style="color: #333333; margin: 0 0 20px 0;">¡Hola ${nombre}! 👋</h2>
+                  <p style="color: #666666; font-size: 16px; line-height: 1.5; margin: 0 0 30px 0;">
+                    Gracias por registrarte en Rest Cycle. Para completar tu registro, ingresa el siguiente código:
+                  </p>
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center" style="padding: 20px 0;">
+                        <div style="background-color: #f8f9fa; border: 2px dashed #00BCD4; border-radius: 8px; padding: 20px; display: inline-block;">
+                          <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">Tu código de verificación:</p>
+                          <p style="margin: 0; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #00BCD4; font-family: 'Courier New', monospace;">
+                            ${code}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                  <p style="color: #999999; font-size: 14px; line-height: 1.5; margin: 30px 0 0 0; text-align: center;">
+                    ⏱️ Este código expirará en <strong>15 minutos</strong>
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                  <p style="margin: 0; color: #999999; font-size: 12px;">
+                    Si no solicitaste este código, ignora este mensaje.
+                  </p>
+                  <p style="margin: 10px 0 0 0; color: #cccccc; font-size: 11px;">
+                    © 2026 Rest Cycle. Todos los derechos reservados.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+
+// Función para generar HTML de recuperación
+function generarHTMLRecuperacion(code: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Arial, sans-serif;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+              <tr>
+                <td style="background: linear-gradient(135deg, #FF5722 0%, #FF9800 100%); padding: 30px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 28px;">Rest Cycle</h1>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 40px 30px;">
+                  <h2 style="color: #333333; margin: 0 0 20px 0;">🔐 Recuperación de Contraseña</h2>
+                  <p style="color: #666666; font-size: 16px; line-height: 1.5; margin: 0 0 30px 0;">
+                    Recibimos una solicitud para restablecer tu contraseña. Usa el siguiente código:
+                  </p>
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td align="center" style="padding: 20px 0;">
+                        <div style="background-color: #fff3e0; border: 2px solid #FF5722; border-radius: 8px; padding: 20px; display: inline-block;">
+                          <p style="margin: 0 0 10px 0; color: #666666; font-size: 14px;">Tu código de recuperación:</p>
+                          <p style="margin: 0; font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #FF5722; font-family: 'Courier New', monospace;">
+                            ${code}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                  <div style="background-color: #fff3e0; padding: 15px; border-left: 4px solid #FF9800; margin: 20px 0;">
+                    <p style="margin: 0; color: #666666; font-size: 14px;">
+                      <strong>⚠️ Importante:</strong> Este código expirará en <strong>15 minutos</strong>.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                  <p style="margin: 0; color: #999999; font-size: 12px;">
+                    Si no solicitaste restablecer tu contraseña, ignora este mensaje.
+                  </p>
+                  <p style="margin: 10px 0 0 0; color: #cccccc; font-size: 11px;">
+                    © 2026 Rest Cycle. Todos los derechos reservados.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+}
+

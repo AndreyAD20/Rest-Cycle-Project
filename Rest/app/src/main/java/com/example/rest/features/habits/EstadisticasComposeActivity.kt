@@ -259,7 +259,22 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                 var datosDiarios by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
                 var cargandoDiario by remember { mutableStateOf(false) }
 
-                LaunchedEffect(semanaOffset, periodoSeleccionado) {
+                // Trigger para refrescar al volver (ON_RESUME)
+                var refreshTrigger by remember { mutableStateOf(0) }
+                val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                DisposableEffect(lifecycleOwner) {
+                    val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                        if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                            refreshTrigger++
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                    }
+                }
+
+                LaunchedEffect(semanaOffset, periodoSeleccionado, refreshTrigger) {
                     if (periodoSeleccionado == 1) { // Solo si es semanal
                         cargandoDiario = true
                         datosDiarios = withContext(Dispatchers.IO) { getUsageStatsDiario(context, semanaOffset) }
@@ -271,7 +286,7 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                 var usageStats by remember { mutableStateOf<List<AppUsageInfo>>(emptyList()) }
                 var cargandoGeneral by remember { mutableStateOf(false) }
                 
-                LaunchedEffect(periodoSeleccionado, semanaOffset) {
+                LaunchedEffect(periodoSeleccionado, semanaOffset, refreshTrigger) {
                      cargandoGeneral = true
                      usageStats = withContext(Dispatchers.IO) { getUsageStats(context, periodoSeleccionado, semanaOffset) }
                      cargandoGeneral = false

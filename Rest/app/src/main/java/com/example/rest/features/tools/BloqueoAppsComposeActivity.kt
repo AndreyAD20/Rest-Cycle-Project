@@ -132,7 +132,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                 title = {
                     Text(
                         "Bloqueo de Apps",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
@@ -171,7 +171,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                     ) {
                         Text(
                             text = "Configura límites diarios para tus aplicaciones y mejora tu productividad.",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            style = MaterialTheme.typography.bodyMedium, // Istok Web has Medium weight, this is fine or remove if needed. bodyMedium is Istok.
                             color = Negro,
                             modifier = Modifier.weight(1f)
                         )
@@ -194,7 +194,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                 ) {
                     Text(
                         "Tus Aplicaciones",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium,
                         color = Negro
                     )
                     
@@ -325,7 +325,6 @@ fun AppSelectionDialog(
                         Text(
                             text = "Agregar Apps",
                             style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
                                 color = Blanco
                             )
                         )
@@ -365,7 +364,10 @@ fun AppSelectionDialog(
                             focusedContainerColor = Blanco,
                             unfocusedContainerColor = Blanco,
                             focusedBorderColor = Primario,
-                            unfocusedBorderColor = Color.Transparent
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedTextColor = Negro,
+                            unfocusedTextColor = Negro,
+                            cursorColor = Primario
                         ),
                         singleLine = true
                     )
@@ -414,7 +416,7 @@ fun AppSelectionDialog(
                                     
                                     Text(
                                         text = app.nombre,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        style = MaterialTheme.typography.titleMedium,
                                         color = Negro,
                                         modifier = Modifier.weight(1f)
                                     )
@@ -455,25 +457,17 @@ fun AppSelectionDialog(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Botones de Acción
-                    Row(
+                    // Botones de Acción Centrados
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        TextButton(
-                            onClick = onDismiss,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Cancelar", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
                         Button(
                             onClick = { onAppsSelected(selected) },
                             colors = ButtonDefaults.buttonColors(containerColor = Primario),
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
-                                .weight(1f)
+                                .fillMaxWidth(0.8f) // 80% ancho
                                 .height(50.dp),
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                         ) {
@@ -483,6 +477,15 @@ fun AppSelectionDialog(
                                 style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1
                             )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        TextButton(
+                            onClick = onDismiss,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Cancelar", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }

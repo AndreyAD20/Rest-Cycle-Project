@@ -189,7 +189,7 @@ interface SupabaseApi {
      */
     @POST("notas")
     suspend fun crearNota(
-        @Body nota: Nota
+        @Body nota: NotaInput
     ): Response<List<Nota>>
     
     /**
