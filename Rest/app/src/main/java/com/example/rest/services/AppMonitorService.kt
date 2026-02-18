@@ -12,7 +12,8 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.rest.R
-import com.example.rest.data.models.SesionApp
+import com.example.rest.data.models.HistorialApp
+
 import com.example.rest.network.SupabaseClient
 import com.example.rest.features.blocking.BloqueoActivity
 import com.example.rest.data.models.AppVinculada
@@ -33,6 +34,7 @@ class AppMonitorService : Service() {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "app_monitoring_channel"
         private const val CHECK_INTERVAL = 3000L // 3 segundos
+        private const val SYNC_INTERVAL = 60000L // 1 minuto
         
         // Acción para iniciar el servicio
         fun startService(context: Context) {
@@ -107,7 +109,7 @@ class AppMonitorService : Service() {
                         Log.d(TAG, "ID de dispositivo obtenido: $dispositivoId")
                     } else {
                         // Crear nuevo dispositivo
-                        val nuevoDispositivo = com.example.rest.data.models.Dispositivo(
+                        val nuevoDispositivo = com.example.rest.data.models.DispositivoInput(
                             idUsuario = userId,
                             nombre = "Android Device",
                             ip = "0.0.0.0", // IP por defecto
@@ -140,7 +142,16 @@ class AppMonitorService : Service() {
         }
         
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification())
+        
+        if (Build.VERSION.SDK_INT >= 34) { // Android 14+
+            startForeground(
+                NOTIFICATION_ID, 
+                createNotification(), 
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, createNotification())
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -174,11 +185,11 @@ class AppMonitorService : Service() {
             
             if (durationSeconds >= 2) {
                 // Usamos runBlocking aquí porque el servicio se está destruyendo
-                // y queremos asegurar que se intente enviar la petición
+                val duracion = durationSeconds
                 try {
                     runBlocking {
-                        withTimeout(2000) { // Timeout de 2 segundos para no bloquear la UI
-                             registrarSesionCompleta(packageName, sessionStartTime, now, durationSeconds)
+                        withTimeout(2000) { 
+                             registrarUsoApp(packageName, duracion)
                         }
                     }
                 } catch (e: Exception) {
@@ -190,13 +201,24 @@ class AppMonitorService : Service() {
         serviceScope.cancel()
     }
 
+    private var lastSyncTime: Long = 0
+
     /**
      * Inicia el monitoreo periódico
      */
     private fun startMonitoring() {
+        // Inicializar uso diario con estadísticas del sistema
+        inicializarUsoDiario()
+        
         handler.post(object : Runnable {
             override fun run() {
                 if (isMonitoring) {
+                    val now = System.currentTimeMillis()
+                    if (now - lastSyncTime > SYNC_INTERVAL) {
+                        sincronizarReglasConBaseDeDatos()
+                        lastSyncTime = now
+                    }
+                    
                     actualizarListaRestricciones()
                     checkForegroundApp()
                     handler.postDelayed(this, CHECK_INTERVAL)
@@ -204,61 +226,246 @@ class AppMonitorService : Service() {
             }
         })
     }
+    
+    /**
+     * Sincroniza las reglas de bloqueo con la base de datos (Supabase)
+     */
+    private fun sincronizarReglasConBaseDeDatos() {
+        if (dispositivoId == -1) return
+        
+        serviceScope.launch {
+            try {
+                // Primero, subir apps locales que no estén en la nube
+                // DESACTIVADO: El usuario quiere seleccionar manualmente qué apps vincular
+                // subirAppsInstaladas()
+                
+                val response = api.obtenerAppsVinculadas("eq.$dispositivoId")
+                if (response.isSuccessful) {
+                    val appsVinculadas = response.body() ?: emptyList()
+                    
+                    if (appsVinculadas.isNotEmpty()) {
+                        // Obtener lista actual para preservar colores/iconos si es posible
+                        // o simplemente recrear. Para simplificar, recreamos mapeando.
+                        // Nota: AppBloqueo requiere iconColor, que no tenemos en BD.
+                        // Podríamos intentar mantener los de la lista instalada actual.
+                        
+                        val pm = packageManager
+                        val listaMapeada = appsVinculadas.mapNotNull { vinculada ->
+                             val pkg = vinculada.nombrePaquete ?: return@mapNotNull null
+                             
+                             // Intentar obtener info local para color/nombre real
+                             var iconColor = androidx.compose.ui.graphics.Color.Gray
+                             var nombreApp = vinculada.nombre
+                             
+                             try {
+                                 val appInfo = pm.getApplicationInfo(pkg, 0)
+                                 // nombreApp = pm.getApplicationLabel(appInfo).toString() // Usar nombre de BD o local? BD tiene prioridad si se editó
+                                 // Generar color (reutilizando lógica simplificada o random)
+                                 iconColor = androidx.compose.ui.graphics.Color(pkg.hashCode())
+                             } catch (e: Exception) {
+                                 // App no instalada, pero la regla existe.
+                             }
+                             
+                             // Convertir tiempo limite (minutos) a horas/minutos
+                             val horas = vinculada.tiempoLimite / 60
+                             val minutos = vinculada.tiempoLimite % 60
+                             
+                             AppBloqueo(
+                                 id = pkg.hashCode(),
+                                 nombre = nombreApp,
+                                 packageName = pkg,
+                                 iconColor = iconColor,
+                                 isBlocked = vinculada.bloqueada,
+                                 limitHours = horas,
+                                 limitMinutes = minutos
+                             )
+                        }
+                        
+                        // Actualizar repositorio local
+                        localRepository.updateBlockedApps(listaMapeada)
+                        Log.d(TAG, "Sincronización completada: ${listaMapeada.size} reglas actualizadas")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sincronizando reglas: ${e.message}")
+            }
+        }
+    }
 
     /**
-     * Verifica qué app está en primer plano
+     * Sube las apps instaladas a la base de datos si no existen
+     */
+    private suspend fun subirAppsInstaladas() {
+        if (dispositivoId == -1) return
+        
+        try {
+            // 1. Obtener apps en BD
+            val response = api.obtenerAppsVinculadas("eq.$dispositivoId")
+            val appsEnNube = if (response.isSuccessful) response.body() ?: emptyList() else emptyList()
+            val paquetesEnNube = appsEnNube.mapNotNull { it.nombrePaquete }.toSet()
+            
+            // 2. Obtener apps instaladas (con launcher)
+            val pm = packageManager
+            val mainIntent = Intent(Intent.ACTION_MAIN, null)
+            mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+            val appsInstaladas = pm.queryIntentActivities(mainIntent, 0)
+            
+            val appsASubir = mutableListOf<com.example.rest.data.models.AppVinculadaInput>()
+            
+            for (resolveInfo in appsInstaladas) {
+                val packageName = resolveInfo.activityInfo.packageName
+                
+                // Ignorar si ya está en la nube o si es nuestra propia app
+                if (paquetesEnNube.contains(packageName) || packageName == this.packageName) {
+                    continue
+                }
+                
+                val appName = resolveInfo.loadLabel(pm).toString()
+                
+                val nuevaApp = com.example.rest.data.models.AppVinculadaInput(
+                    idDispositivo = dispositivoId,
+                    nombre = appName,
+                    nombrePaquete = packageName,
+                    tiempoLimite = 0,
+                    bloqueada = false,
+                    activa = true
+                )
+                appsASubir.add(nuevaApp)
+            }
+            
+            // 3. Subir las nuevas (dada la API actual, una por una o en lote si agregamos endpoint)
+            // Como create toma un objeto, lo hacemos iterativo. No es lo más eficiente pero funciona para < 100 apps iniciales.
+            // Para optimizar, se podría agregar un endpoint batch en el backend.
+            if (appsASubir.isNotEmpty()) {
+                Log.d(TAG, "Subiendo ${appsASubir.size} nuevas apps a la nube...")
+                for (app in appsASubir) {
+                   try {
+                       api.crearAppVinculada(app)
+                   } catch (e: Exception) {
+                       Log.e(TAG, "Error subiendo app ${app.nombre}: ${e.message}")
+                   }
+                }
+                Log.d(TAG, "Carga de apps completada")
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error en subirAppsInstaladas: ${e.message}")
+        }
+    }
+
+    /**
+     * Inicializa el mapa de uso diario consultando UsageStats del sistema
+     * para tener el acumulado real desde las 00:00
+     */
+    private fun inicializarUsoDiario() {
+        try {
+            val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            val startTime = calendar.timeInMillis
+            val endTime = System.currentTimeMillis()
+
+            val stats = usageStatsManager.queryUsageStats(
+                UsageStatsManager.INTERVAL_DAILY,
+                startTime,
+                endTime
+            )
+
+            if (stats != null) {
+                dailyUsageMap.clear()
+                for (usageStat in stats) {
+                    if (usageStat.totalTimeInForeground > 0) {
+                       val totalTimeInMinutes = (usageStat.totalTimeInForeground / 60000).toInt()
+                       if (totalTimeInMinutes > 0) {
+                           // UsageStats puede devolver múltiples entradas por paquete, sumar si ya existe
+                           val current = dailyUsageMap[usageStat.packageName] ?: 0
+                           // Nota: queryUsageStats con INTERVAL_DAILY a veces devuelve trozos, 
+                           // pero para "hoy" suele ser acumulativo desde el inicio del intervalo.
+                           // Si hay duplicados con el mismo paquete, tomamos el que tenga más tiempo o sumamos?
+                           // INTERVAL_DAILY agrupa por días, así que para "hoy" debería ser un solo objeto o 
+                           // varios si hubo cambios de configuración. Sumar es lo más seguro.
+                           dailyUsageMap[usageStat.packageName] = current + totalTimeInMinutes
+                       }
+                    }
+                }
+                Log.d(TAG, "Uso diario inicializado: ${dailyUsageMap.size} apps con actividad")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error inicializando uso diario: ${e.message}")
+        }
+    }
+
+    /**
+     * Verifica qué app está en primer plano usando queryEvents (Más preciso en Android 14+)
      */
     private fun checkForegroundApp() {
         try {
             val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
             val currentTime = System.currentTimeMillis()
             
-            // Obtener estadísticas de los últimos 5 segundos
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
-                currentTime - 5000,
-                currentTime
-            )
+            // Usar queryEvents en lugar de queryUsageStats para mayor precisión en tiempo real
+            val events = usageStatsManager.queryEvents(currentTime - 5000, currentTime)
+            var lastEvent: android.app.usage.UsageEvents.Event? = null
+            val event = android.app.usage.UsageEvents.Event()
             
-            if (stats.isNullOrEmpty()) {
-                return
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED ||
+                    event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                    lastEvent = android.app.usage.UsageEvents.Event()
+                    // Copiar datos del evento (no hay método copy, asignamos manualmente lo necesario para referencia)
+                    // En realidad solo nos importa el último evento de tipo MOVE_TO_FOREGROUND
+                    // Hack: Guardamos el package name en una variable temporal
+                }
             }
             
-            // Obtener la app más reciente
-            val sortedStats = stats.sortedByDescending { it.lastTimeUsed }
-            val foregroundApp = sortedStats.firstOrNull()
+            // Re-escaneo para obtener el objeto evento correcto si hubo alguno
+            val finalEvents = usageStatsManager.queryEvents(currentTime - 5000, currentTime)
+            var latestForegroundApp: String? = null
+            var latestTime: Long = 0
             
-            foregroundApp?.let { app ->
-                val packageName = app.packageName
-                
-                // Ignorar nuestra propia app y el launcher
+            while (finalEvents.hasNextEvent()) {
+                finalEvents.getNextEvent(event)
+                if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED ||
+                    event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                    if (event.timeStamp > latestTime) {
+                        latestTime = event.timeStamp
+                        latestForegroundApp = event.packageName
+                    }
+                }
+            }
+            
+            latestForegroundApp?.let { packageName ->
+                // Ignorar nuestra propia app y el launcher (Pixel Launcher, One UI Home, etc)
                 if (packageName == this.packageName || 
-                    packageName.contains("launcher", ignoreCase = true)) {
+                    packageName.contains("launcher", ignoreCase = true) ||
+                    packageName.contains("nexuslauncher", ignoreCase = true) ||
+                    packageName == "com.android.systemui") {
                     return
                 }
                 
                 // Si cambió la app
                 if (packageName != currentPackageName) {
-                    Log.d(TAG, "App cambió: $currentPackageName -> $packageName")
+                    Log.d(TAG, "App cambió (Events): $currentPackageName -> $packageName")
                     
                     // Procesar sesión anterior (si existe)
                     currentPackageName?.let { previousPackage ->
                         val now = System.currentTimeMillis()
                         val durationSeconds = ((now - sessionStartTime) / 1000).toInt()
                         
-                        // Solo registrar si duró más de 5 segundos (filtro de ruido)
+                        // Solo registrar si duró más de 2 segundos (filtro de ruido)
                         if (durationSeconds >= 2) {
-                            val inicio = sessionStartTime
-                            val fin = now
+                            val duracion = durationSeconds
                             
                             serviceScope.launch {
-                                registrarSesionCompleta(previousPackage, inicio, fin, durationSeconds)
+                                registrarUsoApp(previousPackage, duracion)
                             }
-                        } else {
-                            Log.d(TAG, "Sesión de $previousPackage ignorada (muy corta: ${durationSeconds}s)")
                         }
                     }
-                    
+                     
                     // Iniciar seguimiento de nueva app en memoria
                     currentPackageName = packageName
                     sessionStartTime = currentTime
@@ -270,6 +477,10 @@ class AppMonitorService : Service() {
                     // Si sigue siendo la misma app, verificar si ya se pasó del tiempo
                     verificarBloqueo(packageName, getAppName(packageName))
                 }
+            } ?: run {
+                // Fallback para versiones antiguas o si no hay eventos (poco probable si se usa activamente)
+                // Si events no trajo nada, podríamos probar queryUsageStats como backup, 
+                // pero queryEvents suele ser más fiable para "lo último que pasó".
             }
             
         } catch (e: Exception) {
@@ -314,7 +525,7 @@ class AppMonitorService : Service() {
             
             // Crear si no existe
             val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}"
-            val nuevoDispositivo = com.example.rest.data.models.Dispositivo(
+            val nuevoDispositivo = com.example.rest.data.models.DispositivoInput(
                 idUsuario = userId,
                 nombre = deviceName,
                 ip = "0.0.0.0",
@@ -345,44 +556,66 @@ class AppMonitorService : Service() {
     /**
      * Registra una sesión completa en la base de datos
      */
-    private suspend fun registrarSesionCompleta(packageName: String, inicio: Long, fin: Long, duracion: Int) {
+    /**
+     * Registra el uso en el mapa local y actualiza HistorialApps
+     */
+    private suspend fun registrarUsoApp(packageName: String, duracion: Int) {
+        if (duracion < 1) return 
+        
+        // 1. Actualizar mapa local (para bloqueo inmediato)
+        val currentUsage = dailyUsageMap[packageName] ?: 0
+        dailyUsageMap[packageName] = currentUsage + (duracion / 60)
+        
+        // 2. Actualizar o crear registro en historial_apps (BD)
         try {
             val validDeviceId = ensureDeviceId()
+            if (validDeviceId == -1) return
+
+            val fechaHoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
             
-            if (validDeviceId == -1) {
-                Log.e(TAG, "No se puede guardar sesión: ID dispositivo inválido")
-                return
-            }
-            
-            // Usamos SesionAppInput que NO tiene el campo ID para evitar problemas con Gson
-            val sesion = com.example.rest.data.models.SesionAppInput(
-                idDispositivo = validDeviceId,
-                nombrePaquete = packageName,
-                inicio = timestampFormat.format(Date(inicio)),
-                fin = timestampFormat.format(Date(fin)),
-                duracion = duracion,
-                activa = false // Ya terminó
+            // Buscar si ya existe registro para esta app hoy
+            val response = api.obtenerHistorialApp(
+                idDispositivo = "eq.$validDeviceId",
+                nombrePaquete = "eq.$packageName",
+                fecha = "eq.$fechaHoy"
             )
             
-            val response = api.iniciarSesion(sesion)
+            val appName = getAppName(packageName)
+            val minutos = duracion / 60
             
-            if (response.isSuccessful) {
-                Log.d(TAG, "✓ Sesión guardada: $packageName ($duracion s)")
+            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                // Actualizar existente
+                val historialExistente = response.body()!![0]
+                val nuevoTiempo = historialExistente.tiempoUso + minutos
+                val nuevasAperturas = historialExistente.numeroAperturas + 1
                 
-                // Actualizar mapa local de uso
-                val currentUsage = dailyUsageMap[packageName] ?: 0
-                dailyUsageMap[packageName] = currentUsage + (duracion / 60)
+                val updateData = mapOf<String, Any>(
+                    "tiempo_uso" to nuevoTiempo,
+                    "numero_aperturas" to nuevasAperturas,
+                    "nombre" to appName // Actualizar nombre por si cambió
+                )
+                
+                api.actualizarHistorialApp(
+                    id = "eq.${historialExistente.id}",
+                    update = updateData
+                )
             } else {
-                // Incluso si falla el envío, actualizar localmente para el bloqueo
-                val currentUsage = dailyUsageMap[packageName] ?: 0
-                dailyUsageMap[packageName] = currentUsage + (duracion / 60)
+                // Crear nuevo
+                val nuevoHistorial = com.example.rest.data.models.HistorialAppInput(
+                    idDispositivo = validDeviceId,
+                    nombre = appName,
+                    nombrePaquete = packageName,
+                    tiempoUso = minutos,
+                    numeroAperturas = 1,
+                    fecha = fechaHoy
+                )
                 
-                Log.e(TAG, "✗ Error guardando sesión: ${response.code()} Body: ${response.errorBody()?.string()}")
+                api.crearHistorialApp(nuevoHistorial)
             }
+            Log.d(TAG, "Historial actualizado para $packageName (+${minutos}min)")
             
         } catch (e: Exception) {
-            Log.e(TAG, "Excepción guardando sesión: ${e.message}")
-            e.printStackTrace()
+            Log.e(TAG, "Error actualizando historial: ${e.message}")
         }
     }
     

@@ -19,12 +19,17 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.rest.data.repository.LocalBlockingRepository
+import com.example.rest.network.SupabaseClient
+import com.example.rest.data.models.AppVinculadaInput
+import android.util.Log
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -84,6 +89,10 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
         apps.addAll(repository.getBlockedApps())
     }
 
+    val scope = rememberCoroutineScope()
+    val sharedPref = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+    val dispositivoId = remember { sharedPref.getInt("ID_DISPOSITIVO", -1) }
+
     var showAddDialog by remember { mutableStateOf(false) }
     var showTimeDialog by remember { mutableStateOf(false) }
     var selectedApp by remember { mutableStateOf<AppBloqueo?>(null) }
@@ -93,13 +102,47 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             repository = repository,
             onDismiss = { showAddDialog = false },
             onAppsSelected = { newApps ->
-                // Guardar cada app seleccionada y actualizar lista
+                // Guardar cada app seleccionada y actualizar lista local
                 newApps.forEach { app ->
                     repository.saveBlockedApp(app)
                     if (!apps.any { it.packageName == app.packageName }) {
                         apps.add(app)
                     }
                 }
+                
+                // Subir a la nube (Solo las seleccionadas)
+                if (dispositivoId != -1) {
+                    scope.launch(Dispatchers.IO) {
+                        newApps.forEach { app ->
+                             try {
+                                 // Verificar si ya existe en la nube para no duplicar (opcional pero recomendado)
+                                 // Por simplicidad y rapidez, confiamos en que el usuario no agregue la misma 2 veces
+                                 // o que la BD maneje ids únicos si hubiera constraints. 
+                                 // Como apps_vinculadas no tiene unique constraint en paquete+dispositivo explicito en el schema dado,
+                                 // podríamos chequear antes. Pero para un fix rápido:
+                                 
+                                 val input = AppVinculadaInput(
+                                     idDispositivo = dispositivoId,
+                                     nombre = app.nombre,
+                                     nombrePaquete = app.packageName,
+                                     tiempoLimite = 0,
+                                     bloqueada = false, 
+                                     activa = true,
+                                     categoria = "Otros" 
+                                 )
+                                 val res = SupabaseClient.api.crearAppVinculada(input)
+                                 if (res.isSuccessful) {
+                                     Log.d("BloqueoApps", "App vinculada subida: ${app.nombre}")
+                                 } else {
+                                     Log.e("BloqueoApps", "Error API: ${res.code()}")
+                                 }
+                             } catch(e: Exception) {
+                                 Log.e("BloqueoApps", "Error subiendo app ${app.nombre}: ${e.message}")
+                             }
+                        }
+                    }
+                }
+                
                 showAddDialog = false
             }
         )
@@ -212,33 +255,61 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(apps) { app ->
-                        AppBloqueoItem(
-                            app = app,
-                            onClick = {
-                                selectedApp = app
-                                showTimeDialog = true
-                            },
-                            onToggleBlock = { 
-                                val index = apps.indexOfFirst { it.id == app.id }
-                                if (index != -1) {
-                                    apps[index] = apps[index].copy(
-                                        isBlocked = !apps[index].isBlocked,
-                                        limitHours = 0,
-                                        limitMinutes = 0
-                                    )
-                                }
+    var appToDelete by remember { mutableStateOf<AppBloqueo?>(null) }
+    
+    if (appToDelete != null) {
+        DeleteConfirmDialog(
+            appName = appToDelete!!.nombre,
+            onDismiss = { appToDelete = null },
+            onConfirm = {
+                val app = appToDelete!!
+                // 1. Eliminar localmente
+                repository.removeBlockedApp(app.packageName)
+                apps.remove(app)
+                
+                // 2. Eliminar de la nube
+                if (dispositivoId != -1) {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            val res = SupabaseClient.api.eliminarAppVinculada(
+                                idDispositivo = "eq.$dispositivoId",
+                                nombrePaquete = "eq.${app.packageName}"
+                            )
+                            if (res.isSuccessful) {
+                                Log.d("BloqueoApps", "App eliminada de nube: ${app.nombre}")
+                            } else {
+                                Log.e("BloqueoApps", "Error eliminando app: ${res.code()}")
                             }
-                        )
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
+                        } catch (e: Exception) {
+                            Log.e("BloqueoApps", "Excepción al eliminar: ${e.message}")
+                        }
                     }
                 }
+                appToDelete = null
+            }
+        )
+    }
+
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        items(apps) { app ->
+            AppBloqueoItem(
+                app = app,
+                onClick = {
+                    selectedApp = app
+                    showTimeDialog = true
+                },
+                onDelete = { 
+                    appToDelete = app
+                }
+            )
+        }
+        item {
+            Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
             }
         }
     }
@@ -498,7 +569,7 @@ fun AppSelectionDialog(
 fun AppBloqueoItem(
     app: AppBloqueo,
     onClick: () -> Unit,
-    onToggleBlock: () -> Unit
+    onDelete: () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f)),
@@ -556,19 +627,35 @@ fun AppBloqueoItem(
                 }
             }
 
-            // Botón de Acción (Reloj/Editar)
-            IconButton(
-                onClick = onClick,
-                modifier = Modifier
-                    .border(1.dp, Color.LightGray, CircleShape)
-                    .size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Editar Límite",
-                    tint = Negro,
-                    modifier = Modifier.size(18.dp)
-                )
+            // Acciones (Editar y Eliminar)
+            Row {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        tint = Color.Red,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onClick,
+                    modifier = Modifier
+                        .border(1.dp, Color.LightGray, CircleShape)
+                        .size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar Límite",
+                        tint = Negro,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
@@ -680,6 +767,35 @@ fun TimeLimitDialog(
             }
         }
     }
+}
+
+@Composable
+fun DeleteConfirmDialog(
+    appName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("¿Eliminar app?", color = Negro) },
+        text = { Text("¿Seguro que quieres dejar de vincular $appName y eliminarla de la lista?", color = Negro) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+            ) {
+                Text("Eliminar", color = Blanco)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = Color.Gray)
+            }
+        },
+        containerColor = Blanco,
+        titleContentColor = Negro,
+        textContentColor = Negro
+    )
 }
 
 @Composable

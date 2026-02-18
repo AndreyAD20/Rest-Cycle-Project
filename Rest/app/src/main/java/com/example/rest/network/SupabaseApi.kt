@@ -123,7 +123,7 @@ interface SupabaseApi {
      */
     @POST("dispositivos")
     suspend fun crearDispositivo(
-        @Body dispositivo: Dispositivo
+        @Body dispositivo: DispositivoInput
     ): Response<List<Dispositivo>>
     
     /**
@@ -372,7 +372,7 @@ interface SupabaseApi {
      */
     @POST("eventos")
     suspend fun crearEvento(
-        @Body evento: Evento
+        @Body evento: EventoInput
     ): Response<List<Evento>>
     
     /**
@@ -426,7 +426,7 @@ interface SupabaseApi {
      */
     @POST("apps_vinculadas")
     suspend fun crearAppVinculada(
-        @Body app: AppVinculada
+        @Body app: AppVinculadaInput
     ): Response<List<AppVinculada>>
 
     /**
@@ -437,6 +437,15 @@ interface SupabaseApi {
         @Query("id") id: String,
         @Body app: Map<String, @JvmSuppressWildcards Any>
     ): Response<List<AppVinculada>>
+
+    /**
+     * Eliminar app vinculada
+     */
+    @DELETE("apps_vinculadas")
+    suspend fun eliminarAppVinculada(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("nombre_paquete") nombrePaquete: String
+    ): Response<Void>
     
     /**
      * Upsert app vinculada (Insertar o Actualizar si conflicto en ID)
@@ -467,12 +476,30 @@ interface SupabaseApi {
     ): Response<List<HistorialApp>>
     
     /**
+     * Terminar sesión de app
+     */
+     // Eliminar sesiones_app endpoints
+
+    /**
+     * Obtener historial de una app específica hoy
+     */
+    @GET("historial_apps")
+    suspend fun obtenerHistorialApp(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("nombre_paquete") nombrePaquete: String,
+        @Query("fecha") fecha: String,
+        @Query("select") select: String = "*"
+    ): Response<List<HistorialApp>>
+    
+    /**
      * Registrar uso de app en historial
      */
     @POST("historial_apps")
-    suspend fun registrarUsoApp(
-        @Body historial: HistorialApp
+    suspend fun crearHistorialApp(
+        @Body historial: HistorialAppInput
     ): Response<List<HistorialApp>>
+    
+
     
     /**
      * Actualizar registro de historial
@@ -482,52 +509,4 @@ interface SupabaseApi {
         @Query("id") id: String,
         @Body update: Map<String, @JvmSuppressWildcards Any>
     ): Response<List<HistorialApp>>
-    
-    // ==================== SESIONES APP ====================
-    
-    /**
-     * Obtener sesiones activas de un dispositivo
-     */
-    @GET("sesiones_app")
-    suspend fun obtenerSesionesActivas(
-        @Query("iddispositivo") idDispositivo: String,
-        @Query("activa") activa: String = "eq.true",
-        @Query("select") select: String = "*"
-    ): Response<List<SesionApp>>
-    
-    /**
-     * Obtener todas las sesiones de un dispositivo
-     */
-    @GET("sesiones_app")
-    suspend fun obtenerSesiones(
-        @Query("iddispositivo") idDispositivo: String,
-        @Query("select") select: String = "*"
-    ): Response<List<SesionApp>>
-    
-    /**
-     * Iniciar nueva sesión de app
-     */
-    @POST("sesiones_app")
-    suspend fun iniciarSesion(
-        @Body sesion: SesionAppInput
-    ): Response<List<SesionApp>>
-    
-    /**
-     * Finalizar sesión de app
-     */
-    @PATCH("sesiones_app")
-    suspend fun finalizarSesion(
-        @Query("id") id: String,
-        @Body update: Map<String, @JvmSuppressWildcards Any>
-    ): Response<List<SesionApp>>
-    
-    /**
-     * Obtener sesiones por rango de fechas
-     */
-    @GET("sesiones_app")
-    suspend fun obtenerSesionesPorFecha(
-        @Query("iddispositivo") idDispositivo: String,
-        @Query("inicio") inicio: String,
-        @Query("select") select: String = "*"
-    ): Response<List<SesionApp>>
 }

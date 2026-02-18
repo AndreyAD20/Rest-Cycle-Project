@@ -204,8 +204,23 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                         )
                                         SupabaseClient.api.actualizarEvento("eq.${eventoAEditar!!.id}", eventoActualizado)
                                     } else {
+                                        // Validar fecha futura o actual
+                                        val fechaInicio = try {
+                                            LocalDateTime.parse(inicioIso.replace("Z", ""))
+                                        } catch (e: Exception) {
+                                            LocalDateTime.now()
+                                        }
+                                        
+                                        val hoy = LocalDate.now()
+                                        if (fechaInicio.toLocalDate().isBefore(hoy)) {
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(context, "No puedes crear eventos en fechas pasadas", Toast.LENGTH_SHORT).show()
+                                            }
+                                            return@launch
+                                        }
+
                                         // Crear nuevo evento
-                                        val nuevoEvento = Evento(
+                                        val nuevoEvento = com.example.rest.data.models.EventoInput(
                                             idUsuario = idUsuario,
                                             titulo = titulo,
                                             tipo = tipo,

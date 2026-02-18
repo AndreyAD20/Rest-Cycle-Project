@@ -88,6 +88,11 @@ class LocalBlockingRepository(private val context: Context) {
         sharedPref.edit().putString("blocked_apps_list", json).apply()
     }
 
+    // Actualizar lista completa desde sincronización
+    fun updateBlockedApps(newList: List<AppBloqueo>) {
+        saveList(newList)
+    }
+
     // Helper para extraer color prominente (simplificado)
     private fun extractColorFromIcon(drawable: Drawable): Int {
         // En una implementación real usaríamos Palette API.

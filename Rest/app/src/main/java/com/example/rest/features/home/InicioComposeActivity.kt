@@ -168,8 +168,9 @@ class InicioComposeActivity : BaseComposeActivity() {
                         confirmButton = {
                             TextButton(onClick = {
                                 showOverlayDialog = false
-                                val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, 
-                                                    android.net.Uri.parse("package:$packageName"))
+                                val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                                // No pasamos el paquete para que abra la lista general (fix para algunos dispositivos)
+                                // intent.data = android.net.Uri.parse("package:$packageName")
                                 startActivity(intent)
                             }) {
                                 Text("Conceder Permiso")
