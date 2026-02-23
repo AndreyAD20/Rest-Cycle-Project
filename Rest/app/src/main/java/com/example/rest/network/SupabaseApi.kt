@@ -439,6 +439,16 @@ interface SupabaseApi {
     ): Response<List<AppVinculada>>
 
     /**
+     * Actualizar app vinculada por paquete (para sincronizar desde UI local)
+     */
+    @PATCH("apps_vinculadas")
+    suspend fun actualizarAppVinculadaPorPaquete(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("nombre_paquete") nombrePaquete: String,
+        @Body app: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<AppVinculada>>
+
+    /**
      * Eliminar app vinculada
      */
     @DELETE("apps_vinculadas")

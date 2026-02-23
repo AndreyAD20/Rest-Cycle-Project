@@ -22,6 +22,7 @@ import com.example.rest.features.tools.AppBloqueo
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.TimeZone
 
 /**
  * Servicio foreground que monitorea qué app está en primer plano
@@ -56,7 +57,8 @@ class AppMonitorService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val api = SupabaseClient.api
-    private val timestampFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+    private val timestampFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }
     
     private var currentPackageName: String? = null
     // private var currentSessionId: Int? = null // Eliminado
@@ -357,6 +359,10 @@ class AppMonitorService : Service() {
      * Inicializa el mapa de uso diario consultando UsageStats del sistema
      * para tener el acumulado real desde las 00:00
      */
+    /**
+     * Inicializa el mapa de uso diario consultando UsageStats del sistema
+     * para tener el acumulado real desde las 00:00
+     */
     private fun inicializarUsoDiario() {
         try {
             val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -368,30 +374,23 @@ class AppMonitorService : Service() {
             val startTime = calendar.timeInMillis
             val endTime = System.currentTimeMillis()
 
-            val stats = usageStatsManager.queryUsageStats(
-                UsageStatsManager.INTERVAL_DAILY,
+            // Usar queryAndAggregateUsageStats para evitar duplicados y tener el total correcto por paquete
+            val statsMap = usageStatsManager.queryAndAggregateUsageStats(
                 startTime,
                 endTime
             )
 
-            if (stats != null) {
+            if (statsMap != null) {
                 dailyUsageMap.clear()
-                for (usageStat in stats) {
+                for ((packageName, usageStat) in statsMap) {
                     if (usageStat.totalTimeInForeground > 0) {
                        val totalTimeInMinutes = (usageStat.totalTimeInForeground / 60000).toInt()
                        if (totalTimeInMinutes > 0) {
-                           // UsageStats puede devolver múltiples entradas por paquete, sumar si ya existe
-                           val current = dailyUsageMap[usageStat.packageName] ?: 0
-                           // Nota: queryUsageStats con INTERVAL_DAILY a veces devuelve trozos, 
-                           // pero para "hoy" suele ser acumulativo desde el inicio del intervalo.
-                           // Si hay duplicados con el mismo paquete, tomamos el que tenga más tiempo o sumamos?
-                           // INTERVAL_DAILY agrupa por días, así que para "hoy" debería ser un solo objeto o 
-                           // varios si hubo cambios de configuración. Sumar es lo más seguro.
-                           dailyUsageMap[usageStat.packageName] = current + totalTimeInMinutes
+                           dailyUsageMap[packageName] = totalTimeInMinutes
                        }
                     }
                 }
-                Log.d(TAG, "Uso diario inicializado: ${dailyUsageMap.size} apps con actividad")
+                Log.d(TAG, "Uso diario inicializado (Agregado): ${dailyUsageMap.size} apps con actividad")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error inicializando uso diario: ${e.message}")
@@ -571,7 +570,7 @@ class AppMonitorService : Service() {
             val validDeviceId = ensureDeviceId()
             if (validDeviceId == -1) return
 
-            val fechaHoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val fechaHoy = dateFormat.format(Date())
             
             // Buscar si ya existe registro para esta app hoy
             val response = api.obtenerHistorialApp(
@@ -592,7 +591,8 @@ class AppMonitorService : Service() {
                 val updateData = mapOf<String, Any>(
                     "tiempo_uso" to nuevoTiempo,
                     "numero_aperturas" to nuevasAperturas,
-                    "nombre" to appName // Actualizar nombre por si cambió
+                    "nombre" to appName,
+                    "fecha_registro" to timestampFormat.format(Date())
                 )
                 
                 api.actualizarHistorialApp(
@@ -607,12 +607,33 @@ class AppMonitorService : Service() {
                     nombrePaquete = packageName,
                     tiempoUso = minutos,
                     numeroAperturas = 1,
-                    fecha = fechaHoy
+                    fecha = fechaHoy,
+                    fechaRegistro = timestampFormat.format(Date())
                 )
                 
                 api.crearHistorialApp(nuevoHistorial)
             }
             Log.d(TAG, "Historial actualizado para $packageName (+${minutos}min)")
+            
+            // 3. Actualizar tiempo_usado_hoy en apps_vinculadas (si la app está vinculada)
+            // Verificamos si la app está en la lista de restringidas (que son las vinculadas)
+            if (restrictedApps.any { it.packageName == packageName }) {
+                try {
+                    val totalUsageMin = dailyUsageMap[packageName] ?: 0
+                    val updates = mapOf(
+                        "tiempo_usado_hoy" to totalUsageMin,
+                        "fecha_actualizacion" to timestampFormat.format(Date())
+                    )
+                    api.actualizarAppVinculadaPorPaquete(
+                        idDispositivo = "eq.$validDeviceId",
+                        nombrePaquete = "eq.$packageName",
+                        app = updates
+                    )
+                    Log.d(TAG, "Tiempo usado hoy actualizado en apps_vinculadas: $packageName ($totalUsageMin min)")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error actualizando apps_vinculadas (tiempo): ${e.message}")
+                }
+            }
             
         } catch (e: Exception) {
             Log.e(TAG, "Error actualizando historial: ${e.message}")
@@ -714,6 +735,22 @@ class AppMonitorService : Service() {
                 if (totalMin >= limitMinutes) {
                     shouldBlock = true
                     reason = "Has excedido el límite de tiempo diario ($limitMinutes min)."
+                    
+                    // Si no estaba marcada como bloqueada, actualizar en la nube y localmente
+                    if (!appRestricted.isBlocked) {
+                        Log.d(TAG, "Límite excedido para $packageName. Bloqueando en nube...")
+                        // 1. Actualizar nube
+                        updateAppBlockedStatusInCloud(packageName, true)
+                        
+                        // 2. Actualizar localmente para evitar multiples llamadas
+                        val updatedApp = appRestricted.copy(isBlocked = true)
+                        localRepository.saveBlockedApp(updatedApp)
+                        
+                        // Actualizar cache en memoria
+                        restrictedApps = restrictedApps.map { 
+                            if (it.packageName == packageName) updatedApp else it 
+                        }
+                    }
                 }
             }
         }
@@ -722,6 +759,27 @@ class AppMonitorService : Service() {
              val intent = BloqueoActivity.newIntent(this, appName, reason)
              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
              startActivity(intent)
+        }
+    }
+
+    private fun updateAppBlockedStatusInCloud(packageName: String, isBlocked: Boolean) {
+        if (dispositivoId == -1) return
+        
+        serviceScope.launch {
+            try {
+                val updates = mapOf(
+                    "bloqueada" to isBlocked,
+                    "fecha_actualizacion" to timestampFormat.format(Date())
+                )
+                api.actualizarAppVinculadaPorPaquete(
+                    idDispositivo = "eq.$dispositivoId",
+                    nombrePaquete = "eq.$packageName",
+                    app = updates
+                )
+                Log.d(TAG, "Estado de bloqueo actualizado en nube para $packageName: $isBlocked")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error actualizando estado de bloqueo en nube: ${e.message}")
+            }
         }
     }
 

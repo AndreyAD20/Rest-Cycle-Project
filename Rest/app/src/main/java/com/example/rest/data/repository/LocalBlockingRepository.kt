@@ -109,4 +109,52 @@ class LocalBlockingRepository(private val context: Context) {
             android.graphics.Color.GRAY
         }
     }
+
+    // Actualizar lista con estadísticas de uso de HOY
+    fun updateAppsWithUsage(apps: List<AppBloqueo>): List<AppBloqueo> {
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager
+        
+        if (usageStatsManager == null) return apps
+
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        val startTime = calendar.timeInMillis
+        val endTime = System.currentTimeMillis()
+
+        // Query usage stats with compatibility check
+        val usageMap = mutableMapOf<String, Long>()
+        
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            // API 28+
+            val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+            for ((pkg, usage) in statsMap) {
+                usageMap[pkg] = usage.totalTimeInForeground
+            }
+        } else {
+            // API < 28 (Manual aggregation)
+            val statsList = usageStatsManager.queryUsageStats(
+                android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+                startTime,
+                endTime
+            )
+            if (statsList != null) {
+                for (usage in statsList) {
+                    val current = usageMap[usage.packageName] ?: 0L
+                    usageMap[usage.packageName] = current + usage.totalTimeInForeground
+                }
+            }
+        }
+        
+        return apps.map { app ->
+            val totalTime = usageMap[app.packageName] ?: 0L
+            var minutesUsed = 0
+            if (totalTime > 0) {
+                minutesUsed = (totalTime / 60000).toInt()
+            }
+            app.copy(usageMinutes = minutesUsed)
+        }
+    }
 }

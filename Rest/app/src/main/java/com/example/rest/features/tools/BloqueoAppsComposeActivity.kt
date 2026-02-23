@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
@@ -46,6 +47,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.rest.BaseComposeActivity
 import com.example.rest.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.Date
+import java.util.TimeZone
 
 class BloqueoAppsComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,7 +70,8 @@ data class AppBloqueo(
     val limitHours: Int = 0,
     val limitMinutes: Int = 0,
     val isBlocked: Boolean = false,
-    val packageName: String = ""
+    val packageName: String = "",
+    val usageMinutes: Int = 0
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -85,8 +91,11 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
     val apps = remember { mutableStateListOf<AppBloqueo>() }
     
     // Cargar apps bloqueadas al inicio
+    // Cargar apps bloqueadas al inicio
     LaunchedEffect(Unit) {
-        apps.addAll(repository.getBlockedApps())
+        val loadedApps = repository.getBlockedApps()
+        val appsWithUsage = repository.updateAppsWithUsage(loadedApps)
+        apps.addAll(appsWithUsage)
     }
 
     val scope = rememberCoroutineScope()
@@ -148,6 +157,28 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
         )
     }
 
+    // Helper para actualizar en la nube
+    fun updateAppInCloud(app: AppBloqueo) {
+        if (dispositivoId != -1) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val updates = mapOf(
+                        "tiempolimite" to (app.limitHours * 60 + app.limitMinutes),
+                        "bloqueada" to app.isBlocked,
+                        "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
+                    )
+                    SupabaseClient.api.actualizarAppVinculadaPorPaquete(
+                        idDispositivo = "eq.$dispositivoId",
+                        nombrePaquete = "eq.${app.packageName}",
+                        app = updates
+                    )
+                } catch (e: Exception) {
+                    Log.e("BloqueoApps", "Error actualizando app: ${e.message}")
+                }
+            }
+        }
+    }
+
     if (showTimeDialog && selectedApp != null) {
         TimeLimitDialog(
             currentHours = selectedApp!!.limitHours,
@@ -163,6 +194,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                     )
                     apps[index] = updatedApp
                     repository.saveBlockedApp(updatedApp)
+                    updateAppInCloud(updatedApp)
                 }
                 showTimeDialog = false
             }
@@ -294,18 +326,18 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(apps) { app ->
-            AppBloqueoItem(
-                app = app,
-                onClick = {
-                    selectedApp = app
-                    showTimeDialog = true
-                },
-                onDelete = { 
-                    appToDelete = app
-                }
-            )
-        }
+                    items(apps) { app ->
+                        AppBloqueoItem(
+                            app = app,
+                            onClick = {
+                                selectedApp = app
+                                showTimeDialog = true
+                            },
+                            onDelete = { 
+                                appToDelete = app
+                            }
+                        )
+                    }
         item {
             Spacer(modifier = Modifier.height(80.dp))
         }
@@ -577,11 +609,10 @@ fun AppBloqueoItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp) // Compact padding
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -612,11 +643,31 @@ fun AppBloqueoItem(
                             color = Color.Red
                         )
                     } else if (app.limitHours > 0 || app.limitMinutes > 0) {
-                        Text(
-                            "${app.limitHours}h ${app.limitMinutes}m diarios",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFF004D40)
-                        )
+                        val limitTotal = (app.limitHours * 60) + app.limitMinutes
+                        val remaining = limitTotal - app.usageMinutes
+                        
+                        Column {
+                            Text(
+                                "${app.limitHours}h ${app.limitMinutes}m diarios",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color(0xFF004D40)
+                            )
+                            if (remaining > 0) {
+                                val h = remaining / 60
+                                val m = remaining % 60
+                                Text(
+                                    "Restante: ${h}h ${m}m",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Primario
+                                )
+                            } else {
+                                Text(
+                                    "Tiempo agotado",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Red
+                                )
+                            }
+                        }
                     } else {
                         Text(
                             "Sin límite",
@@ -632,13 +683,13 @@ fun AppBloqueoItem(
                 IconButton(
                     onClick = onDelete,
                     modifier = Modifier
-                        .padding(end = 8.dp)
+                        .padding(end = 4.dp)
                         .size(36.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar",
-                        tint = Color.Red,
+                        contentDescription = "Quitar",
+                        tint = Color(0xFFB0BEC5),
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -777,14 +828,14 @@ fun DeleteConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("¿Eliminar app?", color = Negro) },
-        text = { Text("¿Seguro que quieres dejar de vincular $appName y eliminarla de la lista?", color = Negro) },
+        title = { Text("Quitar app", color = Negro) },
+        text = { Text("¿Deseas quitar $appName de tu lista de seguimiento?", color = Negro) },
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF78909C))
             ) {
-                Text("Eliminar", color = Blanco)
+                Text("Quitar", color = Blanco)
             }
         },
         dismissButton = {
