@@ -29,6 +29,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.rest.data.repository.LocalBlockingRepository
 import com.example.rest.network.SupabaseClient
 import com.example.rest.data.models.AppVinculadaInput
+import com.example.rest.data.models.localTimestamp
 import android.util.Log
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.*
@@ -130,14 +131,17 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                                  // Como apps_vinculadas no tiene unique constraint en paquete+dispositivo explicito en el schema dado,
                                  // podríamos chequear antes. Pero para un fix rápido:
                                  
+                                 val now = localTimestamp()
                                  val input = AppVinculadaInput(
                                      idDispositivo = dispositivoId,
                                      nombre = app.nombre,
                                      nombrePaquete = app.packageName,
                                      tiempoLimite = 0,
-                                     bloqueada = false, 
+                                     bloqueada = false,
                                      activa = true,
-                                     categoria = "Otros" 
+                                     categoria = "Otros",
+                                     fechaCreacion = now,
+                                     fechaActualizacion = now
                                  )
                                  val res = SupabaseClient.api.crearAppVinculada(input)
                                  if (res.isSuccessful) {

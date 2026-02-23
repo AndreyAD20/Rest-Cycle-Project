@@ -330,7 +330,9 @@ class AppMonitorService : Service() {
                     nombrePaquete = packageName,
                     tiempoLimite = 0,
                     bloqueada = false,
-                    activa = true
+                    activa = true,
+                    fechaCreacion = timestampFormat.format(Date()),
+                    fechaActualizacion = timestampFormat.format(Date())
                 )
                 appsASubir.add(nuevaApp)
             }
@@ -398,94 +400,135 @@ class AppMonitorService : Service() {
     }
 
     /**
-     * Verifica qué app está en primer plano usando queryEvents (Más preciso en Android 14+)
+     * Verifica qué app está en primer plano.
+     * Estrategia:
+     *  1. queryEvents (10s) - detecta cambios de app
+     *  2. Si no hay evento nuevo, mantener la última app conocida (currentPackageName)
+     *     siempre que siga apareciendo en UsageStats reciente
+     *  3. getForegroundByUsageStats como fallback inicial (primer arranque)
      */
     private fun checkForegroundApp() {
         try {
             val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
             val currentTime = System.currentTimeMillis()
-            
-            // Usar queryEvents en lugar de queryUsageStats para mayor precisión en tiempo real
-            val events = usageStatsManager.queryEvents(currentTime - 5000, currentTime)
-            var lastEvent: android.app.usage.UsageEvents.Event? = null
-            val event = android.app.usage.UsageEvents.Event()
-            
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED ||
-                    event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                    lastEvent = android.app.usage.UsageEvents.Event()
-                    // Copiar datos del evento (no hay método copy, asignamos manualmente lo necesario para referencia)
-                    // En realidad solo nos importa el último evento de tipo MOVE_TO_FOREGROUND
-                    // Hack: Guardamos el package name en una variable temporal
+
+            // Estrategia 1: buscar evento reciente de cambio de app
+            val eventApp = getForegroundByEvents(usageStatsManager, currentTime)
+
+            val foregroundPackage: String? = when {
+                // Hay un evento reciente - usarlo directamente
+                eventApp != null -> eventApp
+
+                // No hay evento, pero tenemos una app conocida - verificar si sigue activa
+                currentPackageName != null -> {
+                    val pkg = currentPackageName!!
+                    if (isAppStillActive(usageStatsManager, pkg, currentTime)) pkg else null
                 }
+
+                // Primer arranque sin historial - usar UsageStats
+                else -> getForegroundByUsageStats(usageStatsManager, currentTime)
             }
-            
-            // Re-escaneo para obtener el objeto evento correcto si hubo alguno
-            val finalEvents = usageStatsManager.queryEvents(currentTime - 5000, currentTime)
-            var latestForegroundApp: String? = null
-            var latestTime: Long = 0
-            
-            while (finalEvents.hasNextEvent()) {
-                finalEvents.getNextEvent(event)
-                if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED ||
-                    event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                    if (event.timeStamp > latestTime) {
-                        latestTime = event.timeStamp
-                        latestForegroundApp = event.packageName
+
+            if (foregroundPackage == null) {
+                // La app anterior terminó o no hay nada en primer plano
+                if (currentPackageName != null) {
+                    Log.d(TAG, "App salió del primer plano: $currentPackageName")
+                    currentPackageName = null
+                }
+                return
+            }
+
+            // Ignorar nuestra propia app, launchers y systemui
+            if (isSystemOrLauncher(foregroundPackage)) return
+
+            if (foregroundPackage != currentPackageName) {
+                // App cambió - registrar sesión anterior
+                Log.d(TAG, "App cambió: $currentPackageName -> $foregroundPackage")
+                currentPackageName?.let { previousPackage ->
+                    val durationSeconds = ((currentTime - sessionStartTime) / 1000).toInt()
+                    if (durationSeconds >= 2) {
+                        serviceScope.launch { registrarUsoApp(previousPackage, durationSeconds) }
                     }
                 }
+                currentPackageName = foregroundPackage
+                sessionStartTime = currentTime
+                updateNotification("Usando: ${getAppName(foregroundPackage)}")
             }
-            
-            latestForegroundApp?.let { packageName ->
-                // Ignorar nuestra propia app y el launcher (Pixel Launcher, One UI Home, etc)
-                if (packageName == this.packageName || 
-                    packageName.contains("launcher", ignoreCase = true) ||
-                    packageName.contains("nexuslauncher", ignoreCase = true) ||
-                    packageName == "com.android.systemui") {
-                    return
-                }
-                
-                // Si cambió la app
-                if (packageName != currentPackageName) {
-                    Log.d(TAG, "App cambió (Events): $currentPackageName -> $packageName")
-                    
-                    // Procesar sesión anterior (si existe)
-                    currentPackageName?.let { previousPackage ->
-                        val now = System.currentTimeMillis()
-                        val durationSeconds = ((now - sessionStartTime) / 1000).toInt()
-                        
-                        // Solo registrar si duró más de 2 segundos (filtro de ruido)
-                        if (durationSeconds >= 2) {
-                            val duracion = durationSeconds
-                            
-                            serviceScope.launch {
-                                registrarUsoApp(previousPackage, duracion)
-                            }
-                        }
-                    }
-                     
-                    // Iniciar seguimiento de nueva app en memoria
-                    currentPackageName = packageName
-                    sessionStartTime = currentTime
-                    updateNotification("Usando: ${getAppName(packageName)}")
-                    
-                    // Verificar si debe bloquearse
-                    verificarBloqueo(packageName, getAppName(packageName))
-                } else {
-                    // Si sigue siendo la misma app, verificar si ya se pasó del tiempo
-                    verificarBloqueo(packageName, getAppName(packageName))
-                }
-            } ?: run {
-                // Fallback para versiones antiguas o si no hay eventos (poco probable si se usa activamente)
-                // Si events no trajo nada, podríamos probar queryUsageStats como backup, 
-                // pero queryEvents suele ser más fiable para "lo último que pasó".
-            }
-            
+
+            // Siempre verificar bloqueo
+            verificarBloqueo(foregroundPackage, getAppName(foregroundPackage))
+
         } catch (e: Exception) {
             Log.e(TAG, "Error verificando app en primer plano: ${e.message}")
-            e.printStackTrace()
         }
+    }
+
+    /**
+     * Verifica si una app sigue en primer plano comprobando que su lastTimeUsed
+     * sea reciente (en los últimos 5 minutos) y más reciente que cualquier otra app.
+     */
+    private fun isAppStillActive(usm: UsageStatsManager, packageName: String, currentTime: Long): Boolean {
+        return try {
+            val stats = usm.queryUsageStats(
+                UsageStatsManager.INTERVAL_DAILY,
+                currentTime - 86_400_000,
+                currentTime
+            ) ?: return false
+
+            val targetStat = stats.find { it.packageName == packageName } ?: return false
+            val timeSinceLastUse = currentTime - targetStat.lastTimeUsed
+
+            // La app sigue activa si fue usada hace menos de 5 minutos
+            // Y no hay otra app no-sistema con lastTimeUsed más reciente
+            if (timeSinceLastUse > 5 * 60 * 1000) return false
+
+            val moreRecentApp = stats
+                .filter { it.packageName != packageName && !isSystemOrLauncher(it.packageName) }
+                .maxByOrNull { it.lastTimeUsed }
+
+            // Si otra app fue usada más recientemente, la nuestra ya no está en frente
+            if (moreRecentApp != null && moreRecentApp.lastTimeUsed > targetStat.lastTimeUsed + 3000) {
+                return false
+            }
+            true
+        } catch (e: Exception) { false }
+    }
+
+    private fun getForegroundByEvents(usm: UsageStatsManager, currentTime: Long): String? {
+        return try {
+            val events = usm.queryEvents(currentTime - 10_000, currentTime)
+            val event = android.app.usage.UsageEvents.Event()
+            var latestPkg: String? = null
+            var latestTime: Long = 0
+
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                if ((event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED ||
+                            event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) &&
+                    event.timeStamp > latestTime) {
+                    latestTime = event.timeStamp
+                    latestPkg = event.packageName
+                }
+            }
+            latestPkg
+        } catch (e: Exception) { null }
+    }
+
+    private fun getForegroundByUsageStats(usm: UsageStatsManager, currentTime: Long): String? {
+        return try {
+            val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, currentTime - 86_400_000, currentTime)
+            stats?.maxByOrNull { it.lastTimeUsed }?.takeIf {
+                currentTime - it.lastTimeUsed < 10_000 // Solo si fue usada en los últimos 10s
+            }?.packageName
+        } catch (e: Exception) { null }
+    }
+
+    private fun isSystemOrLauncher(packageName: String): Boolean {
+        return packageName == this.packageName ||
+               packageName.contains("launcher", ignoreCase = true) ||
+               packageName.contains("nexuslauncher", ignoreCase = true) ||
+               packageName == "com.android.systemui" ||
+               packageName == "com.google.android.packageinstaller"
     }
 
     /**
@@ -616,10 +659,10 @@ class AppMonitorService : Service() {
             Log.d(TAG, "Historial actualizado para $packageName (+${minutos}min)")
             
             // 3. Actualizar tiempo_usado_hoy en apps_vinculadas (si la app está vinculada)
-            // Verificamos si la app está en la lista de restringidas (que son las vinculadas)
             if (restrictedApps.any { it.packageName == packageName }) {
                 try {
-                    val totalUsageMin = dailyUsageMap[packageName] ?: 0
+                    // Leer uso real del sistema (no el mapa en memoria que puede estar desactualizado)
+                    val totalUsageMin = getRealDailyUsageMinutes(packageName)
                     val updates = mapOf(
                         "tiempo_usado_hoy" to totalUsageMin,
                         "fecha_actualizacion" to timestampFormat.format(Date())
@@ -629,7 +672,7 @@ class AppMonitorService : Service() {
                         nombrePaquete = "eq.$packageName",
                         app = updates
                     )
-                    Log.d(TAG, "Tiempo usado hoy actualizado en apps_vinculadas: $packageName ($totalUsageMin min)")
+                    Log.d(TAG, "tiempo_usado_hoy actualizado en BD: $packageName = ${totalUsageMin}min")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error actualizando apps_vinculadas (tiempo): ${e.message}")
                 }
@@ -711,7 +754,11 @@ class AppMonitorService : Service() {
      */
     private fun verificarBloqueo(packageName: String, appName: String) {
         // Buscar si la app está en la lista de restringidas
-        val appRestricted = restrictedApps.find { it.packageName == packageName } ?: return
+        val appRestricted = restrictedApps.find { it.packageName == packageName }
+        if (appRestricted == null) {
+            Log.d(TAG, "verificarBloqueo: $packageName no está en lista de restricciones (${restrictedApps.size} apps)")
+            return
+        }
 
         var reason = ""
         var shouldBlock = false
@@ -719,46 +766,74 @@ class AppMonitorService : Service() {
         if (appRestricted.isBlocked) {
             shouldBlock = true
             reason = "Esta aplicación ha sido bloqueada manualmente."
+            Log.d(TAG, "verificarBloqueo: $packageName BLOQUEADA manualmente")
         } else {
             val limitMinutes = (appRestricted.limitHours * 60) + appRestricted.limitMinutes
             
             if (limitMinutes > 0) {
-                // Verificar límite de tiempo
-                val usoAcumuladoMin = dailyUsageMap[packageName] ?: 0
+                // Consultar uso real del sistema (más preciso que dailyUsageMap)
+                val realUsageMin = getRealDailyUsageMinutes(packageName)
                 
-                // Sumar sesión actual (en minutos)
-                val currentSessionMs = System.currentTimeMillis() - sessionStartTime
-                val currentSessionMin = (currentSessionMs / 60000).toInt()
+                Log.d(TAG, "verificarBloqueo: $packageName uso=$realUsageMin min / límite=$limitMinutes min")
                 
-                val totalMin = usoAcumuladoMin + currentSessionMin
-                
-                if (totalMin >= limitMinutes) {
+                if (realUsageMin >= limitMinutes) {
                     shouldBlock = true
                     reason = "Has excedido el límite de tiempo diario ($limitMinutes min)."
                     
                     // Si no estaba marcada como bloqueada, actualizar en la nube y localmente
                     if (!appRestricted.isBlocked) {
                         Log.d(TAG, "Límite excedido para $packageName. Bloqueando en nube...")
-                        // 1. Actualizar nube
                         updateAppBlockedStatusInCloud(packageName, true)
-                        
-                        // 2. Actualizar localmente para evitar multiples llamadas
                         val updatedApp = appRestricted.copy(isBlocked = true)
                         localRepository.saveBlockedApp(updatedApp)
-                        
-                        // Actualizar cache en memoria
                         restrictedApps = restrictedApps.map { 
                             if (it.packageName == packageName) updatedApp else it 
                         }
                     }
                 }
+            } else {
+                Log.d(TAG, "verificarBloqueo: $packageName sin límite configurado, omitiendo")
             }
         }
 
         if (shouldBlock) {
+             Log.d(TAG, "BLOQUEANDO app: $appName")
              val intent = BloqueoActivity.newIntent(this, appName, reason)
              intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
              startActivity(intent)
+        }
+    }
+
+    /**
+     * Obtiene los minutos reales de uso del dia de hoy usando UsageStats
+     */
+    private fun getRealDailyUsageMinutes(packageName: String): Int {
+        return try {
+            val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            calendar.set(Calendar.MILLISECOND, 0)
+            val startTime = calendar.timeInMillis
+            val endTime = System.currentTimeMillis()
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+                val ms = statsMap[packageName]?.totalTimeInForeground ?: 0L
+                (ms / 60000).toInt()
+            } else {
+                val statsList = usageStatsManager.queryUsageStats(
+                    UsageStatsManager.INTERVAL_DAILY, startTime, endTime
+                )
+                val ms = statsList?.filter { it.packageName == packageName }
+                    ?.sumOf { it.totalTimeInForeground } ?: 0L
+                (ms / 60000).toInt()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error leyendo UsageStats para $packageName: ${e.message}")
+            // Fallback al mapa en memoria
+            dailyUsageMap[packageName] ?: 0
         }
     }
 
@@ -767,8 +842,13 @@ class AppMonitorService : Service() {
         
         serviceScope.launch {
             try {
+                // Obtener uso real en tiempo real del sistema
+                val tiempoUsadoHoy = getRealDailyUsageMinutes(packageName)
+                
                 val updates = mapOf(
                     "bloqueada" to isBlocked,
+                    "activa" to !isBlocked,
+                    "tiempo_usado_hoy" to tiempoUsadoHoy,
                     "fecha_actualizacion" to timestampFormat.format(Date())
                 )
                 api.actualizarAppVinculadaPorPaquete(
@@ -776,7 +856,7 @@ class AppMonitorService : Service() {
                     nombrePaquete = "eq.$packageName",
                     app = updates
                 )
-                Log.d(TAG, "Estado de bloqueo actualizado en nube para $packageName: $isBlocked")
+                Log.d(TAG, "BD actualizada para $packageName: bloqueada=$isBlocked, activa=${!isBlocked}, tiempo_usado_hoy=${tiempoUsadoHoy}min")
             } catch (e: Exception) {
                 Log.e(TAG, "Error actualizando estado de bloqueo en nube: ${e.message}")
             }
