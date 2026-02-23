@@ -19,36 +19,38 @@ class LocalBlockingRepository(private val context: Context) {
     private val sharedPref = context.getSharedPreferences("RestCycleBloqueo", Context.MODE_PRIVATE)
     private val gson = Gson()
 
-    // Obtener apps instaladas (filtrando algunas de sistema si es necesario)
-    fun getInstalledApps(): List<AppBloqueo> {
+    // Obtener apps instaladas (filtrando apps de sistema y las ya enlazadas)
+    fun getInstalledApps(excludePackages: Set<String> = emptySet()): List<AppBloqueo> {
         val pm = context.packageManager
         val installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
         val appBloqueoList = mutableListOf<AppBloqueo>()
 
         for (appInfo in installedApps) {
-            // Filtrar apps del sistema que no sean actualizables (básicas traseras)
-            // Filtrar apps que no sean lanzables (sin icono en el launcher)
-            // Esto elimina servicios de sistema y procesos de fondo irrelevantes para bloqueo
-            if (pm.getLaunchIntentForPackage(appInfo.packageName) == null) {
-                continue
-            }
-            
+            // Solo apps con icono en el launcher (descarta servicios/procesos de fondo)
+            if (pm.getLaunchIntentForPackage(appInfo.packageName) == null) continue
+
             // Ignorar nuestra propia app
             if (appInfo.packageName == context.packageName) continue
 
+            // Ignorar apps ya enlazadas
+            if (appInfo.packageName in excludePackages) continue
+
+            // Filtrar apps puramente de sistema (sin actualización del usuario)
+            // FLAG_UPDATED_SYSTEM_APP = usuario instaló una actualización → mostrar
+            val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            val isUpdatedSystemApp = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+            if (isSystemApp && !isUpdatedSystemApp) continue
+
             val name = pm.getApplicationLabel(appInfo).toString()
             val icon = pm.getApplicationIcon(appInfo)
-            
-            // Generar un color basado en el icono (simplificado) o aleatorio
             val color = extractColorFromIcon(icon)
 
-            // Usamos hashcode del paquete como ID temporal para la UI
             appBloqueoList.add(
                 AppBloqueo(
                     id = appInfo.packageName.hashCode(),
                     nombre = name,
                     iconColor = Color(color),
-                    packageName = appInfo.packageName // Necesitamos agregar este campo a AppBloqueo
+                    packageName = appInfo.packageName
                 )
             )
         }

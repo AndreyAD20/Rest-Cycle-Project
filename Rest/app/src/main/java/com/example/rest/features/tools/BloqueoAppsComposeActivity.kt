@@ -112,6 +112,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
     if (showAddDialog) {
         AppSelectionDialog(
             repository = repository,
+            linkedPackages = apps.map { it.packageName }.toSet(),
             onDismiss = { showAddDialog = false },
             onAppsSelected = { newApps ->
                 // Guardar cada app seleccionada y actualizar lista local
@@ -359,16 +360,16 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
 @Composable
 fun AppSelectionDialog(
     repository: LocalBlockingRepository,
+    linkedPackages: Set<String> = emptySet(),
     onDismiss: () -> Unit,
     onAppsSelected: (List<AppBloqueo>) -> Unit
 ) {
-    // Cargar apps instaladas
+    // Cargar apps instaladas excluyendo las ya enlazadas
     var installedApps by remember { mutableStateOf<List<AppBloqueo>>(emptyList()) }
     
     LaunchedEffect(Unit) {
-        // Ejecutar en background para no bloquear UI
         withContext(Dispatchers.IO) {
-            val apps = repository.getInstalledApps()
+            val apps = repository.getInstalledApps(excludePackages = linkedPackages)
             withContext(Dispatchers.Main) {
                 installedApps = apps
             }
