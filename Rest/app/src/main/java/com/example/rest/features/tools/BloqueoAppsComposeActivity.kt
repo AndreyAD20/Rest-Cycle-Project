@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -723,8 +725,8 @@ fun TimeLimitDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int, Int) -> Unit
 ) {
-    var hours by remember { mutableStateOf(currentHours.toString()) }
-    var minutes by remember { mutableStateOf(currentMinutes.toString()) }
+    var hours by remember { mutableIntStateOf(currentHours.coerceIn(0, 24)) }
+    var minutes by remember { mutableIntStateOf(currentMinutes.coerceIn(0, 59)) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -742,59 +744,44 @@ fun TimeLimitDialog(
                     color = Negro,
                     textAlign = TextAlign.Center
                 )
-                
-                Spacer(modifier = Modifier.height(24.dp))
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Máximo de uso diario permitido",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    // Horas
-                    OutlinedTextField(
+                    // Picker Horas
+                    TimePickerColumn(
                         value = hours,
-                        onValueChange = { if (it.length <= 2 && it.all { c -> c.isDigit() }) hours = it },
-                        label = { Text("Horas") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Blanco,
-                            unfocusedContainerColor = Blanco,
-                            focusedBorderColor = Primario,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedTextColor = Negro,
-                            unfocusedTextColor = Negro
-                        )
+                        label = "Horas",
+                        onIncrease = { if (hours < 24) hours++ },
+                        onDecrease = { if (hours > 0) hours-- }
                     )
-                    
+
                     Text(
                         ":",
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(horizontal = 8.dp),
+                        style = MaterialTheme.typography.displaySmall.copy(
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        ),
+                        modifier = Modifier.padding(horizontal = 12.dp),
                         color = Negro
                     )
-                    
-                    // Minutos
-                    OutlinedTextField(
+
+                    // Picker Minutos
+                    TimePickerColumn(
                         value = minutes,
-                        onValueChange = { 
-                            if (it.length <= 2 && it.all { c -> c.isDigit() }) {
-                                val valInt = it.toIntOrNull() ?: 0
-                                if (valInt < 60) minutes = it 
-                            }
-                        },
-                        label = { Text("Min") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true,
-                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Blanco,
-                            unfocusedContainerColor = Blanco,
-                            focusedBorderColor = Primario,
-                            unfocusedBorderColor = Color.Gray,
-                             focusedTextColor = Negro,
-                             unfocusedTextColor = Negro
-                        )
+                        label = "Min",
+                        onIncrease = { if (minutes < 59) minutes++ },
+                        onDecrease = { if (minutes > 0) minutes-- }
                     )
                 }
 
@@ -809,11 +796,7 @@ fun TimeLimitDialog(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
-                        onClick = {
-                            val h = hours.toIntOrNull() ?: 0
-                            val m = minutes.toIntOrNull() ?: 0
-                            onConfirm(h, m)
-                        },
+                        onClick = { onConfirm(hours, minutes) },
                         colors = ButtonDefaults.buttonColors(containerColor = Primario)
                     ) {
                         Text("Guardar", color = Blanco)
@@ -823,6 +806,73 @@ fun TimeLimitDialog(
         }
     }
 }
+
+@Composable
+fun TimePickerColumn(
+    value: Int,
+    label: String,
+    onIncrease: () -> Unit,
+    onDecrease: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.Gray
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        // Flecha arriba
+        IconButton(
+            onClick = onIncrease,
+            modifier = Modifier
+                .size(44.dp)
+                .background(Color(0xFFF0F0F0), CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = "Aumentar",
+                tint = Negro,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        // Número
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(64.dp, 56.dp)
+                .background(Color(0xFFF5F5F5), RoundedCornerShape(12.dp))
+                .border(1.5.dp, Color(0xFFDDDDDD), RoundedCornerShape(12.dp))
+        ) {
+            Text(
+                text = value.toString().padStart(2, '0'),
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                ),
+                color = Negro
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        // Flecha abajo
+        IconButton(
+            onClick = onDecrease,
+            modifier = Modifier
+                .size(44.dp)
+                .background(Color(0xFFF0F0F0), CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Disminuir",
+                tint = Negro,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+    }
+}
+
 
 @Composable
 fun DeleteConfirmDialog(
