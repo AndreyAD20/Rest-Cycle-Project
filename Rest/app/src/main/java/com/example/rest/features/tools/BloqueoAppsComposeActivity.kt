@@ -700,7 +700,7 @@ fun AppBloqueoItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Quitar",
-                        tint = Color(0xFFE57373), // rojo coral suave
+                        tint = Color.Red, // mismo color que "Bloqueado"
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -917,7 +917,7 @@ fun DeleteConfirmDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF78909C))
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
             ) {
                 Text("Quitar", color = Blanco)
             }
