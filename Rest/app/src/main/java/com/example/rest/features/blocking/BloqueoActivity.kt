@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import com.example.rest.features.home.InicioComposeActivity
+import com.example.rest.features.tools.BloqueoAppsComposeActivity
 import com.example.rest.ui.theme.Blanco
 import com.example.rest.ui.theme.Negro
 import com.example.rest.ui.theme.Primario
@@ -57,7 +58,7 @@ class BloqueoActivity : BaseComposeActivity() {
                     appName = appName,
                     reason = reason,
                     onGoHome = {
-                        val intent = Intent(this, InicioComposeActivity::class.java)
+                        val intent = Intent(this, BloqueoAppsComposeActivity::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                         startActivity(intent)
                         finish()

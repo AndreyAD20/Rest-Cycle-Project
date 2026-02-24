@@ -912,24 +912,35 @@ fun DeleteConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Quitar app", color = Negro) },
-        text = { Text("¿Deseas quitar $appName de tu lista de seguimiento?", color = Negro) },
+        title = { Text("Quitar app", color = Color.White) },
+        text = { Text("¿Deseas quitar $appName de tu lista de seguimiento?", color = Color.White) },
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red,
+                    contentColor = Color.White
+                )
             ) {
-                Text("Quitar", color = Blanco)
+                Text("Quitar")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = Color.Gray)
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = Color.White)
+            ) {
+                Text("Cancelar")
             }
         },
-        containerColor = Blanco,
-        titleContentColor = Negro,
-        textContentColor = Negro
+        containerColor = Color(0xFF0097A7),
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 8.dp,
+        modifier = Modifier.border(
+            width = 2.dp,
+            color = Color(0xFF00BCD4),
+            shape = RoundedCornerShape(16.dp)
+        )
     )
 }
 
