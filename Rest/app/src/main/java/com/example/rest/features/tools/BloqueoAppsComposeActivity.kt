@@ -700,7 +700,7 @@ fun AppBloqueoItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Quitar",
-                        tint = Color(0xFFB0BEC5),
+                        tint = Color(0xFFE57373), // rojo coral suave
                         modifier = Modifier.size(20.dp)
                     )
                 }
