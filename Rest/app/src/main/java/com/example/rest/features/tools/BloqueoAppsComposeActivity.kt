@@ -8,9 +8,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -745,48 +749,46 @@ fun TimeLimitDialog(
                     color = Negro,
                     textAlign = TextAlign.Center
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Máximo de uso diario permitido",
+                    text = "Desliza para seleccionar el tiempo",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
                     textAlign = TextAlign.Center
                 )
-
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    // Picker Horas
-                    TimePickerColumn(
-                        value = hours,
-                        label = "Horas",
-                        onIncrease = { if (hours < 24) hours++ },
-                        onDecrease = { if (hours > 0) hours-- }
+                    // Drum-roll Horas
+                    WheelPicker(
+                        items = (0..24).map { it.toString().padStart(2, '0') },
+                        initialIndex = hours,
+                        label = "h",
+                        onSelected = { hours = it }
                     )
 
                     Text(
                         ":",
                         style = MaterialTheme.typography.displaySmall.copy(
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            fontWeight = FontWeight.Bold
                         ),
-                        modifier = Modifier.padding(horizontal = 12.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp),
                         color = Negro
                     )
 
-                    // Picker Minutos
-                    TimePickerColumn(
-                        value = minutes,
-                        label = "Min",
-                        onIncrease = { if (minutes < 59) minutes++ },
-                        onDecrease = { if (minutes > 0) minutes-- }
+                    // Drum-roll Minutos
+                    WheelPicker(
+                        items = (0..59).map { it.toString().padStart(2, '0') },
+                        initialIndex = minutes,
+                        label = "min",
+                        onSelected = { minutes = it }
                     )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -808,71 +810,98 @@ fun TimeLimitDialog(
     }
 }
 
+/**
+ * Picker tipo tambor deslizable.
+ * Muestra 3 elementos visibles; el del centro es el seleccionado.
+ * Se puede hacer scroll y hace snap al valor más cercano.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TimePickerColumn(
-    value: Int,
+fun WheelPicker(
+    items: List<String>,
+    initialIndex: Int,
     label: String,
-    onIncrease: () -> Unit,
-    onDecrease: () -> Unit
+    onSelected: (Int) -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.Gray
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        // Flecha arriba
-        IconButton(
-            onClick = onIncrease,
-            modifier = Modifier
-                .size(44.dp)
-                .background(Color(0xFFF0F0F0), CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowUp,
-                contentDescription = "Aumentar",
-                tint = Negro,
-                modifier = Modifier.size(28.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        // Número
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(64.dp, 56.dp)
-                .background(Color(0xFFF5F5F5), RoundedCornerShape(12.dp))
-                .border(1.5.dp, Color(0xFFDDDDDD), RoundedCornerShape(12.dp))
-        ) {
-            Text(
-                text = value.toString().padStart(2, '0'),
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                ),
-                color = Negro
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        // Flecha abajo
-        IconButton(
-            onClick = onDecrease,
-            modifier = Modifier
-                .size(44.dp)
-                .background(Color(0xFFF0F0F0), CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = "Disminuir",
-                tint = Negro,
-                modifier = Modifier.size(28.dp)
-            )
+    val itemHeightDp = 48.dp
+    val visibleItems = 3
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = (initialIndex).coerceIn(0, items.size - 1)
+    )
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
+    // Notificar el valor seleccionado cuando el scroll se estabiliza
+    val snappedIndex by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex
         }
     }
+    LaunchedEffect(snappedIndex) {
+        onSelected(snappedIndex)
+    }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Contenedor con líneas de selección
+        Box(
+            modifier = Modifier
+                .width(72.dp)
+                .height(itemHeightDp * visibleItems)
+        ) {
+            // Lista desplazable
+            LazyColumn(
+                state = listState,
+                flingBehavior = flingBehavior,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = itemHeightDp) // padding para que el primero/último queden centrados
+            ) {
+                items(items) { item ->
+                    val idx = items.indexOf(item)
+                    val isSelected = idx == snappedIndex
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(itemHeightDp)
+                    ) {
+                        Text(
+                            text = item,
+                            style = if (isSelected)
+                                MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+                            else
+                                MaterialTheme.typography.titleLarge,
+                            color = if (isSelected) Negro else Color.LightGray
+                        )
+                    }
+                }
+            }
+
+            // Línea superior de selección
+            HorizontalDivider(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = itemHeightDp),
+                color = Primario,
+                thickness = 2.dp
+            )
+            // Línea inferior de selección
+            HorizontalDivider(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = itemHeightDp * 2),
+                color = Primario,
+                thickness = 2.dp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Gray
+        )
+    }
 }
+
 
 
 @Composable
