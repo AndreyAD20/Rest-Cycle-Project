@@ -1,4 +1,3 @@
-
 # Requisito Funcionales y No Funcionales
 
 Requisitos para el proyecto Rest Cycle
@@ -9,7 +8,7 @@ Con el fin de mantener uniformidad en el presente documento, se adoptan las sigu
 
 Requisitos: se identifican con el prefijo RF (Requisito Funcional) y RNF (Requisito No Funcional), seguido de un número consecutivo (ejemplo: RF.1, RNF.3).
 
-Actores del sistema: se escriben en Mayúscula Inicial: 
+Actores del sistema: se escriben en Mayúscula Inicial:
 Usuario: Persona con interes en mejorar sus habitos al usar un dispositivo movil.
 Administrador: Personal encargado de la gestión técnica de la aplicación.
 Usuario que gestiona:Padre/madre o tutor con control sobre las cuentas enlazadas.
@@ -17,15 +16,16 @@ Usuario gestionado: Hijo/a o menor de edad cuya actividad se controla.
 
 Las notificaciones del sistema se representarán en Mayúscula Inicial (ejemplo: Notificación de uso excesivo).
 
-
-
 ## Objetivo principal
+
 Desarrollar y promover una aplicación móvil que fomente hábitos saludables en el uso del celular mediante herramientas de control parental y autogestión del tiempo, ayudando a reducir la dependencia tecnológica y promoviendo un uso equilibrado y consciente de los dispositivos móviles.
 
 ## Alcance
-El proyecto se define en la salud de los adultos y niños creando una restricción en el uso continuo del teléfono, mostrando una notificación instantánea que le indique el tiempo que lleva usándolo. Ya cumplido el tiempo limite de uso; de momento se bloqueará las aplicaciones y se indicara la reactivación de las apps. De esta forma los padres pueden minimizar el tiempo que sus hijos están utilizando el dispositivo.  
+
+El proyecto se define en la salud de los adultos y niños creando una restricción en el uso continuo del teléfono, mostrando una notificación instantánea que le indique el tiempo que lleva usándolo. Ya cumplido el tiempo limite de uso; de momento se bloqueará las aplicaciones y se indicara la reactivación de las apps. De esta forma los padres pueden minimizar el tiempo que sus hijos están utilizando el dispositivo.
 
 ## Requisitos
+
 ## REQUISITOS FUNCIONALES
 
 RF.1 [Alta] REGISTRO DE USUARIO  
@@ -55,7 +55,7 @@ Permitir vincular cuentas entre el usuario que gestiona y el usuario gestionado.
 RF.9 [Alta] CREACIÓN DE CONTRASEÑA PARA USUARIO GESTIONADO  
 Permitir la creación de contraseña específica para el usuario gestionado.
 
-RF.10 [Media] CONSULTA DE HISTORIAL DE USO  
+RF.10 [Media] CONSULTA DE HISTORIAL DE USO 
 Permitir la visualización de estadísticas de uso de aplicaciones por parte del usuario.
 
 RF.11 [Media] VISUALIZACIÓN DE TAREAS PENDIENTES  
@@ -143,7 +143,7 @@ RF.38 [Media] INFORME DE TIEMPO EN APLICACIONES
 Permitir solicitar informes del tiempo de uso por aplicación y filtrar por tipo de aplicación.
 
 RF.39 [Media] ESTABLECIMIENTO DE HORARIO DE DESCANSO  
-Permitir definir horas de descanso en las que el dispositivo no se puede usar.
+Permitir definir horas de descanso en el dispositivo para reducir tu actividad digital y descansar mejor.
 
 RF.40 [Media] DEFINICIÓN DE MEDIDAS DURANTE EL DESCANSO  
 Permitir establecer acciones que se aplican durante el horario de descanso.
@@ -210,7 +210,18 @@ Proveer comunicación y ayuda en caso de errores con la aplicación.
 
 RF.61 [Alta] RESTABLECIMIENTO DE CUENTA  
 Permitir el proceso de recuperación de cuentas bloqueadas o eliminadas accidentalmente.
-Permitir el proceso de recuperación de cuentas bloqueadas o eliminadas accidentalmente.
+
+RF.62 [Media] GESTIÓN AVANZADA DE NOTAS  
+Permitir marcar notas como favoritas mediante un icono de estrella, asignar colores personalizados para organización visual, buscar notas por título mediante campo de búsqueda, y solicitar confirmación antes de eliminar para prevenir pérdidas accidentales de información.
+
+RF.63 [Media] VISUALIZACIÓN GRÁFICA DE ESTADÍSTICAS  
+Mostrar gráficos de barras animados y visualizaciones interactivas del tiempo de uso de aplicaciones, con filtros por período temporal (diario, semanal, mensual) y presentación de top 5 y top 10 aplicaciones más utilizadas.
+
+RF.64 [Baja] INTEGRACIÓN CON MAPAS EN EVENTOS  
+Permitir agregar ubicaciones geográficas a eventos del calendario con integración de Google Maps para visualización de mapas, selección de ubicaciones y navegación a los lugares de los eventos.
+
+RF.65 [Media] NAVEGACIÓN LATERAL  
+Implementar menú lateral deslizable (navigation drawer) para acceso rápido y organizado a todas las funcionalidades principales de la aplicación, incluyendo estadísticas, notas, calendario, tareas, horarios de descanso, bloqueo de apps y control parental.
 
 ## Normativas Aplicables
 
@@ -225,31 +236,30 @@ El desarrollo y operación de Rest Cycle debe cumplir con las siguientes normati
 
 El equipo de desarrollo debe revisar periódicamente la legislación vigente y actualizar los procesos y funcionalidades para asegurar el cumplimiento normativo.
 
-
 ## REQUISITOS NO FUNCIONALES
 
-RNF.01		El sistema notifica a través de una burbuja tipo chat, esta notificación debe enviarse y generarse entre 5 a 7 segundos de respuesta.
+RNF.01 El sistema notifica a través de una burbuja tipo chat, esta notificación debe enviarse y generarse entre 5 a 7 segundos de respuesta.
 
-RNF.02		La interfaz debe ser fácil de manejar con un diseño atractivo y muy accesible.
+RNF.02 La interfaz debe ser fácil de manejar con un diseño atractivo y muy accesible.
 
-RNF.03		La aplicación debe ser accesible y que cuente con un soporte en varios idiomas.
+RNF.03 La aplicación debe ser accesible y que cuente con un soporte en varios idiomas.
 
-RNF.04		La aplicación debe responder a las interacciones con el usuario en menos de 4 segundos.
+RNF.04 La aplicación debe responder a las interacciones con el usuario en menos de 4 segundos.
 
-RNF.05		La aplicación debe ser capaz de manejar mil usuarios simultáneamente sin degradar el rendimiento del sistema.
- RNF.06	El sistema debe estar disponible las 24 horas del día, los 7 días de la semana. 
+RNF.05 La aplicación debe ser capaz de manejar mil usuarios simultáneamente sin degradar el rendimiento del sistema.
+RNF.06 El sistema debe estar disponible las 24 horas del día, los 7 días de la semana.
 
-RNF.07		La aplicación debe garantizar la protección de los datos obtenidos del usuario mediante un cifrado de datos y medidas de seguridad robustas.
+RNF.07 La aplicación debe garantizar la protección de los datos obtenidos del usuario mediante un cifrado de datos y medidas de seguridad robustas.
 
-RNF.08		La aplicación debe ser compatible con la mayoría de las versiones de sistemas operativos móviles y con los más recientes.
+RNF.08 La aplicación debe ser compatible con la mayoría de las versiones de sistemas operativos móviles y con los más recientes.
 
-RNF.09		La aplicación debe funcionar correctamente en la mayoría de los dispositivos móviles.
+RNF.09 La aplicación debe funcionar correctamente en la mayoría de los dispositivos móviles.
 
-RNF.10		Las actualizaciones de la aplicación no deben afectar la integridad de los datos existentes.
+RNF.10 Las actualizaciones de la aplicación no deben afectar la integridad de los datos existentes.
 
-RNF.11		La aplicación debe contar con un proceso de control de calidad, para que las nuevas versiones no lleven errores.
+RNF.11 La aplicación debe contar con un proceso de control de calidad, para que las nuevas versiones no lleven errores.
 
-RNF.12		La aplicación debe soportar un aumento del 50% de los usuarios concurrentes sin afectar integridad.
+RNF.12 La aplicación debe soportar un aumento del 50% de los usuarios concurrentes sin afectar integridad.
 
 RNF.13 ESCALABILIDAD: El sistema debe poder escalar horizontalmente para soportar el crecimiento de usuarios y datos.
 
@@ -264,7 +274,6 @@ RNF.17 SOPORTE A ACTUALIZACIONES AUTOMÁTICAS: La aplicación debe poder actuali
 RNF.18 CUMPLIMIENTO DE NORMAS DE USABILIDAD: Validar que la interfaz cumple con estándares internacionales de usabilidad.
 
 RNF.19 PROTECCIÓN CONTRA ATAQUES: Medidas específicas contra ataques comunes (phishing, malware, fuerza bruta).
-
 
 ## Glosario
 
@@ -292,6 +301,5 @@ RNF.19 PROTECCIÓN CONTRA ATAQUES: Medidas específicas contra ataques comunes (
 
 **Usuario que gestiona:** Padre, madre o tutor responsable de la supervisión de cuentas enlazadas.
 
-
-**V1.1 Autor:** Andrey Alejandro Suesca Fuentes 
-**Revisado por:** 
+**V1.1 Autor:** Andrey Alejandro Suesca Fuentes
+**Revisado por:**

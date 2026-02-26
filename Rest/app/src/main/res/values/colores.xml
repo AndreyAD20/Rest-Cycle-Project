@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ============================================ -->
+    <!-- PALETA DE COLORES - REST CYCLE APP          -->
+    <!-- Todos los nombres en español                 -->
+    <!-- ============================================ -->
+    
+    <!-- Colores Base -->
+    <color name="negro">#000000</color>
+    <color name="blanco">#FFFFFF</color>
+    <color name="transparente">#00000000</color>
+    
+    <!-- Colores Principales (Primary) -->
+    <color name="primario">#00B8D4</color>
+    
+    <!-- Colores de Acento (Accent) -->
+    <color name="acento">#FF4081</color>
+    <color name="acento_claro">#FF80AB</color>
+    
+    <!-- Colores de Fondo (Background) -->
+    <color name="fondo_primario">#FFFFFF</color>
+    <color name="fondo_secundario">#F0F0F0</color>
+
+    <!-- Colores de Texto (Text) -->
+    <color name="texto_primario">#000000</color>
+    <color name="texto_secundario">#212121</color>
+    
+    <!-- Colores de Bordes (Borders) -->
+    <color name="borde">#000000</color>
+    
+    <!-- Colores de Botones (Buttons) -->
+    <color name="boton_deshabilitado">#E0E0E0</color>
+    <color name="boton_texto_deshabilitado">#9E9E9E</color>
+    
+    <!-- Colores de Campos de Entrada (Text Edit) -->
+    <color name="edit_text_fondo">#FFFFFF</color>
+    <color name="input_borde_enfocado">#00BCD4</color>
+    <color name="input_texto">#000000</color>
+    
+    <!-- Colores de Estado (Status) -->
+    <color name="estado_exito">#4CAF50</color>
+    <color name="estado_error">#F44336</color>
+    <color name="estado_advertencia">#FF9800</color>
+    <color name="estado_informacion">#2196F3</color>
+
+    <!-- Colores Específicos de la App -->
+    <color name="azul_rest_cycle">#00BCD4</color>
+    <color name="cyan_rest">#00BCD4</color>
+
+</resources>
