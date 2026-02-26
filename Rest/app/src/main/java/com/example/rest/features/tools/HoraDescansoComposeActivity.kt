@@ -760,16 +760,40 @@ fun HorarioLocalCard(
     onToggle: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
-
-    /**
-     * Estado LOCAL del switch (independiente del estado guardado en disco).
-     *
-     * remember { mutableStateOf(schedule.activo) } crea un estado que:
-     * - Se inicializa con el valor actual del horario (activo o no)
-     * - Cambia inmediatamente cuando el usuario toca el switch (UX fluido)
-     * - Persiste en disco mediante onToggle (que llama a DowntimeManager)
-     */
     var activo by remember { mutableStateOf(schedule.activo) }
+
+    // Controla la visibilidad del diálogo de confirmación de eliminación
+    var mostrarConfirmEliminar by remember { mutableStateOf(false) }
+
+    // Diálogo de confirmación antes de eliminar
+    if (mostrarConfirmEliminar) {
+        AlertDialog(
+            onDismissRequest = { mostrarConfirmEliminar = false },
+            title = { Text("¿Eliminar horario?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "El horario \"${schedule.nombre.ifBlank { "Horario" }}\" se eliminará permanentemente."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarConfirmEliminar = false
+                        onEliminar()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Eliminar", color = Blanco) }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarConfirmEliminar = false }) {
+                    Text("Cancelar", color = Negro)
+                }
+            },
+            containerColor = Blanco,
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -819,7 +843,8 @@ fun HorarioLocalCard(
             IconButton(onClick = onEditar) {
                 Icon(Icons.Default.Edit, "Editar", tint = Primario.copy(alpha = 0.8f))
             }
-            IconButton(onClick = onEliminar) {
+            // Al tocar el basurero se muestra el diálogo de confirmación (no elimina directo)
+            IconButton(onClick = { mostrarConfirmEliminar = true }) {
                 Icon(Icons.Default.Delete, "Eliminar", tint = Color.Red.copy(alpha = 0.7f))
             }
         }
@@ -842,6 +867,38 @@ fun HorarioCard(
     onEliminar: () -> Unit
 ) {
     val medida = medidas.find { it.id == horario.idMedida }
+
+    // Controla la visibilidad del diálogo de confirmación de eliminación
+    var mostrarConfirmEliminar by remember { mutableStateOf(false) }
+
+    // Diálogo de confirmación antes de eliminar
+    if (mostrarConfirmEliminar) {
+        AlertDialog(
+            onDismissRequest = { mostrarConfirmEliminar = false },
+            title = { Text("¿Eliminar horario?", fontWeight = FontWeight.Bold) },
+            text = {
+                val hora = "${horario.horaInicio?.take(5) ?: ""} - ${horario.horaFin?.take(5) ?: ""}"
+                Text("El horario \"$hora\" se eliminará permanentemente.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarConfirmEliminar = false
+                        onEliminar()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Eliminar", color = Blanco) }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarConfirmEliminar = false }) {
+                    Text("Cancelar", color = Negro)
+                }
+            },
+            containerColor = Blanco,
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.95f)),
@@ -877,7 +934,8 @@ fun HorarioCard(
                             tint = Primario
                         )
                     }
-                    IconButton(onClick = onEliminar) {
+                    // Al tocar el basurero se muestra el diálogo de confirmación (no elimina directo)
+                    IconButton(onClick = { mostrarConfirmEliminar = true }) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = "Eliminar",
@@ -889,9 +947,6 @@ fun HorarioCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Días seleccionados visualizados como círculos
-            // .find { } busca el primer elemento de la lista que cumpla la condición
-            // .contains() verifica si un elemento está en la lista
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -971,10 +1026,15 @@ fun DialogoCrearHorario(
     var horaInicio by remember { mutableStateOf(if (preHoraInicio.isNotEmpty()) preHoraInicio else (horarioAEditar?.horaInicio ?: "08:00:00")) }
     var horaFin by remember { mutableStateOf(if (preHoraFin.isNotEmpty()) preHoraFin else (horarioAEditar?.horaFin ?: "22:00:00")) }
 
-    // Lista de 7 booleanos para los días activos. BooleanArray(7) { true } = todos activos al inicio.
+    // Lista de 7 booleanos para los días activos. BooleanArray(7) { false } = ninguno seleccionado al inicio.
     var diasActivos by remember {
-        mutableStateOf(BooleanArray(7) { true })
+        mutableStateOf(BooleanArray(7) { false })
     }
+
+    // Protección anti-doble clic usando AtomicBoolean: bloqueo instantáneo y thread-safe
+    // (mutableStateOf era asíncrono y llegaba tarde; AtomicBoolean.compareAndSet es inmediato)
+    val clickPermitido = remember { java.util.concurrent.atomic.AtomicBoolean(true) }
+    var guardando by remember { mutableStateOf(false) }
 
     // Helper: convierte hora de 24h a formato 12h AM/PM para mostrar al usuario
     // String.format("%d:%02d %s", h, m, ampm): %d = entero, %02d = entero con 0 a la izq.
@@ -1175,7 +1235,7 @@ fun DialogoCrearHorario(
                 Text("Selecciona los días:", style = MaterialTheme.typography.bodyMedium)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     nombresDias.forEachIndexed { idx, label ->   // forEachIndexed = forEach con índice
                         val isSelected = diasActivos[idx]
@@ -1211,6 +1271,10 @@ fun DialogoCrearHorario(
         confirmButton = {
             Button(
                 onClick = {
+                    // Bloqueo anti-doble clic: compareAndSet(true→false) garantiza que
+                    // solo UN hilo/toque pase, aunque el segundo llegue antes de la recomposición
+                    if (!clickPermitido.compareAndSet(true, false)) return@Button
+
                     // Verificamos DND antes de guardar
                     val hasDND = checkDNDPermission(context)
                     if (!hasDND) {
@@ -1234,12 +1298,23 @@ fun DialogoCrearHorario(
                         Toast.makeText(context, "Selecciona al menos un día", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
+                    // Marcar guardando para el feedback visual (spinner)
+                    guardando = true
                     onConfirmar(nombre.trim(), horaInicio, horaFin, diasActivos.toList())
                 },
+                enabled = !guardando,
                 colors = ButtonDefaults.buttonColors(containerColor = Primario),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Guardar", color = Blanco)
+                if (guardando) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        color = Blanco,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("Guardar", color = Blanco)
+                }
             }
         },
         dismissButton = {
