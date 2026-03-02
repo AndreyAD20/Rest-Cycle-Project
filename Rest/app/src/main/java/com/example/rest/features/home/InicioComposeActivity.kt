@@ -19,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,7 +41,7 @@ class InicioComposeActivity : BaseComposeActivity() {
         } else {
             android.widget.Toast.makeText(
                 this,
-                "El permiso de notificaciones es necesario para el monitoreo en tiempo real",
+                getString(R.string.toast_notif_permission_needed),
                 android.widget.Toast.LENGTH_LONG
             ).show()
         }
@@ -87,8 +88,8 @@ class InicioComposeActivity : BaseComposeActivity() {
                 if (mostrarDialogoCerrarSesion) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoCerrarSesion = false },
-                        title = { Text("Cerrar sesión") },
-                        text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
+                        title = { Text(stringResource(R.string.dialog_logout_title)) },
+                        text = { Text(stringResource(R.string.dialog_logout_text)) },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -98,11 +99,8 @@ class InicioComposeActivity : BaseComposeActivity() {
                                     com.example.rest.services.AppMonitorService.stopService(this@InicioComposeActivity)
                                     
                                     // Borrar sesión
-                                    val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                                    with(sharedPref.edit()) {
-                                        clear()
-                                        apply()
-                                    }
+                                    val preferencesManager = com.example.rest.utils.PreferencesManager(this@InicioComposeActivity)
+                                    preferencesManager.clearPreferences()
                                     
                                     // Ir a Login
                                     val intent = Intent(this@InicioComposeActivity, com.example.rest.features.auth.LoginComposeActivity::class.java)
@@ -111,12 +109,12 @@ class InicioComposeActivity : BaseComposeActivity() {
                                     finish()
                                 }
                             ) {
-                                Text("Cerrar Sesión")
+                                Text(stringResource(R.string.btn_logout))
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { mostrarDialogoCerrarSesion = false }) {
-                                Text("Cancelar")
+                                Text(stringResource(R.string.btn_cancel))
                             }
                         }
                     )
@@ -138,42 +136,14 @@ class InicioComposeActivity : BaseComposeActivity() {
                 if (showUsageStatsDialog) {
                     AlertDialog(
                         onDismissRequest = { /* No dismiss allowed optionally */ },
-                        title = { Text("Permiso Requerido") },
-                        text = { Text("Para que Rest Cycle funcione correctamente y bloquee aplicaciones, necesita acceso a las estadísticas de uso.") },
+                        title = { Text(stringResource(R.string.dialog_permission_required)) },
+                        text = { Text(stringResource(R.string.dialog_usage_permission_block_text)) },
                         confirmButton = {
                             TextButton(onClick = {
                                 showUsageStatsDialog = false
                                 startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
                             }) {
-                                Text("Conceder Permiso")
-                            }
-                        }
-                    )
-                }
-
-                // Check for Overlay Permission (Android 10+)
-                var showOverlayDialog by remember { mutableStateOf(false) }
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
-                    // Only show if usage stats is already granted or dismissed to avoid stacking
-                    if (!showUsageStatsDialog) {
-                         showOverlayDialog = true
-                    }
-                }
-
-                if (showOverlayDialog) {
-                    AlertDialog(
-                        onDismissRequest = { /* No dismiss */ },
-                        title = { Text("Permiso de Superposición") },
-                        text = { Text("Para mostrar la pantalla de bloqueo sobre otras apps, Rest Cycle necesita permiso para mostrarse encima.") },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                showOverlayDialog = false
-                                val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-                                // No pasamos el paquete para que abra la lista general (fix para algunos dispositivos)
-                                // intent.data = android.net.Uri.parse("package:$packageName")
-                                startActivity(intent)
-                            }) {
-                                Text("Conceder Permiso")
+                                Text(stringResource(R.string.btn_grant_permission))
                             }
                         }
                     )
@@ -285,8 +255,8 @@ fun PantallaModosDeUso(
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { /* No permitir cerrar sin decidir */ },
-            title = { Text("Permiso Requerido") },
-            text = { Text("Para que la aplicación funcione correctamente y registre tus estadísticas en tiempo real, necesitamos acceso a los datos de uso. Por favor activa el permiso para 'Rest Cycle'.") },
+            title = { Text(stringResource(R.string.dialog_permission_required)) },
+            text = { Text(stringResource(R.string.dialog_usage_permission_stats_text)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -294,17 +264,17 @@ fun PantallaModosDeUso(
                         requestUsageStatsPermission(context)
                     }
                 ) {
-                    Text("Activar Permiso")
+                    Text(stringResource(R.string.btn_activate_permission))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { 
                         showPermissionDialog = false 
-                        android.widget.Toast.makeText(context, "El monitoreo en tiempo real no estará disponible", android.widget.Toast.LENGTH_LONG).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.toast_monitoring_unavailable), android.widget.Toast.LENGTH_LONG).show()
                     }
                 ) {
-                    Text("Ahora no")
+                    Text(stringResource(R.string.btn_not_now))
                 }
             }
         )
@@ -314,8 +284,8 @@ fun PantallaModosDeUso(
     if (showNotificationPermissionDialog) {
         AlertDialog(
             onDismissRequest = { /* No permitir cerrar sin decidir */ },
-            title = { Text("Permiso de Notificaciones") },
-            text = { Text("Para monitorear tus aplicaciones en tiempo real, necesitamos mostrar una notificación persistente. Esto es requerido por Android para servicios en segundo plano.") },
+            title = { Text(stringResource(R.string.dialog_notif_permission_title)) },
+            text = { Text(stringResource(R.string.dialog_notif_permission_text)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -323,17 +293,17 @@ fun PantallaModosDeUso(
                         onRequestNotificationPermission()
                     }
                 ) {
-                    Text("Permitir")
+                    Text(stringResource(R.string.btn_allow))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { 
                         showNotificationPermissionDialog = false 
-                        android.widget.Toast.makeText(context, "El monitoreo en tiempo real no estará disponible", android.widget.Toast.LENGTH_LONG).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.toast_monitoring_unavailable), android.widget.Toast.LENGTH_LONG).show()
                     }
                 ) {
-                    Text("Ahora no")
+                    Text(stringResource(R.string.btn_not_now))
                 }
             }
         )
@@ -363,7 +333,7 @@ fun PantallaModosDeUso(
         ) {
             Icon(
                 imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Regresar",
+                contentDescription = stringResource(R.string.content_desc_back),
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.size(32.dp)
             )
@@ -378,7 +348,7 @@ fun PantallaModosDeUso(
         ) {
             Icon(
                 imageVector = Icons.Default.Settings,
-                contentDescription = "Configuración",
+                contentDescription = stringResource(R.string.content_desc_settings),
                 tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.size(32.dp)
             )
@@ -393,7 +363,7 @@ fun PantallaModosDeUso(
         ) {
             // Título "Modos de Uso"
             Text(
-                text = "Modos de Uso",
+                text = stringResource(R.string.home_usage_modes),
                 style = MaterialTheme.typography.headlineLarge,
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
@@ -419,7 +389,7 @@ fun PantallaModosDeUso(
                 )
             ) {
                 Text(
-                    text = "Control Parental",
+                    text = stringResource(R.string.home_parental_control),
                     style = MaterialTheme.typography.titleMedium,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -432,7 +402,7 @@ fun PantallaModosDeUso(
             // Logo del búho
             Image(
                 painter = painterResource(id = R.drawable.buho_background),
-                contentDescription = "Logo Búho",
+                contentDescription = stringResource(R.string.content_desc_owl_logo),
                 modifier = Modifier
                     .size(180.dp)
                     .padding(vertical = 20.dp)
@@ -457,7 +427,7 @@ fun PantallaModosDeUso(
                 )
             ) {
                 Text(
-                    text = "Habitos Saludables",
+                    text = stringResource(R.string.home_healthy_habits),
                     style = MaterialTheme.typography.titleMedium,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,

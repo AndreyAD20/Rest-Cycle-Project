@@ -14,9 +14,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,12 +25,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
@@ -56,9 +57,9 @@ class RegistroComposeActivity : BaseComposeActivity() {
                 var cargando by remember { mutableStateOf(false) }
                 
                 PantallaRegistro(
-                    alClickRegistrar = { request ->
+                    alClickRegistrar = { request, pin ->
                         cargando = true
-                        realizarRegistro(request) {
+                        realizarRegistro(request, pin) {
                             cargando = false
                         }
                     },
@@ -76,13 +77,14 @@ class RegistroComposeActivity : BaseComposeActivity() {
     
     private fun realizarRegistro(
         request: RegistroRequest,
+        pin: String,
         onComplete: () -> Unit
     ) {
         // Verificar conectividad antes de intentar el registro
         if (!isNetworkAvailable()) {
             Toast.makeText(
                 this@RegistroComposeActivity,
-                "❌ No hay conexión a Internet. Por favor, verifica tu conexión e intenta nuevamente.",
+                getString(R.string.toast_no_internet),
                 Toast.LENGTH_LONG
             ).show()
             onComplete()
@@ -104,6 +106,7 @@ class RegistroComposeActivity : BaseComposeActivity() {
                             // Navegar a pantalla de verificación
                             val intent = Intent(this@RegistroComposeActivity, VerificacionCodigoActivity::class.java)
                             intent.putExtra("correo", request.correo)
+                            intent.putExtra("contraseña", pin)
                             startActivity(intent)
                             finish()
                         }
@@ -113,16 +116,17 @@ class RegistroComposeActivity : BaseComposeActivity() {
                             val mensajeError = when {
                                 resultado.message.contains("Unable to resolve host") ||
                                 resultado.message.contains("UnknownHostException") -> 
-                                    "❌ No se puede conectar al servidor. Verifica tu conexión a Internet."
+                                    getString(R.string.toast_server_error)
                                 resultado.message.contains("timeout") -> 
-                                    "❌ La conexión tardó demasiado. Intenta nuevamente."
-                                else -> "❌ ${resultado.message}"
+                                    getString(R.string.toast_timeout_error)
+                                else -> getString(R.string.toast_unexpected_error, resultado.message)
                             }
-                            Toast.makeText(
-                                this@RegistroComposeActivity,
-                                mensajeError,
-                                Toast.LENGTH_LONG
-                            ).show()
+                            // Show persistent dialog instead of Toast so user can read it
+                            val builder = android.app.AlertDialog.Builder(this@RegistroComposeActivity)
+                            builder.setTitle(getString(R.string.dialog_detailed_error))
+                            builder.setMessage(mensajeError)
+                            builder.setPositiveButton(getString(R.string.dialog_ok)) { dialog, _ -> dialog.dismiss() }
+                            builder.show()
                         }
                     }
                     is UsuarioRepository.Result.Loading -> {
@@ -134,16 +138,16 @@ class RegistroComposeActivity : BaseComposeActivity() {
                     val mensajeError = when {
                         e.message?.contains("Unable to resolve host") == true ||
                         e.message?.contains("UnknownHostException") == true -> 
-                            "❌ No se puede conectar al servidor. Verifica tu conexión a Internet."
+                            getString(R.string.toast_server_error)
                         e.message?.contains("timeout") == true -> 
-                            "❌ La conexión tardó demasiado. Intenta nuevamente."
-                        else -> "❌ Error inesperado: ${e.message}"
+                            getString(R.string.toast_timeout_error)
+                        else -> getString(R.string.toast_unexpected_error, e.message)
                     }
-                    Toast.makeText(
-                        this@RegistroComposeActivity,
-                        mensajeError,
-                        Toast.LENGTH_LONG
-                    ).show()
+                    val builder = android.app.AlertDialog.Builder(this@RegistroComposeActivity)
+                    builder.setTitle(getString(R.string.dialog_exception))
+                    builder.setMessage(mensajeError)
+                    builder.setPositiveButton(getString(R.string.dialog_ok)) { dialog, _ -> dialog.dismiss() }
+                    builder.show()
                 }
             } finally {
                 onComplete()
@@ -172,7 +176,7 @@ class RegistroComposeActivity : BaseComposeActivity() {
 
 @Composable
 fun PantallaRegistro(
-    alClickRegistrar: (RegistroRequest) -> Unit,
+    alClickRegistrar: (RegistroRequest, String) -> Unit,
     alClickYaTienesCuenta: () -> Unit,
     alMostrarError: (String) -> Unit,
     cargando: Boolean = false
@@ -211,6 +215,72 @@ fun PantallaRegistro(
             .fillMaxSize()
             .background(brochaGradiente)
     ) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        
+        // --- Selector de Idioma (Superior Derecha) ---
+        val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+        var idiomaExpandido by remember { mutableStateOf(false) }
+        var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.TopEnd
+        ) {
+            Box {
+                IconButton(onClick = { idiomaExpandido = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = "Cambiar Idioma",
+                        tint = Negro,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = idiomaExpandido,
+                    onDismissRequest = { idiomaExpandido = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                ) {
+                    val opciones = listOf(
+                        stringResource(R.string.lang_spanish),
+                        stringResource(R.string.lang_english),
+                        stringResource(R.string.lang_portuguese)
+                    )
+                    
+                    val langEn = stringResource(R.string.lang_english)
+                    val langPt = stringResource(R.string.lang_portuguese)
+                    
+                    opciones.forEach { opcion ->
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    text = opcion,
+                                    color = if (opcion == idiomaSeleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                ) 
+                            },
+                            onClick = {
+                                idiomaSeleccionado = opcion
+                                sharedPrefs.edit().putString("IDIOMA", opcion).apply()
+                                
+                                val code = when (opcion) {
+                                    langEn, "English" -> "en"
+                                    langPt, "Português" -> "pt"
+                                    else -> "es"
+                                }
+                                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_language_saved, opcion), android.widget.Toast.LENGTH_SHORT).show()
+                                (context as? android.app.Activity)?.recreate()
+                                idiomaExpandido = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        // ----------------------------------------------
+
         // Botón de volver (flecha) en la esquina superior izquierda
         IconButton(
             onClick = alClickYaTienesCuenta,
@@ -220,8 +290,8 @@ fun PantallaRegistro(
         ) {
             Icon(
                 imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Volver",
-                tint = Color(0xFF004D40),
+                contentDescription = stringResource(R.string.content_desc_back),
+                tint = Negro,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -260,7 +330,7 @@ fun PantallaRegistro(
                         )
                 ) {
                     Text(
-                        text = "Aquí podrás\nRegistrarte en\nnuestra APP",
+                        text = stringResource(R.string.register_title_speech),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Negro,
                         textAlign = TextAlign.Center,
@@ -275,7 +345,7 @@ fun PantallaRegistro(
                 onValueChange = { nombre = it },
                 placeholder = { 
                     Text(
-                        "Nombre",
+                        stringResource(R.string.register_name_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -299,7 +369,14 @@ fun PantallaRegistro(
                     }
                 ),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
+                textStyle = MaterialTheme.typography.bodyLarge,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = Color(0xFF757575)
+                    )
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -310,7 +387,7 @@ fun PantallaRegistro(
                 onValueChange = { apellido = it },
                 placeholder = { 
                     Text(
-                        "Apellido",
+                        stringResource(R.string.register_lastname_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -331,7 +408,14 @@ fun PantallaRegistro(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { correoFocus.requestFocus() }),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
+                textStyle = MaterialTheme.typography.bodyLarge,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = Color(0xFF757575)
+                    )
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -339,10 +423,10 @@ fun PantallaRegistro(
             // Campo de Correo Electrónico
             OutlinedTextField(
                 value = correo,
-                onValueChange = { correo = it },
+                onValueChange = { correo = it.trim() },
                 placeholder = { 
                     Text(
-                        "Correo Electrónico",
+                        stringResource(R.string.register_email_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -366,7 +450,14 @@ fun PantallaRegistro(
                 ),
                 keyboardActions = KeyboardActions(onNext = { fechaFocus.requestFocus() }),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
+                textStyle = MaterialTheme.typography.bodyLarge,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Email,
+                        contentDescription = null,
+                        tint = Color(0xFF757575)
+                    )
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -375,7 +466,7 @@ fun PantallaRegistro(
             CampoFechaAutoFormato(
                 value = fechaNacimiento,
                 onValueChange = { fechaNacimiento = it },
-                label = "Fecha de Nacimiento",
+                label = stringResource(R.string.register_birthdate_placeholder),
                 modifier = Modifier
                     .width(330.dp)
                     .height(56.dp)
@@ -400,7 +491,7 @@ fun PantallaRegistro(
                 onValueChange = { pin = it },
                 placeholder = { 
                     Text(
-                        "Contraseña",
+                        stringResource(R.string.register_password_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -426,11 +517,18 @@ fun PantallaRegistro(
                 keyboardActions = KeyboardActions(onNext = { confirmarPinFocus.requestFocus() }),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = null,
+                        tint = Color(0xFF757575)
+                    )
+                },
                 trailingIcon = {
                     IconButton(onClick = { mostrarPin = !mostrarPin }) {
                         Icon(
                             imageVector = if (mostrarPin) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = if (mostrarPin) "Ocultar contraseña" else "Mostrar contraseña",
+                            contentDescription = if (mostrarPin) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password),
                             tint = Color(0xFF757575)
                         )
                     }
@@ -445,7 +543,7 @@ fun PantallaRegistro(
                 onValueChange = { confirmarPin = it },
                 placeholder = { 
                     Text(
-                        "Confirmar Contraseña",
+                        stringResource(R.string.register_confirm_password_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -470,11 +568,18 @@ fun PantallaRegistro(
                 ),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.LockOpen,
+                        contentDescription = null,
+                        tint = Color(0xFF757575)
+                    )
+                },
                 trailingIcon = {
                     IconButton(onClick = { mostrarConfirmarPin = !mostrarConfirmarPin }) {
                         Icon(
                             imageVector = if (mostrarConfirmarPin) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = if (mostrarConfirmarPin) "Ocultar contraseña" else "Mostrar contraseña",
+                            contentDescription = if (mostrarConfirmarPin) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password),
                             tint = Color(0xFF757575)
                         )
                     }
@@ -502,7 +607,7 @@ fun PantallaRegistro(
                     modifier = Modifier.size(32.dp)
                 )
                 Text(
-                    text = "Acepto los Términos y Condiciones",
+                    text = stringResource(R.string.register_accept_terms),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF004D40),
                     modifier = Modifier.padding(start = 8.dp)
@@ -517,32 +622,38 @@ fun PantallaRegistro(
                     // Validaciones con mensajes
                     when {
                         nombre.isBlank() -> {
-                            alMostrarError("❌ Por favor, ingresa tu nombre")
+                            alMostrarError(context.getString(R.string.err_empty_name))
+                        }
+                        !nombre.matches("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$".toRegex()) -> {
+                            alMostrarError(context.getString(R.string.err_invalid_name))
+                        }
+                        apellido.isNotBlank() && !apellido.matches("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$".toRegex()) -> {
+                            alMostrarError(context.getString(R.string.err_invalid_lastname))
                         }
                         correo.isBlank() -> {
-                            alMostrarError("❌ Por favor, ingresa tu correo electrónico")
+                            alMostrarError(context.getString(R.string.err_empty_email))
                         }
-                        !correo.contains("@") -> {
-                            alMostrarError("❌ Por favor, ingresa un correo válido")
+                        !com.example.rest.utils.SecurityUtils.isValidEmailDomain(correo) -> {
+                            alMostrarError(context.getString(R.string.err_invalid_email_format))
                         }
                         // Telefono validacion eliminada
                         fechaNacimiento.isBlank() -> {
-                            alMostrarError("❌ Por favor, ingresa tu fecha de nacimiento")
+                            alMostrarError(context.getString(R.string.err_empty_birthdate))
                         }
                         pin.isBlank() -> {
-                            alMostrarError("❌ Por favor, ingresa tu contraseña")
+                            alMostrarError(context.getString(R.string.err_empty_confirm_password))
                         }
-                        pin.length < 4 -> {
-                            alMostrarError("❌ La contraseña debe tener al menos 4 caracteres")
+                        !com.example.rest.utils.SecurityUtils.isValidPassword(pin) -> {
+                            alMostrarError(context.getString(R.string.err_invalid_password_format))
                         }
                         confirmarPin.isBlank() -> {
-                            alMostrarError("❌ Por favor, confirma tu contraseña")
+                            alMostrarError(context.getString(R.string.err_empty_confirm_password))
                         }
                         pin != confirmarPin -> {
-                            alMostrarError("❌ Las contraseñas no coinciden")
+                            alMostrarError(context.getString(R.string.err_password_mismatch))
                         }
                         !aceptaTerminos -> {
-                            alMostrarError("❌ Debes aceptar los Términos y Condiciones")
+                            alMostrarError(context.getString(R.string.err_accept_terms))
                         }
                         else -> {
                             // Convertir fecha de dígitos (YYYYMMDD) a formato YYYY-MM-DD
@@ -559,7 +670,7 @@ fun PantallaRegistro(
                                 val edad = Period.between(fechaNac, LocalDate.now()).years
                                 edad >= 18
                             } catch (e: Exception) {
-                                alMostrarError("❌ Formato de fecha inválido. Usa AAAA-MM-DD (ej: 20000115)")
+                                alMostrarError(context.getString(R.string.err_invalid_birthdate_format))
                                 return@Button
                             }
 
@@ -571,11 +682,10 @@ fun PantallaRegistro(
                                 apellido = apellido.ifBlank { null },
                                 correo = correo,
                                 fechaNacimiento = fechaFormateada,
-                                contraseña = pin,
-                                rol = rolAutomatico,
-                                mayorEdad = mayorEdad
+                                contraseña = com.example.rest.utils.SecurityUtils.hashPassword(pin),
+                                rol = rolAutomatico
                             )
-                            alClickRegistrar(request)
+                            alClickRegistrar(request, pin)
                         }
                     }
                 },
@@ -601,7 +711,7 @@ fun PantallaRegistro(
                     )
                 } else {
                     Text(
-                        text = "Registrar",
+                        text = stringResource(R.string.register_button_text),
                         style = MaterialTheme.typography.labelLarge,
                         color = Negro
                     )

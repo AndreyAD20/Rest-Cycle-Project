@@ -102,4 +102,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // Seguridad (Encriptación de contraseñas y SharedPreferences)
+    implementation("org.mindrot:jbcrypt:0.4")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }

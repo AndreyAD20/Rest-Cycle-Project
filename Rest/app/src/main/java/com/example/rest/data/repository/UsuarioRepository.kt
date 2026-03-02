@@ -30,21 +30,30 @@ class UsuarioRepository {
     /**
      * Realizar login
      * @param correo Correo electrónico del usuario
-     * @param contraseña Contraseña del usuario
+     * @param contraseña Contraseña del usuario en texto plano
      * @return Result con el usuario si las credenciales son correctas
      */
     suspend fun login(correo: String, contraseña: String): Result<Usuario> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = api.login(
+                // Paso 1: Buscar al usuario solo por correo
+                val response = api.verificarCorreo(
                     correo = "eq.$correo",
-                    contraseña = "eq.$contraseña"
+                    select = "*"
                 )
                 
                 if (response.isSuccessful) {
                     val usuarios = response.body()
                     if (!usuarios.isNullOrEmpty()) {
-                        Result.Success(usuarios[0])
+                        val usuario = usuarios[0]
+                        // Paso 2: Verificar el hash de la contraseña devuelta por BD
+                        val esValida = com.example.rest.utils.SecurityUtils.verifyPassword(contraseña, usuario.contraseña)
+                        
+                        if (esValida) {
+                            Result.Success(usuario)
+                        } else {
+                            Result.Error("Correo o contraseña incorrectos")
+                        }
                     } else {
                         Result.Error("Correo o contraseña incorrectos")
                     }
@@ -82,7 +91,9 @@ class UsuarioRepository {
                         Result.Error("Error al crear el usuario")
                     }
                 } else {
-                    Result.Error("Error en el servidor: ${response.code()}")
+                    val errorBody = response.errorBody()?.string()
+                    android.util.Log.e("UsuarioRepository", "Ocurrió un error (400) al registrar: $errorBody")
+                    Result.Error("Error en el servidor: ${response.code()} - ${errorBody ?: "Desconocido"}")
                 }
             } catch (e: Exception) {
                 Result.Error("Error de conexión: ${e.message}")

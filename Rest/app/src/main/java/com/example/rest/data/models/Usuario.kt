@@ -30,9 +30,6 @@ data class Usuario(
     @SerializedName("rol")
     val rol: String, // "padre" o "hijo"
     
-    @SerializedName("mayoredad")
-    val mayorEdad: Boolean,
-    
     @SerializedName("email_verificado")
     val emailVerificado: Boolean = false,
     
@@ -77,8 +74,5 @@ data class RegistroRequest(
     val contraseña: String,
     
     @SerializedName("rol")
-    val rol: String,
-    
-    @SerializedName("mayoredad")
-    val mayorEdad: Boolean
+    val rol: String
 )

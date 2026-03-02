@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Rest Cycle</string>
+
+    <!-- Textos de Pantalla Configuraciones -->
+    <string name="settings_title">Configurações</string>
+    <string name="settings_subtitle">Ajuste o aplicativo às suas preferências</string>
+    <string name="settings_monitoring">Monitoramento de Uso</string>
+    <string name="settings_notifications">Notificações</string>
+    <string name="settings_bubble">Bolha Flutuante</string>
+    <string name="settings_language">Alterar Idioma</string>
+    <string name="settings_font_size">Tamanho da Fonte</string>
+    <string name="settings_profile">Perfil</string>
+    <string name="settings_security">Segurança</string>
+
+    <!-- Opciones de desplegables -->
+    <string name="font_small">Pequeno</string>
+    <string name="font_medium">Médio</string>
+    <string name="font_large">Grande</string>
+
+    <string name="lang_spanish">Español</string>
+    <string name="lang_english">English</string>
+    <string name="lang_portuguese">Português</string>
+
+    <!-- Alertas Configuraciones -->
+    <string name="toast_monitoring_enabled">Monitoramento ativado</string>
+    <string name="toast_monitoring_paused">Monitoramento pausado</string>
+    <string name="toast_notifications_enabled">Notificações ativadas</string>
+    <string name="toast_notifications_disabled">Notificações silenciadas</string>
+    <string name="toast_setting_saved">Configuração salva</string>
+    <string name="toast_language_saved">Idioma salvo: %1$s</string>
+    <string name="toast_font_saved">Fonte alterada para %1$s</string>
+    <string name="toast_security_warning">Para alterar senhas, saia e vá para Recuperar Senha.</string>
+
+    <!-- Inicio / Modos de Uso -->
+    <string name="home_usage_modes">Modos de Uso</string>
+    <string name="home_parental_control">Controle Parental</string>
+    <string name="home_healthy_habits">Hábitos Saudáveis</string>
+    
+    <!-- Descripciones de Contenido -->
+    <string name="content_desc_back">Voltar</string>
+    <string name="content_desc_settings">Configurações</string>
+    <string name="content_desc_owl_logo">Logotipo da Coruja</string>
+    
+    <!-- Diálogos de Permisos -->
+    <string name="dialog_permission_required">Permissão Necessária</string>
+    <string name="dialog_overlay_permission_title">Permissão de Sobreposição</string>
+    <string name="dialog_overlay_permission_text">Para exibir a tela de bloqueio sobre outros aplicativos, o Rest Cycle precisa de permissão para exibir sobreposição.</string>
+    <string name="dialog_usage_permission_block_text">Para que o Rest Cycle funcione corretamente e bloqueie aplicativos, ele precisa de acesso às estatísticas de uso.</string>
+    <string name="dialog_usage_permission_stats_text">Para que o aplicativo funcione corretamente e registre suas estatísticas em tempo real, precisamos de acesso aos dados de uso. Ative a permissão para \'Rest Cycle\'.</string>
+    <string name="dialog_notif_permission_title">Permissão de Notificação</string>
+    <string name="dialog_notif_permission_text">Para monitorar seus aplicativos em tempo real, precisamos exibir uma notificação persistente. Isso é exigido pelo Android para serviços em segundo plano.</string>
+    
+    <!-- Botones de Permisos -->
+    <string name="btn_grant_permission">Conceder Permissão</string>
+    <string name="btn_activate_permission">Ativar Permissão</string>
+    <string name="btn_allow">Permitir</string>
+    <string name="btn_not_now">Agora Não</string>
+    
+    <!-- Toasts de Permisos -->
+    <string name="toast_monitoring_unavailable">O monitoramento em tempo real não estará disponível</string>
+    <string name="toast_notif_permission_needed">A permissão de notificação é necessária para o monitoramento em tempo real</string>
+
+    <!-- Diálogo Cerrar Sesión -->
+    <string name="dialog_logout_title">Sair</string>
+    <string name="dialog_logout_text">Tem certeza de que deseja sair?</string>
+    <string name="btn_logout">Sair</string>
+    <string name="btn_cancel">Cancelar</string>
+
+    <!-- Inicio y Registro / Auth -->
+    <string name="login_email_placeholder">Correio Eletrônico</string>
+    <string name="login_password_placeholder">Insira sua Senha</string>
+    <string name="login_forgot_password">Esqueceu a Senha?</string>
+    <string name="login_sign_in_button">Entrar</string>
+    <string name="login_no_account_prompt">Não tem uma conta?</string>
+    <string name="login_register_button">Inscrever-se</string>
+    <string name="login_or_enter_via">Ou conecte-se com</string>
+    
+    <string name="content_desc_hide_password">Ocultar senha</string>
+    <string name="content_desc_show_password">Mostrar senha</string>
+    
+    <string name="toast_invalid_email">Por favor, insira um e-mail válido</string>
+    <string name="toast_empty_password">Por favor, insira sua senha</string>
+    <string name="toast_welcome">✅ Bem-vindo %1$s!</string>
+    <string name="toast_no_internet">❌ Sem conexão com a Internet. Verifique sua rede e tente novamente.</string>
+    <string name="toast_server_error">❌ Não é possível conectar ao servidor. Verifique sua conexão.</string>
+    <string name="toast_timeout_error">❌ A conexão expirou. Tente novamente.</string>
+    <string name="toast_unexpected_error">❌ Erro inesperado: %1$s</string>
+
+    <!-- Registro Screen -->
+    <string name="register_title_speech">Você pode\nse Registrar aqui no\nnosso APP</string>
+    <string name="register_name_placeholder">Nome</string>
+    <string name="register_lastname_placeholder">Sobrenome</string>
+    <string name="register_email_placeholder">E-mail</string>
+    <string name="register_birthdate_placeholder">Data de Nascimento</string>
+    <string name="register_password_placeholder">Senha</string>
+    <string name="register_confirm_password_placeholder">Confirmar Senha</string>
+    <string name="register_accept_terms">Eu aceito os Termos e Condições</string>
+    <string name="register_button_text">Registrar</string>
+    <string name="dialog_detailed_error">Erro Detalhado</string>
+    <string name="dialog_exception">Exceção</string>
+    <string name="dialog_ok">OK</string>
+    
+    <!-- Validaciones de Registro -->
+    <string name="err_empty_name">❌ Por favor, insira seu nome</string>
+    <string name="err_invalid_name">❌ O nome deve conter apenas letras</string>
+    <string name="err_invalid_lastname">❌ O sobrenome deve conter apenas letras</string>
+    <string name="err_empty_email">❌ Por favor, digite seu e-mail</string>
+    <string name="err_invalid_email_format">❌ Insira um e-mail válido</string>
+    <string name="err_empty_birthdate">❌ Por favor, digite sua data de nascimento</string>
+    <string name="err_invalid_birthdate_format">❌ Formato de data inválido. Use AAAA-MM-DD</string>
+    <string name="err_invalid_password_format">❌ A senha deve ter pelo menos 8 caracteres, 1 maiúscula, 1 número</string>
+    <string name="err_empty_confirm_password">❌ Por favor, confirme a sua senha</string>
+    <string name="err_password_mismatch">❌ As senhas não coincidem</string>
+    <string name="err_accept_terms">❌ Você deve aceitar os Termos e Condições</string>
+
+    <!-- Recuperación de Contraseña -->
+    <string name="recovery_email_title_speech">Digite seu e-mail e\nenviaremos um código</string>
+    <string name="recovery_send_button">Enviar Código de Recuperação</string>
+    <string name="toast_code_sent">Código enviado para %1$s</string>
+    
+    <string name="dialog_cancel_recovery_title">Cancelar recuperação?</string>
+    <string name="dialog_cancel_recovery_text">Se você sair agora, precisará solicitar um novo código de recuperação.</string>
+    <string name="btn_yes_exit">Sim, sair</string>
+    
+    <string name="recovery_code_title_speech">Insira seu código\nde recuperação</string>
+    <string name="recovery_code_placeholder">Código de Recuperação</string>
+    <string name="btn_confirm">Confirmar</string>
+    <string name="recovery_resend_code">Reenviar Código</string>
+    <string name="recovery_resend_in_seconds">Reenviar em %1$ds</string>
+    <string name="toast_invalid_code_length">Por favor, insira um código de 6 dígitos</string>
+    <string name="toast_new_code_sent">Novo código enviado para seu e-mail</string>
+    <string name="toast_resend_code_error">Erro ao reenviar código: %1$s</string>
+    <string name="toast_code_verified">Código verificado com sucesso</string>
+    
+    <string name="dialog_cancel_password_change_title">Cancelar alteração de senha?</string>
+    <string name="dialog_cancel_password_change_text">Se você sair agora, perderá seu progresso e precisará solicitar um novo código.</string>
+    <string name="change_password_title_speech">Mude sua senha,\nnão a esqueça</string>
+    <string name="change_password_new_placeholder">Nova Senha</string>
+    <string name="toast_password_changed">Senha alterada com sucesso!</string>
+
+    <!-- Pantalla de Perfil y Menu -->
+    <string name="profile_photo_title">Foto de Perfil</string>
+    <string name="profile_photo_choose_option">Escolha uma opção:</string>
+    <string name="profile_photo_take">Tirar Foto</string>
+    <string name="profile_photo_choose_gallery">Escolher da Galeria</string>
+    <string name="profile_photo_delete">Excluir Foto</string>
+    
+    <string name="menu_title">Menu</string>
+    <string name="menu_statistics">Estatísticas</string>
+    <string name="menu_notes">Notas</string>
+    <string name="menu_app_block">Bloqueio de Apps</string>
+    <string name="menu_rest_hours">Horas de Descanso</string>
+    <string name="menu_calendar">Calendário</string>
+    <string name="menu_parental_control">Controle Parental</string>
+    <string name="menu_logout">Sair</string>
+
+    <string name="toast_permission_granted">Permissão concedida</string>
+    <string name="toast_permission_required_photo">É necessária permissão para alterar a foto</string>
+    <string name="toast_camera_error">Erro ao iniciar a câmera: %1$s</string>
+    <string name="toast_photo_deleted">Foto excluída</string>
+    <string name="toast_user_not_identified">Erro: Usuário não identificado</string>
+    <string name="toast_photo_updated">Foto de perfil atualizada</string>
+    <string name="toast_error_uploading_photo">Erro ao enviar a foto: %1$s</string>
+    <string name="toast_no_crop_app">Nenhum aplicativo para cortar a imagem</string>
+
+    <string name="fallback_user_name">Usuário</string>
+    <string name="profile_last_note_title">Última Nota Modificada</string>
+    <string name="profile_no_title">Sem título</string>
+    <string name="profile_healthy_habits">Hábitos Saudáveis</string>
+    <string name="profile_manage_habits">Gerencie seus hábitos diários</string>
+    <string name="toast_note_updated">Nota atualizada</string>
+    <string name="toast_update_error">Erro ao atualizar</string>
+
+    <!-- Estadísticas e Informes -->
+    <string name="stats_title">Estatísticas de Uso</string>
+    <string name="stats_tab_daily">Diário</string>
+    <string name="stats_tab_weekly">Semanal</string>
+    <string name="stats_tab_monthly">Mensal</string>
+    <string name="stats_download_report">BAIXAR RELATÓRIO</string>
+    <string name="stats_no_data">Nenhum dado de uso disponível</string>
+    <string name="stats_health_warning">O uso excessivo de aplicativos pode ser prejudicial à sua saúde.</string>
+
+    <string name="dialog_download_report_title">Baixar Relatório</string>
+    <string name="dialog_download_report_text">Deseja baixar o relatório de uso em PDF?</string>
+    <string name="btn_download">Baixar</string>
+
+    <string name="toast_no_notification_permission">Sem permissão, você não receberá notificações de download.</string>
+    <string name="toast_report_saved_no_notif">Relatório salvo (Permissão de notificação não concedida)</string>
+    <string name="toast_pdf_saved_downloads">PDF salvo em Downloads</string>
+    <string name="toast_pdf_saved_path">PDF salvo: %1$s</string>
+    <string name="toast_error_saving_pdf">Erro ao salvar PDF: %1$s</string>
+    <string name="toast_legacy_error">Erro legado: %1$s</string>
+
+    <string name="notif_report_channel_desc">Notificações de download de relatórios</string>
+    <string name="notif_report_downloaded_title">Relatório Baixado</string>
+    <string name="notif_report_downloaded_text">Toque para abrir o relatório em PDF</string>
+
+    <string name="permission_stats_desc">Para mostrar estatísticas de uso de aplicativos, precisamos acessar os dados de uso do sistema.</string>
+    <string name="btn_already_granted">Já concedi permissão</string>
+    <string name="instructions_title">Instruções:</string>
+    <string name="instructions_stats_steps">1. Toque em \'Conceder Permissão\'\n2. Encontre este aplicativo na lista\n3. Ative o botão de permissão\n4. Retorne ao aplicativo e toque em \'Já concedi permissão\'</string>
+    
+    <!-- Reporte PDF -->
+    <string name="pdf_report_title">Relatório de Uso - Rest Cycle</string>
+    <string name="pdf_user_prefix">Usuário: %1$s</string>
+    <string name="pdf_period_prefix">Período: %1$s</string>
+    
+    <!-- Días de la Semana Cortos -->
+    <string name="day_mon">Seg</string>
+    <string name="day_tue">Ter</string>
+    <string name="day_wed">Qua</string>
+    <string name="day_thu">Qui</string>
+    <string name="day_fri">Sex</string>
+    <string name="day_sat">Sáb</string>
+    <string name="day_sun">Dom</string>
+
+    <string name="date_today_prefix">Hoje, %1$s</string>
+    
+    <!-- Tiempos -->
+    <string name="time_hrs_min">%1$d hrs %2$d min</string>
+    <string name="time_hrs">%1$d hrs</string>
+    <string name="time_min">%1$d min</string>
+    <string name="time_less_than_min">&lt; 1 min</string>
+
+    <!-- Notas -->
+    <string name="notes_error_session">Erro de sessão. Por favor, faça login novamente.</string>
+    <string name="notes_title">Minhas Notas</string>
+    <string name="notes_search_hint">Pesquisar notas...</string>
+    <string name="notes_content_desc_search">Pesquisar</string>
+    <string name="notes_content_desc_add">Adicionar Nota</string>
+    <string name="notes_empty_state">Você não tem notas ainda\nToque em + para criar uma</string>
+    <string name="notes_no_results">Nenhum resultado encontrado</string>
+    <string name="notes_toast_created">Nota criada com sucesso</string>
+    <string name="notes_toast_deleted">Nota excluída</string>
+    <string name="notes_toast_updated">Nota atualizada</string>
+    <string name="notes_toast_fav_added">★ Adicionada aos favoritos</string>
+    <string name="notes_toast_fav_removed">Removida dos favoritos</string>
+
+    <string name="dialog_delete_note_title">Excluir nota</string>
+    <string name="dialog_delete_note_msg">Tem certeza de que deseja excluir esta nota?</string>
+    <string name="dialog_delete_note_untitled">Sem título</string>
+    
+    <string name="note_card_desc_delete">Excluir</string>
+    <string name="note_card_desc_fav_remove">Remover dos favoritos</string>
+    <string name="note_card_desc_fav_add">Adicionar aos favoritos</string>
+
+    <string name="dialog_note_title_new">Nova Nota</string>
+    <string name="dialog_note_title_edit">Editar Nota</string>
+    <string name="dialog_note_label_title">Título</string>
+    <string name="dialog_note_label_content">Conteúdo</string>
+    <string name="dialog_note_label_color">Escolha uma cor:</string>
+    <string name="dialog_note_desc_selected">Selecionado</string>
+    <string name="btn_create">Criar</string>
+    <string name="btn_save">Salvar</string>
+
+    <!-- Bloqueio de Apps -->
+    <string name="blocking_title">Bloqueio de Apps</string>
+    <string name="blocking_desc">Defina limites diários para seus aplicativos e melhore sua produtividade.</string>
+    <string name="blocking_your_apps">Seus Aplicativos</string>
+    <string name="blocking_add_apps">Adicionar Apps</string>
+    <string name="blocking_add_btn">Adicionar</string>
+    <string name="blocking_remove_app_title">Remover app</string>
+    <string name="blocking_remove_app_msg">Deseja remover %1$s da sua lista de monitoramento?</string>
+    <string name="blocking_remove_btn">Remover</string>
+    <string name="blocking_no_apps_found">Nenhum app encontrado</string>
+    <string name="blocking_status_blocked">Bloqueado</string>
+    <string name="blocking_status_nolimit">Sem limite</string>
+    <string name="blocking_time_allowed">%1$dh %2$dm por dia</string>
+    <string name="blocking_time_remaining">Sobra: %1$dh %2$dm</string>
+    <string name="blocking_time_exhausted">Tempo esgotado</string>
+    <string name="blocking_set_limit_title">Definir Limite Diário</string>
+    <string name="blocking_set_limit_desc">Deslize para selecionar o tempo</string>
+    
+    <!-- Tela de Bloqueio Ativo -->
+    <string name="blocking_active_title">Momento de Pausa</string>
+    <string name="blocking_active_btn_return">Voltar ao Foco</string>
+    <string name="blocking_active_quote_1">Desconecte para reconectar.</string>
+    <string name="blocking_active_quote_2">Seu tempo é seu recurso mais valioso.</string>
+    <string name="blocking_active_quote_3">Concentre-se no que realmente importa.</string>
+    <string name="blocking_active_quote_4">Pequenos passos, grandes conquistas.</string>
+    <string name="blocking_active_quote_5">O descanso também faz parte da produtividade.</string>
+    <string name="blocking_active_quote_6">Domine sua atenção, domine sua vida.</string>
+
+    <!-- Calendário -->
+    <string name="calendar_title">Calendário</string>
+    <string name="calendar_view_list">Ver Lista</string>
+    <string name="calendar_view_calendar">Ver Calendário</string>
+    <string name="calendar_new_event">Novo Evento</string>
+    <string name="calendar_error_past_date">Não pode criar eventos em datas passadas</string>
+    <string name="calendar_event_updated">Evento atualizado</string>
+    <string name="calendar_event_created">Evento criado</string>
+    <string name="calendar_error_create">Erro ao criar: %1$s</string>
+    <string name="calendar_error_generic">Erro: %1$s</string>
+    <string name="calendar_event_deleted">Evento removido</string>
+    <string name="calendar_error_delete">Erro ao remover</string>
+    <string name="calendar_prev_month">Mês Anterior</string>
+    <string name="calendar_next_month">Mês Seguinte</string>
+    <string name="calendar_agenda_title">Agenda - %1$s</string>
+    <string name="calendar_no_events_day">Sem eventos para este dia</string>
+    <string name="calendar_upcoming_events">Próximos Eventos</string>
+    <string name="calendar_no_upcoming_events">Não tem eventos pendentes</string>
+    <string name="calendar_with_location">Com localização</string>
+
+    <!-- Diálogo de Evento e Mapa -->
+    <string name="dialog_event_edit_title">Editar Evento</string>
+    <string name="dialog_event_new_title">Novo Evento</string>
+    <string name="dialog_event_title_hint">Título do evento</string>
+    <string name="dialog_event_type_label">Tipo de evento:</string>
+    <string name="dialog_event_type_meeting">Reunião</string>
+    <string name="dialog_event_type_work">Trabalho</string>
+    <string name="dialog_event_type_appointment">Compromisso</string>
+    <string name="dialog_event_type_health">Saúde</string>
+    <string name="dialog_event_type_leisure">Lazer</string>
+    <string name="dialog_event_type_other">Outro</string>
+    <string name="dialog_event_start_label">Início:</string>
+    <string name="dialog_event_end_label">Fim:</string>
+    <string name="dialog_event_location_selected">Localização Selecionada</string>
+    <string name="dialog_event_location_add">Adicionar Localização (Mapa)</string>
+    <string name="dialog_map_title">Selecione uma Localização</string>
+    <string name="dialog_map_marker_title">Localização Selecionada</string>
+    <string name="dialog_map_hint">Toque no mapa para marcar um ponto</string>
+    <string name="btn_delete">Excluir</string>
+
+</resources>

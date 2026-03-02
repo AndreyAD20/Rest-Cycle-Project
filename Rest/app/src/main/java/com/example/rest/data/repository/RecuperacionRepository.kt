@@ -140,8 +140,11 @@ class RecuperacionRepository {
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
-                // Actualizar contraseña
-                val request = CambiarContraseñaRequest(contraseña = nuevaContraseña)
+                // Generar Hash de la nueva contraseña
+                val hashPswd = com.example.rest.utils.SecurityUtils.hashPassword(nuevaContraseña)
+                
+                // Actualizar contraseña con el Hash
+                val request = CambiarContraseñaRequest(contraseña = hashPswd)
                 val response = api.actualizarContraseñaPorCorreo(
                     correo = "eq.$correo",
                     request = request

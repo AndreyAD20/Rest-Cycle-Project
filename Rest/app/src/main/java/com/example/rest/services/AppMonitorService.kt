@@ -33,7 +33,7 @@ class AppMonitorService : Service() {
     companion object {
         private const val TAG = "AppMonitorService"
         private const val NOTIFICATION_ID = 1001
-        private const val CHANNEL_ID = "app_monitoring_channel"
+        private const val CHANNEL_ID = "app_monitoring_channel_silent"
         private const val CHECK_INTERVAL = 3000L // 3 segundos
         private const val SYNC_INTERVAL = 60000L // 1 minuto
         
@@ -76,14 +76,17 @@ class AppMonitorService : Service() {
     private var dailyUsageMap: MutableMap<String, Int> = mutableMapOf()
     
     private var lastRestrictionCheckTime: Long = 0
+    // Cooldown: evita relanzar BloqueoActivity para la misma app dentro de 60 segundos
+    private val lastBlockedTimeMap: MutableMap<String, Long> = mutableMapOf()
+    private val BLOCK_COOLDOWN_MS = 60_000L // 60 segundos
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Servicio creado")
         
         // Obtener ID del usuario
-        val sharedPref = getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-        val userId = sharedPref.getInt("ID_USUARIO", -1)
+        val prefs = com.example.rest.utils.PreferencesManager(this)
+        val userId = prefs.getUserId()
         
         if (userId == -1) {
             Log.e(TAG, "No hay usuario logueado, deteniendo servicio")
@@ -92,6 +95,7 @@ class AppMonitorService : Service() {
         }
         
         // Intentar obtener ID de dispositivo de SharedPreferences
+        val sharedPref = getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
         dispositivoId = sharedPref.getInt("ID_DISPOSITIVO", -1)
         
         // Si no está guardado, obtenerlo/crearlo desde la API
@@ -277,7 +281,10 @@ class AppMonitorService : Service() {
                                  nombre = nombreApp,
                                  packageName = pkg,
                                  iconColor = iconColor,
-                                 isBlocked = vinculada.bloqueada,
+                                 // Preservar bloqueo local si ya estaba activo
+                                 // (evita que la sincronización revierte bloqueos por límite de tiempo)
+                                 isBlocked = vinculada.bloqueada || (localRepository.getBlockedApps()
+                                     .find { it.packageName == pkg }?.isBlocked == true),
                                  limitHours = horas,
                                  limitMinutes = minutos
                              )
@@ -439,7 +446,13 @@ class AppMonitorService : Service() {
             }
 
             // Ignorar nuestra propia app, launchers y systemui
-            if (isSystemOrLauncher(foregroundPackage)) return
+            // Pero si es nuestra app, limpiar cooldowns (el usuario reconoció el bloqueo)
+            if (isSystemOrLauncher(foregroundPackage)) {
+                if (foregroundPackage == this.packageName) {
+                    lastBlockedTimeMap.clear()
+                }
+                return
+            }
 
             if (foregroundPackage != currentPackageName) {
                 // App cambió - registrar sesión anterior
@@ -452,7 +465,6 @@ class AppMonitorService : Service() {
                 }
                 currentPackageName = foregroundPackage
                 sessionStartTime = currentTime
-                updateNotification("Usando: ${getAppName(foregroundPackage)}")
             }
 
             // Siempre verificar bloqueo
@@ -483,7 +495,15 @@ class AppMonitorService : Service() {
             if (timeSinceLastUse > 5 * 60 * 1000) return false
 
             val moreRecentApp = stats
-                .filter { it.packageName != packageName && !isSystemOrLauncher(it.packageName) }
+                // Solo excluir launchers y systemui — NO nuestra propia app
+                // Así cuando BloqueoActivity está en pantalla, com.example.rest aparece
+                // como más reciente y la app bloqueada deja de ser detectada como activa
+                .filter { it.packageName != packageName &&
+                        !it.packageName.contains("launcher", ignoreCase = true) &&
+                        !it.packageName.contains("nexuslauncher", ignoreCase = true) &&
+                        it.packageName != "com.android.systemui" &&
+                        it.packageName != "com.google.android.packageinstaller"
+                }
                 .maxByOrNull { it.lastTimeUsed }
 
             // Si otra app fue usada más recientemente, la nuestra ya no está en frente
@@ -540,14 +560,19 @@ class AppMonitorService : Service() {
     private suspend fun ensureDeviceId(): Int {
         if (dispositivoId != -1) return dispositivoId
         
+        val prefs = com.example.rest.utils.PreferencesManager(this)
+        val storedId = prefs.getUserId() // Hack temporal, normalmente esto será getDeviceId pero como no está en PreferencesManager lo ignoraremos o usaremos sharedPreferences normal...
+        
+        // Wait, I should just use ordinary shared prefs for ID_DISPOSITIVO since I didn't add it to PreferencesManager, or I can add it to PreferencesManager. Let me add it.
+        // Actually I can just do:
         val sharedPref = getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-        val storedId = sharedPref.getInt("ID_DISPOSITIVO", -1)
-        if (storedId != -1) {
-            dispositivoId = storedId
-            return storedId
+        val storedId2 = sharedPref.getInt("ID_DISPOSITIVO", -1)
+        if (storedId2 != -1) {
+            dispositivoId = storedId2
+            return storedId2
         }
         
-        val userId = sharedPref.getInt("ID_USUARIO", -1)
+        val userId = prefs.getUserId()
         if (userId == -1) return -1
         
         try {
@@ -706,9 +731,9 @@ class AppMonitorService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Monitoreo de Apps",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_MIN
             ).apply {
-                description = "Notificación para el servicio de monitoreo de apps"
+                description = "Notificación silenciosa para el servicio de monitoreo de apps"
                 setShowBadge(false)
             }
             
@@ -797,10 +822,20 @@ class AppMonitorService : Service() {
         }
 
         if (shouldBlock) {
-             Log.d(TAG, "BLOQUEANDO app: $appName")
-             val intent = BloqueoActivity.newIntent(this, appName, reason)
-             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-             startActivity(intent)
+            val now = System.currentTimeMillis()
+            val lastBlocked = lastBlockedTimeMap[packageName] ?: 0L
+            if (now - lastBlocked < BLOCK_COOLDOWN_MS) {
+                Log.d(TAG, "Cooldown activo para $packageName, no se relanza BloqueoActivity")
+                return
+            }
+            lastBlockedTimeMap[packageName] = now
+            Log.d(TAG, "BLOQUEANDO app: $appName")
+            // Resetear currentPackageName para que la siguiente iteración
+            // no siga detectando la app bloqueada como foreground
+            currentPackageName = null
+            val intent = BloqueoActivity.newIntent(this, appName, reason)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
         }
     }
 

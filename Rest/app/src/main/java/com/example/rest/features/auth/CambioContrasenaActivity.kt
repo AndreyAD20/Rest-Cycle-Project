@@ -32,6 +32,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.activity.compose.BackHandler
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.ui.res.stringResource
 import com.example.rest.data.repository.RecuperacionRepository
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.launch
@@ -59,8 +65,8 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                 if (mostrarDialogoSalir) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoSalir = false },
-                        title = { Text("¿Cancelar cambio de contraseña?") },
-                        text = { Text("Si sales ahora, perderás el progreso y tendrás que solicitar un nuevo código.") },
+                        title = { Text(stringResource(R.string.dialog_cancel_password_change_title)) },
+                        text = { Text(stringResource(R.string.dialog_cancel_password_change_text)) },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -68,12 +74,12 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                                     finish()
                                 }
                             ) {
-                                Text("Sí, salir")
+                                Text(stringResource(R.string.btn_yes_exit))
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { mostrarDialogoSalir = false }) {
-                                Text("Cancelar")
+                                Text(stringResource(R.string.btn_cancel))
                             }
                         }
                     )
@@ -85,11 +91,11 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                     },
                     alClickConfirmar = { nuevaContrasena, confirmarContrasena ->
                         when {
-                            nuevaContrasena.isBlank() || nuevaContrasena.length < 6 -> {
-                                Toast.makeText(this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show()
+                            !com.example.rest.utils.SecurityUtils.isValidPassword(nuevaContrasena) -> {
+                                Toast.makeText(this, getString(R.string.err_invalid_password_format), Toast.LENGTH_SHORT).show()
                             }
                             nuevaContrasena != confirmarContrasena -> {
-                                Toast.makeText(this, "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, getString(R.string.err_password_mismatch), Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 cargando = true
@@ -113,7 +119,7 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 this@CambioContrasenaActivity,
-                                "¡Contraseña cambiada exitosamente!",
+                                getString(R.string.toast_password_changed),
                                 Toast.LENGTH_LONG
                             ).show()
                             
@@ -141,7 +147,7 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(
                         this@CambioContrasenaActivity,
-                        "Error inesperado: ${e.message}",
+                        getString(R.string.toast_unexpected_error, e.message),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -162,6 +168,7 @@ fun PantallaCambioContrasena(
     var confirmarContrasena by remember { mutableStateOf("") }
     var mostrarNueva by remember { mutableStateOf(false) }
     var mostrarConfirmar by remember { mutableStateOf(false) }
+    var menuIdiomaExpandido by remember { mutableStateOf(false) }
     
     // Interceptar botón atrás del sistema
     BackHandler {
@@ -182,19 +189,62 @@ fun PantallaCambioContrasena(
             .fillMaxSize()
             .background(brochaGradiente)
     ) {
-        // Botón de regresar
-        IconButton(
-            onClick = alClickRegresar,
+        // Barra Superior
+        Row(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(16.dp)
-                .align(Alignment.TopStart)
+                .align(Alignment.TopCenter),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Regresar",
-                tint = Color(0xFF004D40),
-                modifier = Modifier.size(32.dp)
-            )
+            // Botón de regresar
+            IconButton(onClick = alClickRegresar) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = stringResource(R.string.content_desc_back),
+                    tint = Negro,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            // Selector de Idioma
+            Box {
+                IconButton(onClick = { menuIdiomaExpandido = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = "Cambiar Idioma",
+                        tint = Negro,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuIdiomaExpandido,
+                    onDismissRequest = { menuIdiomaExpandido = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Español") },
+                        onClick = {
+                            menuIdiomaExpandido = false
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("es"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("English") },
+                        onClick = {
+                            menuIdiomaExpandido = false
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Português") },
+                        onClick = {
+                            menuIdiomaExpandido = false
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("pt"))
+                        }
+                    )
+                }
+            }
         }
 
         Column(
@@ -214,7 +264,7 @@ fun PantallaCambioContrasena(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
-                    contentDescription = "Logo Búho",
+                    contentDescription = stringResource(R.string.content_desc_owl_logo),
                     modifier = Modifier.size(100.dp)
                 )
 
@@ -232,7 +282,7 @@ fun PantallaCambioContrasena(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "Cambia tu contraseña\nque no se te olvide",
+                            text = stringResource(R.string.change_password_title_speech),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Negro,
                             textAlign = TextAlign.Center,
@@ -248,7 +298,7 @@ fun PantallaCambioContrasena(
                 onValueChange = { nuevaContrasena = it },
                 placeholder = {
                     Text(
-                        "Nueva Contraseña",
+                        stringResource(R.string.change_password_new_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -269,7 +319,7 @@ fun PantallaCambioContrasena(
                 trailingIcon = {
                     val image = if (mostrarNueva) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                     IconButton(onClick = { mostrarNueva = !mostrarNueva }) {
-                        Icon(imageVector = image, contentDescription = if (mostrarNueva) "Ocultar contraseña" else "Mostrar contraseña")
+                        Icon(imageVector = image, contentDescription = if (mostrarNueva) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password))
                     }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -285,7 +335,7 @@ fun PantallaCambioContrasena(
                 onValueChange = { confirmarContrasena = it },
                 placeholder = {
                     Text(
-                        "Confirmar Contraseña",
+                        stringResource(R.string.register_confirm_password_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -306,7 +356,7 @@ fun PantallaCambioContrasena(
                 trailingIcon = {
                     val image = if (mostrarConfirmar) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                     IconButton(onClick = { mostrarConfirmar = !mostrarConfirmar }) {
-                        Icon(imageVector = image, contentDescription = if (mostrarConfirmar) "Ocultar contraseña" else "Mostrar contraseña")
+                        Icon(imageVector = image, contentDescription = if (mostrarConfirmar) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password))
                     }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -341,7 +391,7 @@ fun PantallaCambioContrasena(
                     )
                 } else {
                     Text(
-                        text = "Confirmar",
+                        text = stringResource(R.string.btn_confirm),
                         style = MaterialTheme.typography.labelLarge,
                         color = Negro
                     )

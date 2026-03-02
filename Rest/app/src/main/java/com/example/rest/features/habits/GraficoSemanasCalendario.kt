@@ -26,8 +26,8 @@ fun GraficoSemanasCalendario(context: Context) {
     val scope = rememberCoroutineScope()
     
     // Obtener ID del dispositivo desde SharedPreferences
-    val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-    val userId = sharedPref.getInt("ID_USUARIO", -1)
+    val prefs = com.example.rest.utils.PreferencesManager(context)
+    val userId = prefs.getUserId()
     
     LaunchedEffect(Unit) {
         if (userId != -1) {

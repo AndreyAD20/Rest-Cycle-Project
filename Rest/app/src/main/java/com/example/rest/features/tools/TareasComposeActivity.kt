@@ -54,8 +54,8 @@ fun PantallaTareas(onBackClick: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
-        val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-        val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+        val prefs = com.example.rest.utils.PreferencesManager(context)
+        val idUsuario = prefs.getUserId()
 
         if (idUsuario != -1) {
             withContext(Dispatchers.IO) {

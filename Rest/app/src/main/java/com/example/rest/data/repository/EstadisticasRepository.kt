@@ -27,8 +27,9 @@ class EstadisticasRepository {
         withContext(Dispatchers.IO) {
             try {
                 // 1. Obtener ID del usuario actual
+                val prefs = com.example.rest.utils.PreferencesManager(context)
+                val userId = prefs.getUserId()
                 val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-                val userId = sharedPref.getInt("ID_USUARIO", -1)
                 
                 if (userId == -1) {
                     Log.e(TAG, "No hay usuario logueado para sincronizar.")

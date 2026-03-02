@@ -19,14 +19,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
@@ -43,8 +45,8 @@ class LoginComposeActivity : BaseComposeActivity() {
         super.onCreate(savedInstanceState)
 
         // Verificar si ya hay una sesión activa
-        val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-        val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+        val preferencesManager = com.example.rest.utils.PreferencesManager(this)
+        val idUsuario = preferencesManager.getUserId()
 
         if (idUsuario != -1) {
             // Ya existe una sesión, ir directo al inicio
@@ -63,10 +65,10 @@ class LoginComposeActivity : BaseComposeActivity() {
                         // Validaciones
                         when {
                             correo.isBlank() || !correo.contains("@") -> {
-                                Toast.makeText(this, "Por favor ingresa un correo válido", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, getString(R.string.toast_invalid_email), Toast.LENGTH_SHORT).show()
                             }
                             contraseña.isBlank() -> {
-                                Toast.makeText(this, "Por favor ingresa tu contraseña", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, getString(R.string.toast_empty_password), Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 // Realizar login
@@ -102,7 +104,7 @@ class LoginComposeActivity : BaseComposeActivity() {
         if (!isNetworkAvailable()) {
             Toast.makeText(
                 this@LoginComposeActivity,
-                "❌ No hay conexión a Internet. Por favor, verifica tu conexión e intenta nuevamente.",
+                getString(R.string.toast_no_internet),
                 Toast.LENGTH_LONG
             ).show()
             onComplete()
@@ -117,17 +119,14 @@ class LoginComposeActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@LoginComposeActivity,
-                                "✅ ¡Bienvenido ${usuario.nombre}!",
+                                getString(R.string.toast_welcome, usuario.nombre),
                                 Toast.LENGTH_LONG
                             ).show()
                             
-                            // Guardar nombre de usuario e ID en SharedPreferences
-                            val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                            with (sharedPref.edit()) {
-                                putString("NOMBRE_USUARIO", usuario.nombre)
-                                putInt("ID_USUARIO", usuario.id ?: -1)
-                                apply()
-                            }
+                            // Guardar nombre de usuario e ID usando PreferencesManager (Encriptado)
+                            val preferencesManager = com.example.rest.utils.PreferencesManager(this@LoginComposeActivity)
+                            preferencesManager.saveUserName(usuario.nombre)
+                            preferencesManager.saveUserId(usuario.id ?: -1)
 
                             // Navegar a InicioComposeActivity
                             val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
@@ -140,10 +139,10 @@ class LoginComposeActivity : BaseComposeActivity() {
                             val mensajeError = when {
                                 resultado.message.contains("Unable to resolve host") ||
                                 resultado.message.contains("UnknownHostException") -> 
-                                    "❌ No se puede conectar al servidor. Verifica tu conexión a Internet."
+                                    getString(R.string.toast_server_error)
                                 resultado.message.contains("timeout") -> 
-                                    "❌ La conexión tardó demasiado. Intenta nuevamente."
-                                else -> "❌ ${resultado.message}"
+                                    getString(R.string.toast_timeout_error)
+                                else -> getString(R.string.toast_unexpected_error, resultado.message)
                             }
                             Toast.makeText(
                                 this@LoginComposeActivity,
@@ -161,10 +160,10 @@ class LoginComposeActivity : BaseComposeActivity() {
                     val mensajeError = when {
                         e.message?.contains("Unable to resolve host") == true ||
                         e.message?.contains("UnknownHostException") == true -> 
-                            "❌ No se puede conectar al servidor. Verifica tu conexión a Internet."
+                            getString(R.string.toast_server_error)
                         e.message?.contains("timeout") == true -> 
-                            "❌ La conexión tardó demasiado. Intenta nuevamente."
-                        else -> "❌ Error inesperado: ${e.message}"
+                            getString(R.string.toast_timeout_error)
+                        else -> getString(R.string.toast_unexpected_error, e.message)
                     }
                     Toast.makeText(
                         this@LoginComposeActivity,
@@ -217,6 +216,72 @@ fun PantallaLogin(
             .background(brochaGradiente),
         contentAlignment = Alignment.Center
     ) {
+        
+        // --- Selector de Idioma (Superior Derecha) ---
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+        var idiomaExpandido by remember { mutableStateOf(false) }
+        var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.TopEnd
+        ) {
+            Box {
+                IconButton(onClick = { idiomaExpandido = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = "Cambiar Idioma",
+                        tint = Negro,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = idiomaExpandido,
+                    onDismissRequest = { idiomaExpandido = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                ) {
+                    val opciones = listOf(
+                        stringResource(R.string.lang_spanish),
+                        stringResource(R.string.lang_english),
+                        stringResource(R.string.lang_portuguese)
+                    )
+                    
+                    val langEn = stringResource(R.string.lang_english)
+                    val langPt = stringResource(R.string.lang_portuguese)
+                    
+                    opciones.forEach { opcion ->
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    text = opcion,
+                                    color = if (opcion == idiomaSeleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                ) 
+                            },
+                            onClick = {
+                                idiomaSeleccionado = opcion
+                                sharedPrefs.edit().putString("IDIOMA", opcion).apply()
+                                
+                                val code = when (opcion) {
+                                    langEn, "English" -> "en"
+                                    langPt, "Português" -> "pt"
+                                    else -> "es"
+                                }
+                                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_language_saved, opcion), android.widget.Toast.LENGTH_SHORT).show()
+                                (context as? android.app.Activity)?.recreate()
+                                idiomaExpandido = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        // ----------------------------------------------
+
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -236,10 +301,10 @@ fun PantallaLogin(
             // Campo de Correo Electrónico
             OutlinedTextField(
                 value = correo,
-                onValueChange = { correo = it },
+                onValueChange = { correo = it.trim() },
                 placeholder = { 
                     Text(
-                        "Correo Electronico",
+                        stringResource(R.string.login_email_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -258,7 +323,14 @@ fun PantallaLogin(
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
+                textStyle = MaterialTheme.typography.bodyLarge,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Email,
+                        contentDescription = null,
+                        tint = Color(0xFF757575)
+                    )
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -269,7 +341,7 @@ fun PantallaLogin(
                 onValueChange = { contraseña = it },
                 placeholder = { 
                     Text(
-                        "Ingrese su Contraseña",
+                        stringResource(R.string.login_password_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     ) 
@@ -293,20 +365,32 @@ fun PantallaLogin(
                     else
                         Icons.Filled.VisibilityOff
 
+                    val description = if (passwordVisible) 
+                        stringResource(R.string.content_desc_hide_password) 
+                    else 
+                        stringResource(R.string.content_desc_show_password)
+
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
+                        Icon(imageVector = image, contentDescription = description)
                     }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge
+                textStyle = MaterialTheme.typography.bodyLarge,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Filled.Lock,
+                        contentDescription = null,
+                        tint = Color(0xFF757575)
+                    )
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // ¿Olvido la Contraseña?
             Text(
-                text = "¿Olvido la Contraseña?",
+                text = stringResource(R.string.login_forgot_password),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF004D40),
                 textAlign = TextAlign.Center,
@@ -344,7 +428,7 @@ fun PantallaLogin(
                     )
                 } else {
                     Text(
-                        text = "Iniciar Sesión",
+                        text = stringResource(R.string.login_sign_in_button),
                         style = MaterialTheme.typography.labelLarge,
                         color = Negro
                     )
@@ -355,7 +439,7 @@ fun PantallaLogin(
 
             // ¿No tienes cuenta?
             Text(
-                text = "¿No tienes cuenta?",
+                text = stringResource(R.string.login_no_account_prompt),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF004D40),
                 textAlign = TextAlign.Center
@@ -380,7 +464,7 @@ fun PantallaLogin(
                 )
             ) {
                 Text(
-                    text = "Registrate",
+                    text = stringResource(R.string.login_register_button),
                     style = MaterialTheme.typography.labelLarge,
                     color = Negro
                 )
@@ -390,7 +474,7 @@ fun PantallaLogin(
 
             // O ingresa por
             Text(
-                text = "O ingresa por",
+                text = stringResource(R.string.login_or_enter_via),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF004D40),
                 textAlign = TextAlign.Center

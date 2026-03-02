@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -83,15 +84,15 @@ fun PantallaBloqueo(
     // Frases motivacionales aleatorias
     val quotes = remember {
         listOf(
-            "Desconecta para reconectar.",
-            "Tu tiempo es el recurso más valioso.",
-            "Enfócate en lo que realmente importa.",
-            "Pequeños pasos, grandes logros.",
-            "El descanso también es parte de la productividad.",
-            "Domina tu atención, domina tu vida."
+            R.string.blocking_active_quote_1,
+            R.string.blocking_active_quote_2,
+            R.string.blocking_active_quote_3,
+            R.string.blocking_active_quote_4,
+            R.string.blocking_active_quote_5,
+            R.string.blocking_active_quote_6
         )
     }
-    val randomQuote = remember { quotes.random() }
+    val randomQuoteRes = remember { quotes.random() }
 
     // Fondo degradado "Zen" (Azul noche profundo)
     val gradientBrush = Brush.verticalGradient(
@@ -139,7 +140,7 @@ fun PantallaBloqueo(
 
             // Título Principal
             Text(
-                text = "Tiempo de Pausa",
+                text = stringResource(R.string.blocking_active_title),
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 ),
@@ -172,7 +173,7 @@ fun PantallaBloqueo(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = randomQuote,
+                        text = stringResource(randomQuoteRes),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                         ),
@@ -207,7 +208,7 @@ fun PantallaBloqueo(
                 shape = RoundedCornerShape(28.dp)
             ) {
                 Text(
-                    text = "Volver a mi Foco",
+                    text = stringResource(R.string.blocking_active_btn_return),
                     color = Color(0xFF311B92),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold

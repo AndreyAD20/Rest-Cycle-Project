@@ -24,6 +24,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import android.Manifest
 import android.content.Context
 import android.graphics.Bitmap
@@ -43,6 +46,8 @@ import androidx.core.content.FileProvider
 import com.example.rest.features.habits.*
 import com.example.rest.ui.theme.*
 import com.example.rest.ui.components.dialogs.DialogoNota
+import androidx.compose.ui.res.stringResource
+import com.example.rest.R
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -77,8 +82,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
 
     // Cargar imagen guardada al inicio y SIEMPRE verificar actualizaciones
     LaunchedEffect(Unit) {
-        val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-        val userId = sharedPref.getInt("ID_USUARIO", -1)
+        val prefs = com.example.rest.utils.PreferencesManager(context)
+        val userId = prefs.getUserId()
         
         if (userId != -1) {
             // 1. Cargar lo que tengamos localmente primero (para velocidad)
@@ -123,8 +128,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
     // Launchers para cámara y galería
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success && tempCameraUri != null) {
-            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            val prefs = com.example.rest.utils.PreferencesManager(context)
+            val userId = prefs.getUserId()
             
             if (userId != -1) {
                 saveImageToInternalStorage(context, tempCameraUri!!, userId)
@@ -142,8 +147,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
     
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
-            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            val prefs = com.example.rest.utils.PreferencesManager(context)
+            val userId = prefs.getUserId()
             
             if (userId != -1) {
                 saveImageToInternalStorage(context, uri, userId)
@@ -173,26 +178,26 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
         } catch (e: Exception) {
             Log.e("PerfilDebug", "Error al lanzar cámara: ${e.message}")
             e.printStackTrace()
-            Toast.makeText(context, "Error al iniciar cámara: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.toast_camera_error, e.message ?: ""), Toast.LENGTH_LONG).show()
         }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
-            Toast.makeText(context, "Permiso concedido", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_permission_granted), Toast.LENGTH_SHORT).show()
             launchCamera()
         } else {
-            Toast.makeText(context, "Se requiere permiso para cambiar la foto", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_permission_required_photo), Toast.LENGTH_SHORT).show()
         }
     }
 
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { showImageSourceDialog = false },
-            title = { Text("Foto de Perfil") },
+            title = { Text(stringResource(R.string.profile_photo_title)) },
             text = {
                 Column {
-                    Text("Elige una opción:")
+                    Text(stringResource(R.string.profile_photo_choose_option))
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Botón Cámara
@@ -211,7 +216,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     ) {
                         Icon(Icons.Default.CameraAlt, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Tomar Foto")
+                        Text(stringResource(R.string.profile_photo_take))
                     }
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -227,7 +232,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     ) {
                         Icon(Icons.Default.PhotoLibrary, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Elegir de Galería")
+                        Text(stringResource(R.string.profile_photo_choose_gallery))
                     }
                     
                     // Mostrar botón de eliminar solo si hay foto
@@ -238,8 +243,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                             onClick = {
                                 showImageSourceDialog = false
                                 // Eliminar foto
-                                val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-                                val userId = sharedPref.getInt("ID_USUARIO", -1)
+                                val prefs = com.example.rest.utils.PreferencesManager(context)
+                                val userId = prefs.getUserId()
                                 
                                 if (userId != -1) {
                                     // Eliminar localmente
@@ -251,7 +256,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                         eliminarFotoDeSupabase(context)
                                     }
                                     
-                                    Toast.makeText(context, "Foto eliminada", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.toast_photo_deleted), Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -259,7 +264,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Eliminar Foto")
+                            Text(stringResource(R.string.profile_photo_delete))
                         }
                     }
                 }
@@ -267,7 +272,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showImageSourceDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -302,110 +307,110 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                         Spacer(Modifier.height(12.dp))
                         
                         Text(
-                            "Menu",
+                            stringResource(R.string.menu_title),
                             modifier = Modifier.padding(16.dp),
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Blanco
+                            color = Negro
                         )
                         
-                        Divider(color = Blanco.copy(alpha = 0.3f))
+                        Divider(color = Negro.copy(alpha = 0.3f))
                 
                         // 1. Estadísticas
                         NavigationDrawerItem(
-                            label = { Text("Estadísticas", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
+                            label = { Text(stringResource(R.string.menu_statistics), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,
                             onClick = {
                                 context.startActivity(android.content.Intent(context, com.example.rest.features.habits.EstadisticasComposeActivity::class.java))
                             },
-                            icon = { Icon(Icons.Default.Star, null, tint = Blanco) },
+                            icon = { Icon(Icons.Default.Star, null, tint = Negro, modifier = Modifier.size(28.dp)) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             colors = NavigationDrawerItemDefaults.colors(
                                 unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
+                                selectedContainerColor = Negro.copy(alpha = 0.2f)
                             )
                         )
                         
                         // 2. Notas
                         NavigationDrawerItem(
-                            label = { Text("Notas", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
+                            label = { Text(stringResource(R.string.menu_notes), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,
                             onClick = {
                                 context.startActivity(android.content.Intent(context, com.example.rest.features.tools.NotasComposeActivity::class.java))
                             },
-                            icon = { Icon(Icons.Default.Edit, null, tint = Blanco) },
+                            icon = { Icon(Icons.Default.Edit, null, tint = Negro, modifier = Modifier.size(28.dp)) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             colors = NavigationDrawerItemDefaults.colors(
                                 unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
+                                selectedContainerColor = Negro.copy(alpha = 0.2f)
                             )
                         )
                         
                         // 3. Bloqueo de Aplicaciones
                         NavigationDrawerItem(
-                            label = { Text("Bloqueo de Apps", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
+                            label = { Text(stringResource(R.string.menu_app_block), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,
                             onClick = {
                                 context.startActivity(android.content.Intent(context, com.example.rest.features.tools.BloqueoAppsComposeActivity::class.java))
                             },
-                            icon = { Icon(Icons.Default.Lock, null, tint = Blanco) },
+                            icon = { Icon(Icons.Default.Lock, null, tint = Negro, modifier = Modifier.size(28.dp)) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             colors = NavigationDrawerItemDefaults.colors(
                                 unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
+                                selectedContainerColor = Negro.copy(alpha = 0.2f)
                             )
                         )
                         
                         // 4. Horas de Descanso
                         NavigationDrawerItem(
-                            label = { Text("Horas de Descanso", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
+                            label = { Text(stringResource(R.string.menu_rest_hours), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,
                             onClick = {
                                 context.startActivity(android.content.Intent(context, com.example.rest.features.tools.HoraDescansoComposeActivity::class.java))
                             },
-                            icon = { Icon(Icons.Default.Face, null, tint = Blanco) },
+                            icon = { Icon(Icons.Default.Face, null, tint = Negro, modifier = Modifier.size(28.dp)) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             colors = NavigationDrawerItemDefaults.colors(
                                 unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
+                                selectedContainerColor = Negro.copy(alpha = 0.2f)
                             )
                         )
                         
                         // 5. Calendario
                         NavigationDrawerItem(
-                            label = { Text("Calendario", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
+                            label = { Text(stringResource(R.string.menu_calendar), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,
                             onClick = {
                                 context.startActivity(android.content.Intent(context, com.example.rest.features.tools.CalendarioComposeActivity::class.java))
                             },
-                            icon = { Icon(Icons.Default.DateRange, null, tint = Blanco) },
+                            icon = { Icon(Icons.Default.DateRange, null, tint = Negro, modifier = Modifier.size(28.dp)) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             colors = NavigationDrawerItemDefaults.colors(
                                 unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
+                                selectedContainerColor = Negro.copy(alpha = 0.2f)
                             )
                         )
                         
                         // 6. Control Parental
                         NavigationDrawerItem(
-                            label = { Text("Control Parental", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
+                            label = { Text(stringResource(R.string.menu_parental_control), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,
                             onClick = {
                             },
-                            icon = { Icon(Icons.Default.Person, null, tint = Blanco) },
+                            icon = { Icon(Icons.Default.Person, null, tint = Negro, modifier = Modifier.size(28.dp)) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                             colors = NavigationDrawerItemDefaults.colors(
                                 unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
+                                selectedContainerColor = Negro.copy(alpha = 0.2f)
                             )
                         )
 
                         Spacer(modifier = Modifier.weight(1f)) // Empujar hacia abajo
 
-                        Divider(color = Blanco.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 8.dp))
+                        Divider(color = Negro.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 8.dp))
 
                         // 7. Cerrar Sesión
                         NavigationDrawerItem(
-                            label = { Text("Cerrar Sesión", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
+                            label = { Text(stringResource(R.string.menu_logout), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,
                             onClick = {
                                 // Limpiar fotos de perfil locales
@@ -420,21 +425,18 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                 }
                                 
                                 // Borrar sesión y volver al login
-                                val sharedAction = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                                with(sharedAction.edit()) {
-                                    clear()
-                                    apply()
-                                }
+                                val preferencesManager = com.example.rest.utils.PreferencesManager(context)
+                                preferencesManager.clearPreferences()
                                 val intent = android.content.Intent(context, com.example.rest.features.auth.LoginComposeActivity::class.java)
                                 intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 context.startActivity(intent)
                                 (context as? android.app.Activity)?.finish()
                             },
-                            icon = { Icon(Icons.Default.ExitToApp, null, tint = Blanco) },
+                            icon = { Icon(Icons.Default.ExitToApp, null, tint = Negro, modifier = Modifier.size(28.dp)) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(bottom = 16.dp),
                             colors = NavigationDrawerItemDefaults.colors(
                                 unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
+                                selectedContainerColor = Negro.copy(alpha = 0.2f)
                             )
                         )
                     }
@@ -475,7 +477,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(120.dp)
+                            .size(240.dp)
                             .clip(CircleShape)
                             .background(Blanco)
                             .border(4.dp, Color(0xFF004D40), CircleShape)
@@ -485,15 +487,15 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                         if (profileImageBitmap != null) {
                             androidx.compose.foundation.Image(
                                 bitmap = profileImageBitmap!!.asImageBitmap(),
-                                contentDescription = "Foto de Perfil",
+                                contentDescription = stringResource(R.string.profile_photo_title),
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Person,
-                                contentDescription = "Perfil",
-                                modifier = Modifier.size(64.dp),
+                                contentDescription = stringResource(R.string.settings_profile),
+                                modifier = Modifier.size(120.dp),
                                 tint = Negro
                             )
                         }
@@ -513,13 +515,13 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     // Obtener nombre de usuario
                     val context = androidx.compose.ui.platform.LocalContext.current
                     val nombreUsuario = remember {
-                        val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                        sharedPref.getString("NOMBRE_USUARIO", "Usuario") ?: "Usuario"
+                        val prefs = com.example.rest.utils.PreferencesManager(context)
+                        prefs.getUserName() ?: context.getString(R.string.fallback_user_name)
                     }
 
                     Text(
                         text = nombreUsuario,
-                        style = MaterialTheme.typography.headlineMedium.copy(
+                        style = MaterialTheme.typography.displayMedium.copy(
                             fontWeight = FontWeight.Bold
                         ),
                         color = Negro
@@ -540,8 +542,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     fun cargarUltimaNota() {
                          scope.launch {
                              // Obtener ID real del usuario
-                             val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                             val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+                             val prefs = com.example.rest.utils.PreferencesManager(context)
+                             val idUsuario = prefs.getUserId()
                              
                              if (idUsuario != -1) {
                                  when (val result = notaRepository.obtenerUltimaNota(idUsuario)) {
@@ -562,7 +564,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     
                     if (ultimaNota != null) {
                         Text(
-                            "Última Nota Modificada",
+                            stringResource(R.string.profile_last_note_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Negro,
@@ -582,7 +584,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                    text = ultimaNota?.titulo ?: "Sin título",
+                                    text = ultimaNota?.titulo ?: stringResource(R.string.profile_no_title),
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = Negro
                                 )
@@ -605,14 +607,14 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                    "Hábitos Saludables",
+                                    stringResource(R.string.profile_healthy_habits),
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = Negro
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    "Gestiona tus hábitos diarios",
+                                    stringResource(R.string.profile_manage_habits),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Color.Gray
                                 )
@@ -641,11 +643,11 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                     ultimaNota?.id?.let { id ->
                                         when (notaRepository.actualizarNota(id, notaActualizada)) {
                                             is com.example.rest.data.repository.NotaRepository.Result.Success<*> -> {
-                                                android.widget.Toast.makeText(context, "Nota actualizada", android.widget.Toast.LENGTH_SHORT).show()
+                                                android.widget.Toast.makeText(context, context.getString(R.string.toast_note_updated), android.widget.Toast.LENGTH_SHORT).show()
                                                 cargarUltimaNota() // Recargar para ver cambios
                                             }
                                             is com.example.rest.data.repository.NotaRepository.Result.Error -> {
-                                                android.widget.Toast.makeText(context, "Error al actualizar", android.widget.Toast.LENGTH_SHORT).show()
+                                                android.widget.Toast.makeText(context, context.getString(R.string.toast_update_error), android.widget.Toast.LENGTH_SHORT).show()
                                             }
                                             else -> {}
                                         }
@@ -722,8 +724,8 @@ suspend fun subirFotoASupabase(context: Context, bitmap: Bitmap) {
     withContext(Dispatchers.IO) {
         try {
             // Obtener ID del usuario desde SharedPreferences
-            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            val prefs = com.example.rest.utils.PreferencesManager(context)
+            val userId = prefs.getUserId()
             
             if (userId == -1) {
                 withContext(Dispatchers.Main) {
@@ -748,17 +750,17 @@ suspend fun subirFotoASupabase(context: Context, bitmap: Bitmap) {
             withContext(Dispatchers.Main) {
                 when (result) {
                     is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
-                        Toast.makeText(context, "Foto de perfil actualizada", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.toast_photo_updated), Toast.LENGTH_SHORT).show()
                     }
                     is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
-                        Toast.makeText(context, "Error: ${result.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, context.getString(R.string.toast_error_uploading_photo, result.message), Toast.LENGTH_LONG).show()
                     }
                     else -> {}
                 }
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Error al subir foto: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.toast_error_uploading_photo, e.message ?: ""), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -835,8 +837,8 @@ fun deleteProfileImage(context: Context, userId: Int) {
 suspend fun eliminarFotoDeSupabase(context: Context) {
     withContext(Dispatchers.IO) {
         try {
-            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            val prefs = com.example.rest.utils.PreferencesManager(context)
+            val userId = prefs.getUserId()
             
             if (userId == -1) {
                 withContext(Dispatchers.Main) {

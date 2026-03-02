@@ -19,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.rest.R
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,7 +42,15 @@ fun DialogoEvento(
     var longitud by remember { mutableStateOf<Double?>(evento?.longitud) }
     var mostrarMapa by remember { mutableStateOf(false) }
 
-    val tipos = listOf("Reunión", "Trabajo", "Cita", "Salud", "Ocio", "Otro")
+    val tiposMap = mapOf(
+        "Reunión" to stringResource(R.string.dialog_event_type_meeting),
+        "Trabajo" to stringResource(R.string.dialog_event_type_work),
+        "Cita" to stringResource(R.string.dialog_event_type_appointment),
+        "Salud" to stringResource(R.string.dialog_event_type_health),
+        "Ocio" to stringResource(R.string.dialog_event_type_leisure),
+        "Otro" to stringResource(R.string.dialog_event_type_other)
+    )
+    val tipos = tiposMap.keys.toList()
     
     // Fechas y Horas - Inicializar con la fecha seleccionada del calendario o del evento
     val calendario = Calendar.getInstance()
@@ -117,7 +127,7 @@ fun DialogoEvento(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (esEdicion) "Editar Evento" else "Nuevo Evento", color = Color.White) },
+        title = { Text(if (esEdicion) stringResource(R.string.dialog_event_edit_title) else stringResource(R.string.dialog_event_new_title), color = Color.White) },
         containerColor = Color(0xFF0097A7), // Azul oscuro que combina con el tema
         shape = RoundedCornerShape(16.dp),
         tonalElevation = 8.dp,
@@ -132,7 +142,7 @@ fun DialogoEvento(
                 OutlinedTextField(
                     value = titulo,
                     onValueChange = { titulo = it },
-                    label = { Text("Título del evento") },
+                    label = { Text(stringResource(R.string.dialog_event_title_hint)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -148,7 +158,7 @@ fun DialogoEvento(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // TIPO (Chips deslizables)
-                Text("Tipo de evento:", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                Text(stringResource(R.string.dialog_event_type_label), style = MaterialTheme.typography.bodyMedium, color = Color.White)
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 LazyRow(
@@ -160,7 +170,7 @@ fun DialogoEvento(
                         FilterChip(
                             selected = tipo == tipoSeleccionado,
                             onClick = { tipoSeleccionado = tipo },
-                            label = { Text(tipo) },
+                            label = { Text(tiposMap[tipo] ?: tipo) },
                             leadingIcon = if (tipo == tipoSeleccionado) {
                                 { Icon(Icons.Default.Done, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
                             } else null,
@@ -177,7 +187,7 @@ fun DialogoEvento(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // FECHA Y HORA INICIO
-                Text("Inicio:", style = MaterialTheme.typography.labelLarge, color = Color.White)
+                Text(stringResource(R.string.dialog_event_start_label), style = MaterialTheme.typography.labelLarge, color = Color.White)
                 Row(modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = {
@@ -218,7 +228,7 @@ fun DialogoEvento(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // FECHA Y HORA FIN
-                Text("Fin:", style = MaterialTheme.typography.labelLarge, color = Color.White)
+                Text(stringResource(R.string.dialog_event_end_label), style = MaterialTheme.typography.labelLarge, color = Color.White)
                 Row(modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = {
@@ -269,7 +279,7 @@ fun DialogoEvento(
                 ) {
                     Icon(Icons.Default.Place, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(if (latitud != null) "Ubicación Seleccionada" else "Agregar Ubicación (Mapa)")
+                    Text(if (latitud != null) stringResource(R.string.dialog_event_location_selected) else stringResource(R.string.dialog_event_location_add))
                 }
             }
         },
@@ -287,11 +297,11 @@ fun DialogoEvento(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar",
+                            contentDescription = stringResource(R.string.btn_delete),
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Eliminar")
+                        Text(stringResource(R.string.btn_delete))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
@@ -319,7 +329,7 @@ fun DialogoEvento(
                         contentColor = Color.White
                     )
                 ) {
-                    Text(if (esEdicion) "Guardar" else "Crear")
+                    Text(if (esEdicion) stringResource(R.string.btn_save) else stringResource(R.string.btn_create))
                 }
             }
         },
@@ -330,7 +340,7 @@ fun DialogoEvento(
                     contentColor = Color.White
                 )
             ) {
-                Text("Cancelar")
+                Text(stringResource(R.string.btn_cancel))
             }
         }
     )

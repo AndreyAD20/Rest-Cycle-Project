@@ -1,5 +1,6 @@
 package com.example.rest.features.tools
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -53,7 +54,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.rest.BaseComposeActivity
+import com.example.rest.features.home.PerfilComposeActivity
 import com.example.rest.ui.theme.*
+import androidx.compose.ui.res.stringResource
+import com.example.rest.R
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Date
@@ -64,7 +68,12 @@ class BloqueoAppsComposeActivity : BaseComposeActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TemaRest {
-                PantallaBloqueoApps(onBackClick = { finish() })
+                PantallaBloqueoApps(onBackClick = {
+                    val intent = Intent(this, PerfilComposeActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    startActivity(intent)
+                    finish()
+                })
             }
         }
     }
@@ -112,6 +121,37 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
     var showAddDialog by remember { mutableStateOf(false) }
     var showTimeDialog by remember { mutableStateOf(false) }
     var selectedApp by remember { mutableStateOf<AppBloqueo?>(null) }
+    
+    // Verificar Permiso de Superposición (Overlay) esencial para el bloqueo
+    var showOverlayDialog by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(context)) {
+            showOverlayDialog = true
+        }
+    }
+    
+    if (showOverlayDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Opcional: no permitir cerrar o sí */ },
+            title = { Text(stringResource(R.string.dialog_overlay_permission_title)) },
+            text = { Text(stringResource(R.string.dialog_overlay_permission_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showOverlayDialog = false
+                    val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                    context.startActivity(intent)
+                }) {
+                    Text(stringResource(R.string.btn_grant_permission))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOverlayDialog = false }) {
+                    Text(stringResource(R.string.btn_not_now))
+                }
+            }
+        )
+    }
 
     if (showAddDialog) {
         AppSelectionDialog(
@@ -217,13 +257,13 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "Bloqueo de Apps",
+                        stringResource(R.string.blocking_title),
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, "Regresar", tint = Negro)
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Negro)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -256,7 +296,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Configura límites diarios para tus aplicaciones y mejora tu productividad.",
+                            text = stringResource(R.string.blocking_desc),
                             style = MaterialTheme.typography.bodyMedium, // Istok Web has Medium weight, this is fine or remove if needed. bodyMedium is Istok.
                             color = Negro,
                             modifier = Modifier.weight(1f)
@@ -279,7 +319,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Tus Aplicaciones",
+                        stringResource(R.string.blocking_your_apps),
                         style = MaterialTheme.typography.titleMedium,
                         color = Negro
                     )
@@ -292,7 +332,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                             .size(48.dp)
                             .border(1.dp, Negro, CircleShape)
                     ) {
-                        Icon(Icons.Default.Add, "Agregar")
+                        Icon(Icons.Default.Add, stringResource(R.string.blocking_add_btn))
                     }
                 }
 
@@ -437,7 +477,7 @@ fun AppSelectionDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Agregar Apps",
+                            text = stringResource(R.string.blocking_add_apps),
                             style = MaterialTheme.typography.headlineMedium.copy(
                                 color = Blanco
                             )
@@ -461,12 +501,12 @@ fun AppSelectionDialog(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Buscar...", color = Color.Gray) },
+                        placeholder = { Text(stringResource(R.string.notes_search_hint), color = Color.Gray) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primario) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Borrar", tint = Color.Gray)
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.btn_cancel), tint = Color.Gray)
                                 }
                             }
                         },
@@ -563,7 +603,7 @@ fun AppSelectionDialog(
                                     modifier = Modifier.fillMaxWidth().padding(32.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("No se encontraron apps", color = Color.Gray)
+                                    Text(stringResource(R.string.blocking_no_apps_found), color = Color.Gray)
                                 }
                             }
                         }
@@ -586,7 +626,7 @@ fun AppSelectionDialog(
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                         ) {
                             Text(
-                                text = "Agregar (${selected.size})",
+                                text = "${stringResource(R.string.blocking_add_btn)} (${selected.size})",
                                 color = Blanco,
                                 style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1
@@ -599,7 +639,7 @@ fun AppSelectionDialog(
                             onClick = onDismiss,
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Cancelar", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            Text(stringResource(R.string.btn_cancel), color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -649,7 +689,7 @@ fun AppBloqueoItem(
                     // Mostrar estado actual
                     if (app.isBlocked) {
                         Text(
-                            "Bloqueado",
+                            stringResource(R.string.blocking_status_blocked),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Red
                         )
@@ -659,7 +699,7 @@ fun AppBloqueoItem(
                         
                         Column {
                             Text(
-                                "${app.limitHours}h ${app.limitMinutes}m diarios",
+                                stringResource(R.string.blocking_time_allowed, app.limitHours, app.limitMinutes),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = Color(0xFF004D40)
                             )
@@ -667,13 +707,13 @@ fun AppBloqueoItem(
                                 val h = remaining / 60
                                 val m = remaining % 60
                                 Text(
-                                    "Restante: ${h}h ${m}m",
+                                    stringResource(R.string.blocking_time_remaining, h, m),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Primario
                                 )
                             } else {
                                 Text(
-                                    "Tiempo agotado",
+                                    stringResource(R.string.blocking_time_exhausted),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.Red
                                 )
@@ -681,7 +721,7 @@ fun AppBloqueoItem(
                         }
                     } else {
                         Text(
-                            "Sin límite",
+                            stringResource(R.string.blocking_status_nolimit),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray
                         )
@@ -699,7 +739,7 @@ fun AppBloqueoItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Quitar",
+                        contentDescription = stringResource(R.string.blocking_remove_btn),
                         tint = Color.Red, // mismo color que "Bloqueado"
                         modifier = Modifier.size(20.dp)
                     )
@@ -744,14 +784,14 @@ fun TimeLimitDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Establecer Límite Diario",
+                    text = stringResource(R.string.blocking_set_limit_title),
                     style = MaterialTheme.typography.headlineSmall,
                     color = Negro,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Desliza para seleccionar el tiempo",
+                    text = stringResource(R.string.blocking_set_limit_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
                     textAlign = TextAlign.Center
@@ -795,14 +835,14 @@ fun TimeLimitDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancelar", color = Color.Gray)
+                        Text(stringResource(R.string.btn_cancel), color = Color.Gray)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { onConfirm(hours, minutes) },
                         colors = ButtonDefaults.buttonColors(containerColor = Primario)
                     ) {
-                        Text("Guardar", color = Blanco)
+                        Text(stringResource(R.string.btn_save), color = Blanco)
                     }
                 }
             }
@@ -912,8 +952,8 @@ fun DeleteConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Quitar app", color = Negro) },
-        text = { Text("¿Deseas quitar $appName de tu lista de seguimiento?", color = Negro) },
+        title = { Text(stringResource(R.string.blocking_remove_app_title), color = Negro) },
+        text = { Text(stringResource(R.string.blocking_remove_app_msg, appName), color = Negro) },
         confirmButton = {
             Button(
                 onClick = onConfirm,
@@ -922,25 +962,20 @@ fun DeleteConfirmDialog(
                     contentColor = Color.White
                 )
             ) {
-                Text("Quitar")
+                Text(stringResource(R.string.blocking_remove_btn))
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray)
+                colors = ButtonDefaults.textButtonColors(contentColor = Color.DarkGray)
             ) {
-                Text("Cancelar")
+                Text(stringResource(R.string.btn_cancel))
             }
         },
         containerColor = Blanco,
         shape = RoundedCornerShape(16.dp),
-        tonalElevation = 8.dp,
-        modifier = Modifier.border(
-            width = 2.dp,
-            color = Color(0xFF00BCD4),
-            shape = RoundedCornerShape(16.dp)
-        )
+        tonalElevation = 8.dp
     )
 }
 

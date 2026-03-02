@@ -26,6 +26,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
+import androidx.compose.ui.res.stringResource
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.data.repository.RecuperacionRepository
 import com.example.rest.ui.theme.*
@@ -49,7 +56,7 @@ class OlvidoContrasenaActivity : BaseComposeActivity() {
                     alClickEnviar = { correo ->
                         when {
                             correo.isBlank() || !correo.contains("@") -> {
-                                Toast.makeText(this, "Por favor ingresa un correo válido", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, getString(R.string.toast_invalid_email), Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 cargando = true
@@ -73,7 +80,7 @@ class OlvidoContrasenaActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@OlvidoContrasenaActivity,
-                                "Código enviado a $correo",
+                                getString(R.string.toast_code_sent, correo),
                                 Toast.LENGTH_LONG
                             ).show()
                             
@@ -101,7 +108,7 @@ class OlvidoContrasenaActivity : BaseComposeActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@OlvidoContrasenaActivity,
-                        "Error inesperado: ${e.message}",
+                        getString(R.string.toast_unexpected_error, e.message),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -119,6 +126,7 @@ fun PantallaOlvidoContrasena(
     cargando: Boolean = false
 ) {
     var correo by remember { mutableStateOf("") }
+    var menuIdiomaExpandido by remember { mutableStateOf(false) }
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
@@ -134,19 +142,62 @@ fun PantallaOlvidoContrasena(
             .fillMaxSize()
             .background(brochaGradiente)
     ) {
-        // Botón de regresar
-        IconButton(
-            onClick = alClickRegresar,
+        // Barra Superior
+        Row(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(16.dp)
-                .align(Alignment.TopStart)
+                .align(Alignment.TopCenter),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Regresar",
-                tint = Color(0xFF004D40),
-                modifier = Modifier.size(32.dp)
-            )
+            // Botón de regresar
+            IconButton(onClick = alClickRegresar) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = stringResource(R.string.content_desc_back),
+                    tint = Negro,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            // Selector de Idioma
+            Box {
+                IconButton(onClick = { menuIdiomaExpandido = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = "Cambiar Idioma",
+                        tint = Negro,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuIdiomaExpandido,
+                    onDismissRequest = { menuIdiomaExpandido = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Español") },
+                        onClick = {
+                            menuIdiomaExpandido = false
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("es"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("English") },
+                        onClick = {
+                            menuIdiomaExpandido = false
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Português") },
+                        onClick = {
+                            menuIdiomaExpandido = false
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("pt"))
+                        }
+                    )
+                }
+            }
         }
 
         Column(
@@ -166,7 +217,7 @@ fun PantallaOlvidoContrasena(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
-                    contentDescription = "Logo Búho",
+                    contentDescription = stringResource(R.string.content_desc_owl_logo),
                     modifier = Modifier.size(100.dp)
                 )
 
@@ -184,7 +235,7 @@ fun PantallaOlvidoContrasena(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "Pon tu correo y te\nenviaremos un codigo",
+                            text = stringResource(R.string.recovery_email_title_speech),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Negro,
                             textAlign = TextAlign.Center,
@@ -197,10 +248,10 @@ fun PantallaOlvidoContrasena(
             // Campo de Correo
             OutlinedTextField(
                 value = correo,
-                onValueChange = { correo = it },
+                onValueChange = { correo = it.trim() },
                 placeholder = {
                     Text(
-                        "Correo Electrónico",
+                        stringResource(R.string.login_email_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -254,13 +305,13 @@ fun PantallaOlvidoContrasena(
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.buho_background),
-                            contentDescription = "Enviar",
-                            tint = Blanco,
+                            contentDescription = stringResource(R.string.recovery_send_button),
+                            tint = Negro,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Enviar Codigo de Recuperacion",
+                            text = stringResource(R.string.recovery_send_button),
                             style = MaterialTheme.typography.labelLarge,
                             color = Negro,
                             fontSize = 14.sp

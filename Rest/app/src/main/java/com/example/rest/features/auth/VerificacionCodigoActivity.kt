@@ -28,6 +28,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import com.example.rest.data.repository.UsuarioRepository
+import com.example.rest.features.home.InicioComposeActivity
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -48,6 +49,8 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
             finish()
             return
         }
+        // Contraseña para auto-login tras verificación (puede ser null si no viene del registro)
+        val contraseñaAutoLogin = intent.getStringExtra("contraseña")
         
         setContent {
             TemaRest {
@@ -57,7 +60,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                     correo = correo,
                     alClickVerificar = { codigo ->
                         cargando = true
-                        verificarCodigo(codigo) {
+                        verificarCodigo(codigo, contraseñaAutoLogin) {
                             cargando = false
                         }
                     },
@@ -73,7 +76,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
         }
     }
     
-    private fun verificarCodigo(codigo: String, onComplete: () -> Unit) {
+    private fun verificarCodigo(codigo: String, contraseña: String?, onComplete: () -> Unit) {
         lifecycleScope.launch {
             try {
                 when (val resultado = usuarioRepository.verificarCodigo(correo, codigo)) {
@@ -84,17 +87,45 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                                 "✅ ¡Email verificado exitosamente!",
                                 Toast.LENGTH_LONG
                             ).show()
-                            
-                            // Navegar según el flujo
-                            val retornarAPadre = intent.getBooleanExtra("retornarAPadre", false)
-                            if (retornarAPadre) {
+                        }
+                        
+                        val retornarAPadre = intent.getBooleanExtra("retornarAPadre", false)
+                        if (retornarAPadre) {
+                            runOnUiThread {
                                 Toast.makeText(
                                     this@VerificacionCodigoActivity,
                                     "✅ ¡Cuenta de hijo verificada y vinculada!",
                                     Toast.LENGTH_LONG
                                 ).show()
-                                finish() // Vuelve a la actividad anterior (GestionHijosComposeActivity)
-                            } else {
+                                finish()
+                            }
+                        } else if (!contraseña.isNullOrBlank()) {
+                            // Auto-login con las credenciales del registro
+                            when (val loginResult = usuarioRepository.login(correo, contraseña)) {
+                                is UsuarioRepository.Result.Success -> {
+                                    val usuario = loginResult.data
+                                    runOnUiThread {
+                                        val preferencesManager = com.example.rest.utils.PreferencesManager(this@VerificacionCodigoActivity)
+                                        preferencesManager.saveUserName(usuario.nombre)
+                                        preferencesManager.saveUserId(usuario.id ?: -1)
+                                        val intent = Intent(this@VerificacionCodigoActivity, InicioComposeActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        startActivity(intent)
+                                        finish()
+                                    }
+                                }
+                                else -> {
+                                    // Fallback: ir al login si el auto-login falla
+                                    runOnUiThread {
+                                        val intent = Intent(this@VerificacionCodigoActivity, LoginComposeActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        startActivity(intent)
+                                        finish()
+                                    }
+                                }
+                            }
+                        } else {
+                            runOnUiThread {
                                 val intent = Intent(this@VerificacionCodigoActivity, LoginComposeActivity::class.java)
                                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                 startActivity(intent)

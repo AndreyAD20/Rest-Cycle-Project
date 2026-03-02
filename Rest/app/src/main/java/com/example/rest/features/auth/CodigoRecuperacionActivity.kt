@@ -28,6 +28,12 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.data.repository.RecuperacionRepository
 import com.example.rest.ui.theme.*
@@ -52,8 +58,8 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                 if (mostrarDialogoSalir) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoSalir = false },
-                        title = { Text("¿Cancelar recuperación?") },
-                        text = { Text("Si sales ahora, tendrás que solicitar un nuevo código de recuperación.") },
+                        title = { Text(stringResource(R.string.dialog_cancel_recovery_title)) },
+                        text = { Text(stringResource(R.string.dialog_cancel_recovery_text)) },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -61,12 +67,12 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                                     finish()
                                 }
                             ) {
-                                Text("Sí, salir")
+                                Text(stringResource(R.string.btn_yes_exit))
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { mostrarDialogoSalir = false }) {
-                                Text("Cancelar")
+                                Text(stringResource(R.string.btn_cancel))
                             }
                         }
                     )
@@ -79,7 +85,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                     alClickConfirmar = { codigo ->
                         when {
                             codigo.isBlank() || codigo.length != 6 -> {
-                                Toast.makeText(this, "Por favor ingresa un código de 6 dígitos", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, getString(R.string.toast_invalid_code_length), Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 cargando = true
@@ -110,7 +116,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@CodigoRecuperacionActivity,
-                                "Nuevo código enviado a tu correo",
+                                getString(R.string.toast_new_code_sent),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -132,7 +138,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@CodigoRecuperacionActivity,
-                        "Error al reenviar código: ${e.message}",
+                        getString(R.string.toast_resend_code_error, e.message),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -151,7 +157,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@CodigoRecuperacionActivity,
-                                "Código verificado correctamente",
+                                getString(R.string.toast_code_verified),
                                 Toast.LENGTH_SHORT
                             ).show()
                             
@@ -180,7 +186,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@CodigoRecuperacionActivity,
-                        "Error inesperado: ${e.message}",
+                        getString(R.string.toast_unexpected_error, e.message),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -201,6 +207,7 @@ fun PantallaCodigoRecuperacion(
     var codigo by remember { mutableStateOf("") }
     var tiempoRestante by remember { mutableStateOf(60) } // Iniciar con 60 segundos
     var puedeReenviar by remember { mutableStateOf(false) } // Iniciar deshabilitado
+    var menuIdiomaExpandido by remember { mutableStateOf(false) }
     
     // Interceptar botón atrás del sistema
     BackHandler {
@@ -231,19 +238,62 @@ fun PantallaCodigoRecuperacion(
             .fillMaxSize()
             .background(brochaGradiente)
     ) {
-        // BotÃ³n de regresar
-        IconButton(
-            onClick = alClickRegresar,
+        // Barra Superior
+        Row(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(16.dp)
-                .align(Alignment.TopStart)
+                .align(Alignment.TopCenter),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Regresar",
-                tint = Color(0xFF004D40),
-                modifier = Modifier.size(32.dp)
-            )
+            // Botón de regresar
+            IconButton(onClick = alClickRegresar) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = stringResource(R.string.content_desc_back),
+                    tint = Negro,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            // Selector de Idioma
+            Box {
+                IconButton(onClick = { menuIdiomaExpandido = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = "Cambiar Idioma",
+                        tint = Negro,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuIdiomaExpandido,
+                    onDismissRequest = { menuIdiomaExpandido = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Español") },
+                        onClick = {
+                            menuIdiomaExpandido = false
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("es"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("English") },
+                        onClick = {
+                            menuIdiomaExpandido = false
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Português") },
+                        onClick = {
+                            menuIdiomaExpandido = false
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("pt"))
+                        }
+                    )
+                }
+            }
         }
 
         Column(
@@ -263,7 +313,7 @@ fun PantallaCodigoRecuperacion(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
-                    contentDescription = "Logo Búho",
+                    contentDescription = stringResource(R.string.content_desc_owl_logo),
                     modifier = Modifier.size(100.dp)
                 )
 
@@ -281,7 +331,7 @@ fun PantallaCodigoRecuperacion(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "Pon tu código\nde recuperación",
+                            text = stringResource(R.string.recovery_code_title_speech),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Negro,
                             textAlign = TextAlign.Center,
@@ -297,7 +347,7 @@ fun PantallaCodigoRecuperacion(
                 onValueChange = { if (it.length <= 6) codigo = it },
                 placeholder = {
                     Text(
-                        "Código de Recuperación",
+                        stringResource(R.string.recovery_code_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color(0xFF757575)
                     )
@@ -346,7 +396,7 @@ fun PantallaCodigoRecuperacion(
                     )
                 } else {
                     Text(
-                        text = "Confirmar",
+                        text = stringResource(R.string.btn_confirm),
                         style = MaterialTheme.typography.labelLarge,
                         color = Negro
                     )
@@ -358,9 +408,9 @@ fun PantallaCodigoRecuperacion(
             // Link para reenviar código
             Text(
                 text = if (puedeReenviar) {
-                    "Volver a Enviar Código"
+                    stringResource(R.string.recovery_resend_code)
                 } else {
-                    "Reenviar en ${tiempoRestante}s"
+                    stringResource(R.string.recovery_resend_in_seconds, tiempoRestante)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (puedeReenviar) Color(0xFF004D40) else Color(0xFF999999),

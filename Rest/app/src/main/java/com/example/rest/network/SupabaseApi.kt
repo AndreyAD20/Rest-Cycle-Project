@@ -43,7 +43,7 @@ interface SupabaseApi {
     @GET("usuario")
     suspend fun verificarCorreo(
         @Query("correo") correo: String,
-        @Query("select") select: String = "id"
+        @Query("select") select: String = "*"
     ): Response<List<Usuario>>
     
     /**

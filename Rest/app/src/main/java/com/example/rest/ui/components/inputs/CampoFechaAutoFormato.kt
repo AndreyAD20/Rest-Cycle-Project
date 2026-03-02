@@ -21,6 +21,9 @@ import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material3.Icon
 
 /**
  * Campo de texto para ingresar fechas con formato automático YYYY-MM-DD
@@ -96,7 +99,14 @@ fun CampoFechaAutoFormato(
         ),
         keyboardActions = keyboardActions,
         singleLine = true,
-        textStyle = textStyle
+        textStyle = textStyle,
+        leadingIcon = {
+            Icon(
+                imageVector = Icons.Filled.DateRange,
+                contentDescription = null,
+                tint = Color(0xFF757575)
+            )
+        }
     )
 }
 

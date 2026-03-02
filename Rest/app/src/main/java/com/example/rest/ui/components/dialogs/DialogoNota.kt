@@ -10,8 +10,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.rest.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -39,7 +41,7 @@ fun DialogoNota(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (nota == null) "Nueva Nota" else "Editar Nota", color = Color.White) },
+        title = { Text(if (nota == null) stringResource(R.string.dialog_note_title_new) else stringResource(R.string.dialog_note_title_edit), color = Color.White) },
         containerColor = Color(0xFF0097A7), // Azul oscuro que combina con el tema
         shape = RoundedCornerShape(16.dp),
         tonalElevation = 8.dp,
@@ -53,7 +55,7 @@ fun DialogoNota(
                 OutlinedTextField(
                     value = titulo,
                     onValueChange = { titulo = it },
-                    label = { Text("Título") },
+                    label = { Text(stringResource(R.string.dialog_note_label_title)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -67,7 +69,7 @@ fun DialogoNota(
                 OutlinedTextField(
                     value = contenido,
                     onValueChange = { contenido = it },
-                    label = { Text("Contenido") },
+                    label = { Text(stringResource(R.string.dialog_note_label_content)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp),
@@ -80,7 +82,7 @@ fun DialogoNota(
                     )
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Elige un color:", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                Text(stringResource(R.string.dialog_note_label_color), style = MaterialTheme.typography.bodyMedium, color = Color.White)
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 // Color Picker
@@ -106,7 +108,7 @@ fun DialogoNota(
                             if (colorSeleccionado == colorHex) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = "Seleccionado",
+                                    contentDescription = stringResource(R.string.dialog_note_desc_selected),
                                     tint = if (colorHex == "#FFFFFF") Color(0xFF00BCD4) else Negro,
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -128,7 +130,7 @@ fun DialogoNota(
                     contentColor = Color.White
                 )
             ) {
-                Text(if (nota == null) "Crear" else "Guardar")
+                Text(if (nota == null) stringResource(R.string.btn_create) else stringResource(R.string.btn_save))
             }
         },
         dismissButton = {
@@ -138,7 +140,7 @@ fun DialogoNota(
                     contentColor = Color.White
                 )
             ) {
-                Text("Cancelar")
+                Text(stringResource(R.string.btn_cancel))
             }
         }
     )
