@@ -70,7 +70,7 @@ class InicioComposeActivity : BaseComposeActivity() {
                     },
                     alClickHabitosSaludables = {
                         // Navegar a Perfil
-                        val intent = Intent(this, com.example.rest.features.home.PerfilComposeActivity::class.java)
+                        val intent = Intent(this, com.example.rest.features.home.HabitosInicioComposeActivity::class.java)
                         startActivity(intent)
                     },
                     onRequestNotificationPermission = {

@@ -108,6 +108,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                                         val preferencesManager = com.example.rest.utils.PreferencesManager(this@VerificacionCodigoActivity)
                                         preferencesManager.saveUserName(usuario.nombre)
                                         preferencesManager.saveUserId(usuario.id ?: -1)
+                                        preferencesManager.saveUserEmail(correo)
                                         val intent = Intent(this@VerificacionCodigoActivity, InicioComposeActivity::class.java)
                                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                         startActivity(intent)

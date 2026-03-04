@@ -127,6 +127,7 @@ class LoginComposeActivity : BaseComposeActivity() {
                             val preferencesManager = com.example.rest.utils.PreferencesManager(this@LoginComposeActivity)
                             preferencesManager.saveUserName(usuario.nombre)
                             preferencesManager.saveUserId(usuario.id ?: -1)
+                            preferencesManager.saveUserEmail(correo)
 
                             // Navegar a InicioComposeActivity
                             val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)

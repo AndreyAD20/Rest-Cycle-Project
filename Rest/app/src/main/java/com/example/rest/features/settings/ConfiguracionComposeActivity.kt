@@ -241,7 +241,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                 item {
                     OpcionConfiguracion(
                         icono = Icons.Default.People,
-                        titulo = stringResource(R.string.settings_profile),
+                        titulo = stringResource(R.string.settings_edit_profile),
                         onClick = {
                             context.startActivity(android.content.Intent(context, com.example.rest.features.home.PerfilComposeActivity::class.java))
                         }

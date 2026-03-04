@@ -140,6 +140,10 @@
     <string name="toast_password_changed">Password changed successfully!</string>
 
     <!-- Pantalla de Perfil y Menu -->
+    <string name="settings_edit_profile">Edit Profile</string>
+    <string name="err_empty_fields">Please fill in all required fields correctly</string>
+    <string name="toast_profile_updated">Profile updated successfully</string>
+    <string name="change_password_title">Change Password</string>
     <string name="profile_photo_title">Profile Photo</string>
     <string name="profile_photo_choose_option">Choose an option:</string>
     <string name="profile_photo_take">Take Photo</string>

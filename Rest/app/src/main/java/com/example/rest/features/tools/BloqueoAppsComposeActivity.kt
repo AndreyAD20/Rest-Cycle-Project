@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.rest.BaseComposeActivity
 import com.example.rest.features.home.PerfilComposeActivity
+import com.example.rest.features.home.HabitosInicioComposeActivity
 import com.example.rest.ui.theme.*
 import androidx.compose.ui.res.stringResource
 import com.example.rest.R
@@ -69,7 +70,7 @@ class BloqueoAppsComposeActivity : BaseComposeActivity() {
         setContent {
             TemaRest {
                 PantallaBloqueoApps(onBackClick = {
-                    val intent = Intent(this, PerfilComposeActivity::class.java)
+                    val intent = Intent(this, HabitosInicioComposeActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                     startActivity(intent)
                     finish()

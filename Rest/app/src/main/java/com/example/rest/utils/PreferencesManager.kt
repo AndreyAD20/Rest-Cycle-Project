@@ -56,6 +56,20 @@ class PreferencesManager(context: Context) {
     }
 
     /**
+     * Guarda el Correo del usuario de forma encriptada
+     */
+    fun saveUserEmail(email: String) {
+        sharedPreferences.edit().putString("CORREO_USUARIO", email).apply()
+    }
+
+    /**
+     * Recupera el Correo del usuario encriptado
+     */
+    fun getUserEmail(): String? {
+        return sharedPreferences.getString("CORREO_USUARIO", null)
+    }
+
+    /**
      * Limpia todas las preferencias encriptadas (ideal para Cerrar Sesión)
      */
     fun clearPreferences() {

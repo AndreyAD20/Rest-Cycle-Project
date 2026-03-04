@@ -58,10 +58,12 @@
         <activity android:name=".features.auth.OlvidoContrasenaActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.auth.CodigoRecuperacionActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.auth.CambioContrasenaActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.home.CambiarContrasenaComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <!-- Home Activities -->
         <activity android:name=".features.home.InicioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.home.PerfilComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.home.HabitosInicioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <!-- Tools Activities -->
         <activity android:name=".features.tools.NotasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />

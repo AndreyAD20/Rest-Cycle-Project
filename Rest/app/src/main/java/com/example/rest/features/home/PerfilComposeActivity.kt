@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,6 +25,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.TextUnit
@@ -71,7 +74,6 @@ class PerfilComposeActivity : BaseComposeActivity() {
 @Composable
 fun PantallaPerfil(onBackClick: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     
     // Estado para la imagen de perfil
@@ -105,24 +107,6 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
         }
     }
 
-
-
-
-    // Cerrar drawer cuando se vuelve a la actividad
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                scope.launch {
-                    drawerState.close()
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
 
 
     // Launchers para cámara y galería
@@ -284,178 +268,51 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
         end = Offset(0f, 2000f)
     )
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = Color.Transparent,
-                drawerContentColor = Negro
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(Primario, Color(0xFF80DEEA)),
-                                start = Offset(0f, 0f),
-                                end = Offset(0f, 2000f)
-                            )
-                        )
-                ) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        val context = androidx.compose.ui.platform.LocalContext.current
-                        Spacer(Modifier.height(12.dp))
-                        
-                        Text(
-                            stringResource(R.string.menu_title),
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Negro
-                        )
-                        
-                        Divider(color = Negro.copy(alpha = 0.3f))
-                
-                        // 1. Estadísticas
-                        NavigationDrawerItem(
-                            label = { Text(stringResource(R.string.menu_statistics), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.habits.EstadisticasComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.Star, null, tint = Negro, modifier = Modifier.size(28.dp)) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Negro.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 2. Notas
-                        NavigationDrawerItem(
-                            label = { Text(stringResource(R.string.menu_notes), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.tools.NotasComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.Edit, null, tint = Negro, modifier = Modifier.size(28.dp)) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Negro.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 3. Bloqueo de Aplicaciones
-                        NavigationDrawerItem(
-                            label = { Text(stringResource(R.string.menu_app_block), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.tools.BloqueoAppsComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.Lock, null, tint = Negro, modifier = Modifier.size(28.dp)) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Negro.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 4. Horas de Descanso
-                        NavigationDrawerItem(
-                            label = { Text(stringResource(R.string.menu_rest_hours), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.tools.HoraDescansoComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.Face, null, tint = Negro, modifier = Modifier.size(28.dp)) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Negro.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 5. Calendario
-                        NavigationDrawerItem(
-                            label = { Text(stringResource(R.string.menu_calendar), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.tools.CalendarioComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.DateRange, null, tint = Negro, modifier = Modifier.size(28.dp)) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Negro.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 6. Control Parental
-                        NavigationDrawerItem(
-                            label = { Text(stringResource(R.string.menu_parental_control), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
-                            selected = false,
-                            onClick = {
-                            },
-                            icon = { Icon(Icons.Default.Person, null, tint = Negro, modifier = Modifier.size(28.dp)) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Negro.copy(alpha = 0.2f)
-                            )
-                        )
+    // Variables de estado para edición de perfil
+    var userId by remember { mutableStateOf(-1) }
+    var nombreText by remember { mutableStateOf("") }
+    var apellidoText by remember { mutableStateOf("") }
+    var correoText by remember { mutableStateOf("") }
+    var fechaText by remember { mutableStateOf("") }
+    var nuevaContraseña by remember { mutableStateOf("") }
+    var confirmarContraseña by remember { mutableStateOf("") }
+    var isLoadingUserData by remember { mutableStateOf(true) }
+    var isSavingUser by remember { mutableStateOf(false) }
 
-                        Spacer(modifier = Modifier.weight(1f)) // Empujar hacia abajo
+    val usuarioRepository = remember { com.example.rest.data.repository.UsuarioRepository() }
 
-                        Divider(color = Negro.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 8.dp))
-
-                        // 7. Cerrar Sesión
-                        NavigationDrawerItem(
-                            label = { Text(stringResource(R.string.menu_logout), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
-                            selected = false,
-                            onClick = {
-                                // Limpiar fotos de perfil locales
-                                try {
-                                    context.filesDir.listFiles()?.forEach { file ->
-                                        if (file.name.startsWith("profile_image_")) {
-                                            file.delete()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("PerfilDebug", "Error al limpiar fotos: ${e.message}")
-                                }
-                                
-                                // Borrar sesión y volver al login
-                                val preferencesManager = com.example.rest.utils.PreferencesManager(context)
-                                preferencesManager.clearPreferences()
-                                val intent = android.content.Intent(context, com.example.rest.features.auth.LoginComposeActivity::class.java)
-                                intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                context.startActivity(intent)
-                                (context as? android.app.Activity)?.finish()
-                            },
-                            icon = { Icon(Icons.Default.ExitToApp, null, tint = Negro, modifier = Modifier.size(28.dp)) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(bottom = 16.dp),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Negro.copy(alpha = 0.2f)
-                            )
-                        )
-                    }
+    // Cargar datos del usuario desde Supabase al iniciar
+    LaunchedEffect(Unit) {
+        val prefs = com.example.rest.utils.PreferencesManager(context)
+        userId = prefs.getUserId()
+        if (userId != -1) {
+            when (val res = usuarioRepository.obtenerUsuarioPorId(userId)) {
+                is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                    val usuario = res.data
+                    nombreText = usuario.nombre
+                    apellidoText = usuario.apellido ?: ""
+                    correoText = usuario.correo
+                    fechaText = usuario.fechaNacimiento.replace("-", "")
+                }
+                else -> {
+                    Toast.makeText(context, "Error cargando datos de perfil", Toast.LENGTH_SHORT).show()
                 }
             }
         }
-    ) {
+        isLoadingUserData = false
+    }
+
+
+
         Scaffold(
             topBar = {
                CenterAlignedTopAppBar(
-                    title = { },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, "Menu", tint = Negro)
-                        }
+                    title = { 
+                        Text(stringResource(R.string.settings_edit_profile), color = Negro, fontWeight = FontWeight.Bold)
                     },
-                    actions = {
+                    navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.Default.ArrowBack, "Regresar", tint = Negro)
+                            Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Negro)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -472,12 +329,13 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(240.dp)
+                            .size(160.dp)
                             .clip(CircleShape)
                             .background(Blanco)
                             .border(4.dp, Color(0xFF004D40), CircleShape)
@@ -495,13 +353,13 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = stringResource(R.string.settings_profile),
-                                modifier = Modifier.size(120.dp),
+                                modifier = Modifier.size(80.dp),
                                 tint = Negro
                             )
                         }
                         
                         // Indicador de carga (Overlay)
-                        if (isCheckingUpdate) {
+                        if (isCheckingUpdate || isLoadingUserData) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(32.dp),
                                 color = Primario, 
@@ -510,158 +368,174 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                    // Obtener nombre de usuario
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    val nombreUsuario = remember {
-                        val prefs = com.example.rest.utils.PreferencesManager(context)
-                        prefs.getUserName() ?: context.getString(R.string.fallback_user_name)
-                    }
-
-                    Text(
-                        text = nombreUsuario,
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = Negro
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // ... (existing header code)
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // SECCIÓN NOTA RECIENTE (Dinámica)
-                    var ultimaNota by remember { mutableStateOf<com.example.rest.data.models.Nota?>(null) }
-                    var mostrarDialogoNota by remember { mutableStateOf(false) }
-                    val notaRepository = remember { com.example.rest.data.repository.NotaRepository() }
-                    
-                    // Función para cargar la última nota
-                    fun cargarUltimaNota() {
-                         scope.launch {
-                             // Obtener ID real del usuario
-                             val prefs = com.example.rest.utils.PreferencesManager(context)
-                             val idUsuario = prefs.getUserId()
-                             
-                             if (idUsuario != -1) {
-                                 when (val result = notaRepository.obtenerUltimaNota(idUsuario)) {
-                                     is com.example.rest.data.repository.NotaRepository.Result.Success<*> -> {
-                                         @Suppress("UNCHECKED_CAST")
-                                         ultimaNota = result.data as? com.example.rest.data.models.Nota
-                                     }
-                                     else -> {} // Manejar error si es necesario
-                                 }
-                             }
-                         }
-                    }
-
-                    // Cargar al inicio
-                    LaunchedEffect(Unit) {
-                        cargarUltimaNota()
-                    }
-                    
-                    if (ultimaNota != null) {
-                        Text(
-                            stringResource(R.string.profile_last_note_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Negro,
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Start
-                        )
-                        
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(android.graphics.Color.parseColor(ultimaNota?.color ?: "#FFFFFF"))
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { mostrarDialogoNota = true }
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = ultimaNota?.titulo ?: stringResource(R.string.profile_no_title),
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = Negro
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = ultimaNota?.contenido ?: "",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Negro,
-                                    maxLines = 2,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    } else {
-                        // Placeholder si no hay notas
-                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                    if (!isLoadingUserData) {
+                        // Campo Nombre
+                        OutlinedTextField(
+                            value = nombreText,
+                            onValueChange = { nombreText = it },
+                            label = { Text(stringResource(R.string.register_name_placeholder)) },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                             shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f))
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    stringResource(R.string.profile_healthy_habits),
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Negro
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    stringResource(R.string.profile_manage_habits),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Diálogo para editar la nota reciente sin salir
-                    if (mostrarDialogoNota && ultimaNota != null) {
-                        DialogoNota(
-                            nota = ultimaNota,
-                            onDismiss = { mostrarDialogoNota = false },
-                            onConfirmar = { titulo, contenido, color ->
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Blanco.copy(alpha = 0.9f),
+                                unfocusedContainerColor = Blanco.copy(alpha = 0.9f),
+                                focusedBorderColor = Primario,
+                                unfocusedBorderColor = Primario.copy(alpha = 0.5f)
+                            )
+                        )
+
+                        // Campo Apellido
+                        OutlinedTextField(
+                            value = apellidoText,
+                            onValueChange = { apellidoText = it },
+                            label = { Text(stringResource(R.string.register_lastname_placeholder)) },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Blanco.copy(alpha = 0.9f),
+                                unfocusedContainerColor = Blanco.copy(alpha = 0.9f),
+                                focusedBorderColor = Primario,
+                                unfocusedBorderColor = Primario.copy(alpha = 0.5f)
+                            )
+                        )
+
+                        // Campo Fecha
+                        com.example.rest.ui.components.inputs.CampoFechaAutoFormato(
+                            value = fechaText,
+                            onValueChange = { fechaText = it },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                        )
+
+                        // Campo Correo
+                        OutlinedTextField(
+                            value = correoText,
+                            onValueChange = { correoText = it },
+                            label = { Text(stringResource(R.string.register_email_placeholder)) },
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Blanco.copy(alpha = 0.9f),
+                                unfocusedContainerColor = Blanco.copy(alpha = 0.9f),
+                                focusedBorderColor = Primario,
+                                unfocusedBorderColor = Primario.copy(alpha = 0.5f)
+                            )
+                        )
+                        // Campo Confirmar Contraseña
+                        OutlinedTextField(
+                            value = confirmarContraseña,
+                            onValueChange = { confirmarContraseña = it },
+                            label = { Text(stringResource(R.string.register_confirm_password_placeholder)) },
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Blanco.copy(alpha = 0.9f),
+                                unfocusedContainerColor = Blanco.copy(alpha = 0.9f),
+                                focusedBorderColor = Primario,
+                                unfocusedBorderColor = Primario.copy(alpha = 0.5f)
+                            )
+                        )
+
+
+
+                        // Botón de Guardar Cambios (mantener existente)
+                        Button(
+                            onClick = {
+                                if (nombreText.isBlank() || correoText.isBlank() || fechaText.length != 8) {
+                                    Toast.makeText(context, context.getString(R.string.err_empty_fields), Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                if (confirmarContraseña.isBlank()) {
+                                    Toast.makeText(context, context.getString(R.string.err_empty_confirm_password), Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+
+                                isSavingUser = true
                                 scope.launch {
-                                    val fechaActual = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
-                                        timeZone = java.util.TimeZone.getTimeZone("UTC")
-                                    }.format(java.util.Date())
-                                    
-                                    val notaActualizada = ultimaNota!!.copy(
-                                        titulo = titulo,
-                                        contenido = contenido,
-                                        color = color,
-                                        fecha_actualizacion = fechaActual
-                                    )
-                                    
-                                    ultimaNota?.id?.let { id ->
-                                        when (notaRepository.actualizarNota(id, notaActualizada)) {
-                                            is com.example.rest.data.repository.NotaRepository.Result.Success<*> -> {
-                                                android.widget.Toast.makeText(context, context.getString(R.string.toast_note_updated), android.widget.Toast.LENGTH_SHORT).show()
-                                                cargarUltimaNota() // Recargar para ver cambios
+                                    try {
+                                        // Obtener usuario base primero para tener rol y contrasena si no la cambia
+                                        val getRes = usuarioRepository.obtenerUsuarioPorId(userId)
+                                        if (getRes is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
+                                            val currentUsuario = getRes.data
+
+                                            if (!com.example.rest.utils.SecurityUtils.verifyPassword(confirmarContraseña, currentUsuario.contraseña)) {
+                                                Toast.makeText(context, context.getString(R.string.err_password_mismatch), Toast.LENGTH_SHORT).show()
+                                                isSavingUser = false
+                                                return@launch
                                             }
-                                            is com.example.rest.data.repository.NotaRepository.Result.Error -> {
-                                                android.widget.Toast.makeText(context, context.getString(R.string.toast_update_error), android.widget.Toast.LENGTH_SHORT).show()
+
+                                            val fechaFormateada = if (fechaText.length == 8) {
+                                                "${fechaText.substring(0, 4)}-${fechaText.substring(4, 6)}-${fechaText.substring(6, 8)}"
+                                            } else {
+                                                fechaText
                                             }
-                                            else -> {}
+
+                                            val updatedUsuario = currentUsuario.copy(
+                                                nombre = nombreText,
+                                                apellido = apellidoText.ifBlank { null },
+                                                correo = correoText,
+                                                fechaNacimiento = fechaFormateada
+                                            )
+
+                                            when (val updateRes = usuarioRepository.actualizarUsuario(userId, updatedUsuario)) {
+                                                is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                                                    Toast.makeText(context, context.getString(R.string.toast_profile_updated), Toast.LENGTH_SHORT).show()
+                                                    val prefs = com.example.rest.utils.PreferencesManager(context)
+                                                    prefs.saveUserName(nombreText)
+                                                    prefs.saveUserEmail(correoText)
+                                                }
+                                                is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
+                                                    Toast.makeText(context, "Error: ${updateRes.message}", Toast.LENGTH_SHORT).show()
+                                                }
+                                                else -> {}
+                                            }
                                         }
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Excepción: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    } finally {
+                                        isSavingUser = false
+                                        confirmarContraseña = ""
                                     }
                                 }
-                                mostrarDialogoNota = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Primario),
+                            enabled = !isSavingUser
+                        ) {
+                            if (isSavingUser) {
+                                CircularProgressIndicator(color = Blanco, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = Blanco)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.settings_edit_profile), color = Blanco, fontWeight = FontWeight.Bold, fontSize = TextUnit(18f, TextUnitType.Sp))
                             }
-                        )
+                        }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Botón para cambiar contraseña
+                        Button(
+                            onClick = {
+                                context.startActivity(android.content.Intent(context, com.example.rest.features.home.CambiarContrasenaComposeActivity::class.java))
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Primario)
+                        ) {
+                            Text(stringResource(R.string.change_password_title), color = Blanco, fontWeight = FontWeight.Bold, fontSize = TextUnit(18f, TextUnitType.Sp))
+                        }
                     }
                 }
             }
         }
-    }
-}
 
 fun createImageFile(context: Context): File {
     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
