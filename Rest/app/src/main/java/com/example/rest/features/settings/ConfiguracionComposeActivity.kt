@@ -54,27 +54,10 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
     var idiomaExpandido by remember { mutableStateOf(false) }
     var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
     
-    var tamañoFuenteExpandido by remember { mutableStateOf(false) }
-    var tamañoFuenteKey by remember { 
-        mutableStateOf(sharedPrefs.getString("TAMANO_FUENTE_KEY", null) ?: run {
-             // Migrar de formato antiguo si existe
-             val oldStr = sharedPrefs.getString("TAMANO_FUENTE", "Mediano")
-             val key = when(oldStr) {
-                 "Pequeño", "Small", "Pequeno" -> "small"
-                 "Grande", "Large" -> "large"
-                 else -> "medium"
-             }
-             sharedPrefs.edit().putString("TAMANO_FUENTE_KEY", key).apply()
-             key
-        })
-    }
-    
-    val tamañoFuenteDisplay = when (tamañoFuenteKey) {
-        "small" -> stringResource(R.string.font_small)
-        "large" -> stringResource(R.string.font_large)
-        else -> stringResource(R.string.font_medium)
-    }
-    
+    // Estado para los diálogos de Privacidad y Acerca de
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+
 
     Scaffold(
         topBar = {
@@ -205,38 +188,6 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     Spacer(modifier = Modifier.height(12.dp))
                 }
                 
-                // Tamaño de la Fuente (con dropdown)
-                item {
-                    val opSmall = stringResource(R.string.font_small)
-                    val opMed = stringResource(R.string.font_medium)
-                    val opLarge = stringResource(R.string.font_large)
-
-                    OpcionConfiguracionDropdown(
-                        icono = Icons.Default.TextFields,
-                        titulo = stringResource(R.string.settings_font_size),
-                        valorSeleccionado = tamañoFuenteDisplay,
-                        expandido = tamañoFuenteExpandido,
-                        onExpandirCambio = { tamañoFuenteExpandido = it },
-                        opciones = listOf(opSmall, opMed, opLarge),
-                        onSeleccion = { nuevaFuenteDisplay -> 
-                            val newKey = when(nuevaFuenteDisplay) {
-                                opSmall -> "small"
-                                opLarge -> "large"
-                                else -> "medium"
-                            }
-                            if (newKey != tamañoFuenteKey) {
-                                tamañoFuenteKey = newKey 
-                                sharedPrefs.edit().putString("TAMANO_FUENTE_KEY", newKey).apply()
-                                android.widget.Toast.makeText(context, context.getString(R.string.toast_font_saved, nuevaFuenteDisplay), android.widget.Toast.LENGTH_SHORT).show()
-                                
-                                // Forzar reinicio de la actividad para aplicar la nueva escala de fuente en CompositionLocalProvider
-                                (context as? android.app.Activity)?.recreate()
-                            }
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-                
                 // Perfil
                 item {
                     OpcionConfiguracion(
@@ -258,9 +209,71 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                             android.widget.Toast.makeText(context, context.getString(R.string.toast_security_warning), android.widget.Toast.LENGTH_LONG).show()
                         }
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // Privacidad y Términos
+                item {
+                    OpcionConfiguracion(
+                        icono = Icons.Default.PrivacyTip,
+                        titulo = stringResource(R.string.settings_privacy),
+                        onClick = { showPrivacyDialog = true }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // Acerca de
+                item {
+                    OpcionConfiguracion(
+                        icono = Icons.Default.Info,
+                        titulo = stringResource(R.string.settings_about),
+                        onClick = { showAboutDialog = true }
+                    )
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
+        }
+
+        // Diálogo de Privacidad
+        if (showPrivacyDialog) {
+            AlertDialog(
+                onDismissRequest = { showPrivacyDialog = false },
+                icon = { Icon(Icons.Default.PrivacyTip, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                title = { Text(stringResource(R.string.dialog_privacy_title)) },
+                text = { Text(stringResource(R.string.dialog_privacy_desc)) },
+                confirmButton = {
+                    TextButton(onClick = { showPrivacyDialog = false }) {
+                        Text(stringResource(android.R.string.ok))
+                    }
+                }
+            )
+        }
+
+        // Diálogo de Acerca de
+        if (showAboutDialog) {
+            AlertDialog(
+                onDismissRequest = { showAboutDialog = false },
+                icon = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                title = { Text(stringResource(R.string.dialog_about_title)) },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = stringResource(R.string.dialog_about_version),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.dialog_about_desc),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAboutDialog = false }) {
+                        Text(stringResource(android.R.string.ok))
+                    }
+                }
+            )
         }
     }
 }

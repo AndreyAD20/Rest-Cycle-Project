@@ -162,6 +162,10 @@ fun PantallaOlvidoContrasena(
             }
 
             // Selector de Idioma
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+            var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
+
             Box {
                 IconButton(onClick = { menuIdiomaExpandido = true }) {
                     Icon(
@@ -173,29 +177,49 @@ fun PantallaOlvidoContrasena(
                 }
                 DropdownMenu(
                     expanded = menuIdiomaExpandido,
-                    onDismissRequest = { menuIdiomaExpandido = false }
+                    onDismissRequest = { menuIdiomaExpandido = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Español") },
-                        onClick = {
-                            menuIdiomaExpandido = false
-                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("es"))
-                        }
+                    val opciones = listOf(
+                        stringResource(R.string.lang_spanish),
+                        stringResource(R.string.lang_english),
+                        stringResource(R.string.lang_portuguese)
                     )
-                    DropdownMenuItem(
-                        text = { Text("English") },
-                        onClick = {
-                            menuIdiomaExpandido = false
-                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("en"))
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Português") },
-                        onClick = {
-                            menuIdiomaExpandido = false
-                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("pt"))
-                        }
-                    )
+                    
+                    val langEn = stringResource(R.string.lang_english)
+                    val langPt = stringResource(R.string.lang_portuguese)
+                    
+                    opciones.forEach { opcion ->
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    text = opcion,
+                                    color = if (opcion == idiomaSeleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                ) 
+                            },
+                            onClick = {
+                                idiomaSeleccionado = opcion
+                                sharedPrefs.edit().putString("IDIOMA", opcion).apply()
+                                
+                                val code = when (opcion) {
+                                    langEn, "English" -> "en"
+                                    langPt, "Português" -> "pt"
+                                    else -> "es"
+                                }
+                                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_language_saved, opcion), android.widget.Toast.LENGTH_SHORT).show()
+                                
+                                val activity = context as? android.app.Activity
+                                if (activity != null) {
+                                    val intent = android.content.Intent(activity, OlvidoContrasenaActivity::class.java)
+                                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    activity.startActivity(intent)
+                                    activity.finish()
+                                }
+                                menuIdiomaExpandido = false
+                            }
+                        )
+                    }
                 }
             }
         }

@@ -67,6 +67,7 @@
     <string name="btn_logout">Sair</string>
     <string name="btn_cancel">Cancelar</string>
 
+
     <!-- Inicio y Registro / Auth -->
     <string name="login_email_placeholder">Correio Eletrônico</string>
     <string name="login_password_placeholder">Insira sua Senha</string>
@@ -158,6 +159,17 @@
     <string name="menu_calendar">Calendário</string>
     <string name="menu_parental_control">Controle Parental</string>
     <string name="menu_logout">Sair</string>
+    <string name="widget_next_event">Próximo Evento</string>
+    <string name="widget_last_note">Minhas Notas</string>
+
+    <!-- Opções de Configuração Extras -->
+    <string name="settings_privacy">Privacidade e Termos</string>
+    <string name="settings_about">Sobre</string>
+    <string name="dialog_privacy_title">Privacidade e Termos</string>
+    <string name="dialog_privacy_desc">O Rest Cycle coleta dados de uso de aplicativos para fornecer análises em seu painel. Essas informações são armazenadas de forma segura e apenas você tem acesso a elas. Ao usar o aplicativo, você aceita estes termos.</string>
+    <string name="dialog_about_title">Sobre o Rest Cycle</string>
+    <string name="dialog_about_version">Versão 1.0.0</string>
+    <string name="dialog_about_desc">Um aplicativo desenvolvido para ajudar você a gerenciar seu tempo, equilibrar seus hábitos e desconectar para um melhor descanso.\n\nDesenvolvido pela equipe do Rest Cycle.</string>
 
     <string name="toast_permission_granted">Permissão concedida</string>
     <string name="toast_permission_required_photo">É necessária permissão para alterar a foto</string>
@@ -325,5 +337,40 @@
     <string name="dialog_map_marker_title">Localização Selecionada</string>
     <string name="dialog_map_hint">Toque no mapa para marcar um ponto</string>
     <string name="btn_delete">Excluir</string>
+
+    <!-- Perfil Compose Activity -->
+    <string name="profile_info_title">Informação Pessoal</string>
+    <string name="profile_confirm_identity">Confirme sua identidade</string>
+    <string name="toast_error_loading_profile">Erro ao carregar dados do perfil</string>
+    <string name="toast_error_unidentified_user">Erro: Usuário não identificado</string>
+    <string name="toast_error_server_delete">Erro ao excluir do servidor: %1$s</string>
+    <string name="toast_error_photo_delete">Erro ao excluir foto: %1$s</string>
+    <string name="toast_error_saving_changes">Erro: %1$s</string>
+    <string name="toast_exception_saving_profile">Exceção: %1$s</string>
+
+    <!-- Alterar Senha (In-App) -->
+    <string name="change_password_screen_title">Alterar Senha</string>
+    <string name="change_password_current_label">Senha Atual</string>
+    <string name="change_password_new_label">Nova Senha</string>
+    <string name="change_password_confirm_new_label">Confirmar Nova Senha</string>
+    <string name="change_password_button">Alterar</string>
+    <string name="toast_fill_all_fields">Preencha todos os campos</string>
+    <string name="toast_passwords_no_match">As novas senhas não coincidem</string>
+    <string name="toast_password_incorrect">Senha atual incorreta</string>
+    <string name="toast_password_complexity">A senha deve ter pelo menos 8 caracteres, 1 maiúscula e 1 número.</string>
+    <string name="toast_password_updated">Senha atualizada</string>
+    <string name="toast_password_update_error">Erro: %1$s</string>
+
+    <!-- Verificação de e-mail ao editar perfil -->
+    <string name="profile_verify_email_title">Verifique seu novo e-mail</string>
+    <string name="profile_verify_email_body">Insira o código de 6 dígitos enviado para %1$s</string>
+    <string name="profile_verify_email_btn">Verificar</string>
+    <string name="profile_verify_email_ok">✅ E-mail verificado</string>
+    <string name="profile_verify_email_error">❌ Código incorreto, tente novamente</string>
+    <string name="toast_invalid_email_format">O e-mail não parece válido (ex: nome@dominio.com)</string>
+    <string name="toast_sending_code">Enviando código...</string>
+    <string name="toast_code_sent_to">Código enviado para %1$s</string>
+    <string name="toast_code_send_error">Erro ao enviar código: %1$s</string>
+    <string name="dialog_verify_resend">Reenviar código</string>
 
 </resources>

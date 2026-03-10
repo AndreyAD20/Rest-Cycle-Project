@@ -94,6 +94,48 @@ class RecuperacionRepository {
     }
     
     /**
+     * Enviar código de verificación a un correo nuevo (sin verificar si existe en BD)
+     * Usado cuando el usuario cambia su correo en el perfil
+     * @param correoNuevo Nuevo correo al que enviar el código
+     * @return Result con el código generado (para validación local) o Error
+     */
+    suspend fun enviarCodigoVerificacionCorreo(correoNuevo: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Generar código
+                val codigo = generarCodigo()
+                
+                // Guardar en la base de datos (reutilizamos la misma tabla de recuperación)
+                val request = SolicitarCodigoRequest(
+                    correo = correoNuevo,
+                    codigo = codigo
+                )
+                
+                val response = api.crearCodigoRecuperacion(request)
+                
+                if (response.isSuccessful) {
+                    // Enviar código por email
+                    try {
+                        com.example.rest.utils.EmailService.enviarCodigoRecuperacion(
+                            correo = correoNuevo,
+                            codigo = codigo
+                        )
+                        android.util.Log.d("RecuperacionRepo", "✅ Código de verificación enviado a: $correoNuevo")
+                    } catch (e: Exception) {
+                        android.util.Log.w("RecuperacionRepo", "⚠️ Error enviando email, pero código guardado: ${e.message}")
+                    }
+                    Result.Success(codigo)
+                } else {
+                    android.util.Log.e("RecuperacionRepo", "❌ Error al guardar código: ${response.code()}")
+                    Result.Error("Error al generar código: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+    
+    /**
      * Verificar código de recuperación
      * @param correo Correo del usuario
      * @param codigo Código a verificar

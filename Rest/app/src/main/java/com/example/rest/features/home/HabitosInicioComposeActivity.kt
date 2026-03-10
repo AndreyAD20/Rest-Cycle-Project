@@ -1,4 +1,4 @@
-﻿package com.example.rest.features.home
+package com.example.rest.features.home
 
 import android.os.Bundle
 import com.example.rest.BaseComposeActivity
@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,6 +56,12 @@ import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import com.example.rest.data.models.Nota
+import com.example.rest.data.models.Evento
+import com.example.rest.data.repository.NotaRepository
+import com.example.rest.network.SupabaseClient
 
 class HabitosInicioComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,8 +87,13 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
+    
+    // Estados para Widgets
+    var ultimaNota by remember { mutableStateOf<Nota?>(null) }
+    var proximoEvento by remember { mutableStateOf<Evento?>(null) }
+    var isWidgetsLoading by remember { mutableStateOf(true) }
 
-    // Cargar imagen guardada al inicio y SIEMPRE verificar actualizaciones
+    // Cargar imagen guardada al inicio, SIEMPRE verificar actualizaciones, y cargar Widgets
     LaunchedEffect(Unit) {
         val prefs = com.example.rest.utils.PreferencesManager(context)
         val userId = prefs.getUserId()
@@ -92,29 +105,120 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                 profileImageBitmap = localBitmap
             }
 
-            // 2. SIEMPRE intentar sincronizar con Supabase en segundo plano
+            // 2. Intentar sincronizar foto con Supabase en segundo plano
             scope.launch {
                 isCheckingUpdate = true
                 val remoteBitmap = descargarFotoDeSupabase(context, userId)
                 if (remoteBitmap != null) {
-                    // Si hay foto remota, actualizamos la UI y el caché local
                     profileImageBitmap = remoteBitmap
                 }
                 isCheckingUpdate = false
             }
+            
+            // 3. Cargar datos de Widgets iniciales
+            isWidgetsLoading = true
+            try {
+                // Fetch nota
+                val notaRepo = NotaRepository()
+                when (val notaResult = notaRepo.obtenerUltimaNota(userId)) {
+                    is NotaRepository.Result.Success<*> -> {
+                        ultimaNota = notaResult.data as? Nota
+                    }
+                    else -> { ultimaNota = null }
+                }
+                
+                // Fetch evento
+                val response = SupabaseClient.api.obtenerEventosPorUsuario("eq.$userId")
+                if (response.isSuccessful) {
+                    val todosEventos = response.body() ?: emptyList()
+                    val ahora = LocalDateTime.now().minusHours(2)
+                    
+                    proximoEvento = todosEventos.filter { evento ->
+                        try {
+                            val fechaStr = evento.fechaInicio
+                                .replace("Z", "")
+                                .replace("+00:00", "")
+                                .substringBefore("+")
+                                .substringBefore(".")
+                            val fechaEvento = LocalDateTime.parse(fechaStr)
+                            fechaEvento.isAfter(ahora)
+                        } catch (e: Exception) {
+                            Log.e("HabitosInicio", "Error parsing fecha evento: ${evento.fechaInicio}", e)
+                            false
+                        }
+                    }.minByOrNull { it.fechaInicio }
+                } else {
+                    proximoEvento = null
+                }
+            } catch (e: Exception) {
+                Log.e("HabitosInicio", "Error cargando widgets iniciales", e)
+                ultimaNota = null
+                proximoEvento = null
+            } finally {
+                isWidgetsLoading = false
+            }
+        } else {
+            isWidgetsLoading = false
         }
     }
 
-
-
-
-    // Cerrar drawer cuando se vuelve a la actividad
+    // Cerrar drawer cuando se vuelve a la actividad y recargar widgets
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                 scope.launch {
                     drawerState.close()
+                }
+                
+                // Cargar Widgets (Última nota y Próximo Evento) cada vez que se resume la actividad
+                val prefs = com.example.rest.utils.PreferencesManager(context)
+                val userId = prefs.getUserId()
+                if (userId != -1) {
+                    scope.launch {
+                        isWidgetsLoading = true
+                        val notaRepo = NotaRepository()
+                        
+                        // Fetch nota
+                        when (val notaResult = notaRepo.obtenerUltimaNota(userId)) {
+                            is NotaRepository.Result.Success<*> -> {
+                                ultimaNota = notaResult.data as? Nota
+                            }
+                            else -> { ultimaNota = null }
+                        }
+                        
+                        // Fetch evento
+                        try {
+                            val response = SupabaseClient.api.obtenerEventosPorUsuario("eq.$userId")
+                            if (response.isSuccessful) {
+                                val todosEventos = response.body() ?: emptyList()
+                                val ahora = LocalDateTime.now().minusHours(2)
+                                
+                                proximoEvento = todosEventos.filter { evento ->
+                                    try {
+                                        // Manejar diferentes formatos de fecha Supabase (igual que CalendarioComposeActivity)
+                                        val fechaStr = evento.fechaInicio
+                                            .replace("Z", "")
+                                            .replace("+00:00", "")
+                                            .substringBefore("+")
+                                            .substringBefore(".")
+                                        val fechaEvento = LocalDateTime.parse(fechaStr)
+                                        fechaEvento.isAfter(ahora)
+                                    } catch (e: Exception) {
+                                        Log.e("HabitosInicio", "Error parsing fecha evento: ${evento.fechaInicio}", e)
+                                        false
+                                    }
+                                }.minByOrNull { it.fechaInicio }
+                            } else {
+                                proximoEvento = null
+                            }
+                        } catch (e: Exception) {
+                            Log.e("HabitosInicio", "Error cargando eventos", e)
+                            proximoEvento = null
+                        }
+                        
+                        isWidgetsLoading = false
+                    }
                 }
             }
         }
@@ -471,7 +575,8 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -516,7 +621,8 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                     val context = androidx.compose.ui.platform.LocalContext.current
                     val nombreUsuario = remember {
                         val prefs = com.example.rest.utils.PreferencesManager(context)
-                        prefs.getUserName() ?: context.getString(R.string.fallback_user_name)
+                        val rawName = prefs.getUserName() ?: context.getString(R.string.fallback_user_name)
+                        rawName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
                     }
 
                     Text(
@@ -527,10 +633,112 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                         color = Negro
                     )
 
+                    Spacer(modifier = Modifier.height(32.dp))
 
+                    // --- INICIO DE WIDGETS ---
+                    if (isWidgetsLoading) {
+                        CircularProgressIndicator(color = Negro)
+                    } else {
+                        // Widget: Próximo Evento
+                        if (proximoEvento != null) {
+                            val evento = proximoEvento!!
+                            val (fechaTexto, horaTexto) = try {
+                                val fechaStr = evento.fechaInicio
+                                    .replace("Z", "")
+                                    .replace("+00:00", "")
+                                    .substringBefore("+")
+                                    .substringBefore(".")
+                                val fecha = LocalDateTime.parse(fechaStr)
+                                val fmtFecha = DateTimeFormatter.ofPattern("dd MMM")
+                                val fmtHora = DateTimeFormatter.ofPattern("hh:mm a")
+                                Pair(fecha.format(fmtFecha), fecha.format(fmtHora))
+                            } catch (e: Exception) {
+                                Pair(evento.fechaInicio.take(10), "")
+                            }
 
-                    // ... (existing header code)
-                    
+                            Text(
+                                text = stringResource(R.string.widget_next_event),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Negro,
+                                modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, bottom = 8.dp)
+                            )
+
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f)),
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        context.startActivity(android.content.Intent(context, com.example.rest.features.tools.CalendarioComposeActivity::class.java))
+                                    }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(Primario.copy(alpha = 0.2f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Default.DateRange, contentDescription = null, tint = Primario)
+                                    }
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
+                                        Text(text = evento.titulo, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Negro)
+                                        Text(text = "$fechaTexto, $horaTexto", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+
+                        // Widget: Última Nota
+                        if (ultimaNota != null) {
+                            val nota = ultimaNota!!
+                            val colorFondoNota = try {
+                                Color(android.graphics.Color.parseColor(nota.color ?: "#FFFFFF"))
+                            } catch (e: Exception) {
+                                Blanco.copy(alpha = 0.9f)
+                            }
+                            
+                            Text(
+                                text = stringResource(R.string.widget_last_note),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Negro,
+                                modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, bottom = 8.dp)
+                            )
+
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = colorFondoNota),
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        context.startActivity(android.content.Intent(context, com.example.rest.features.tools.NotasComposeActivity::class.java))
+                                    }
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                                    nota.titulo?.let {
+                                        Text(text = it, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.Black)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
+                                    nota.contenido?.let {
+                                        Text(
+                                            text = it,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color.Black,
+                                            maxLines = 3,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                 }
             }

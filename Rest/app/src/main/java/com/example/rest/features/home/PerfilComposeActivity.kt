@@ -1,4 +1,4 @@
-﻿package com.example.rest.features.home
+package com.example.rest.features.home
 
 import android.os.Bundle
 import com.example.rest.BaseComposeActivity
@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,6 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
@@ -57,6 +59,7 @@ import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.rest.utils.*
 
 class PerfilComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -273,13 +276,87 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
     var nombreText by remember { mutableStateOf("") }
     var apellidoText by remember { mutableStateOf("") }
     var correoText by remember { mutableStateOf("") }
+    var correoOriginal by remember { mutableStateOf("") } // Para detectar si el correo cambió
     var fechaText by remember { mutableStateOf("") }
     var nuevaContraseña by remember { mutableStateOf("") }
     var confirmarContraseña by remember { mutableStateOf("") }
     var isLoadingUserData by remember { mutableStateOf(true) }
     var isSavingUser by remember { mutableStateOf(false) }
 
+    // Estado para verificación de correo
+    var mostrarDialogoVerificacion by remember { mutableStateOf(false) }
+    var codigoIngresado by remember { mutableStateOf("") }
+    var codigoGenerado by remember { mutableStateOf("") }
+    var codigoVerificado by remember { mutableStateOf(false) }
+    var errorCodigo by remember { mutableStateOf(false) }
+    var enviandoCodigo by remember { mutableStateOf(false) }
+    var pendienteGuardar by remember { mutableStateOf(false) } // Bandera: guardar después de verificar
+    var mostrarContraseña by remember { mutableStateOf(false) } // Toggle visibilidad contraseña
+
+    val recuperacionRepository = remember { com.example.rest.data.repository.RecuperacionRepository() }
     val usuarioRepository = remember { com.example.rest.data.repository.UsuarioRepository() }
+
+    // Función de validación de formato de correo
+    fun esCorreoValido(correo: String): Boolean {
+        if (!correo.contains("@")) return false
+        val partes = correo.split("@")
+        if (partes.size != 2) return false
+        val dominio = partes[1]
+        val sufijosValidos = listOf(".com", ".net", ".org", ".co", ".edu", ".io", ".gov", ".mil", ".int", ".info", ".biz")
+        return sufijosValidos.any { dominio.endsWith(it) }
+    }
+
+    // Función reutilizable para guardar cambios del perfil
+    fun guardarCambiosPerfil() {
+        isSavingUser = true
+        scope.launch {
+            try {
+                val getRes = usuarioRepository.obtenerUsuarioPorId(userId)
+                if (getRes is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
+                    val currentUsuario = getRes.data
+
+                    if (!com.example.rest.utils.SecurityUtils.verifyPassword(confirmarContraseña, currentUsuario.contraseña)) {
+                        Toast.makeText(context, context.getString(R.string.err_password_mismatch), Toast.LENGTH_SHORT).show()
+                        isSavingUser = false
+                        return@launch
+                    }
+
+                    val fechaFormateada = if (fechaText.length == 8) {
+                        "${fechaText.substring(0, 4)}-${fechaText.substring(4, 6)}-${fechaText.substring(6, 8)}"
+                    } else {
+                        fechaText
+                    }
+
+                    val updatedUsuario = currentUsuario.copy(
+                        nombre = nombreText,
+                        apellido = apellidoText.ifBlank { null },
+                        correo = correoText,
+                        fechaNacimiento = fechaFormateada
+                    )
+
+                    when (val updateRes = usuarioRepository.actualizarUsuario(userId, updatedUsuario)) {
+                        is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                            Toast.makeText(context, context.getString(R.string.toast_profile_updated), Toast.LENGTH_SHORT).show()
+                            val prefs = com.example.rest.utils.PreferencesManager(context)
+                            prefs.saveUserName(nombreText)
+                            prefs.saveUserEmail(correoText)
+                            correoOriginal = correoText // Actualizar el correo original
+                        }
+                        is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
+                            Toast.makeText(context, context.getString(R.string.toast_error_saving_changes, updateRes.message), Toast.LENGTH_SHORT).show()
+                        }
+                        else -> {}
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, context.getString(R.string.toast_exception_saving_profile, e.message), Toast.LENGTH_SHORT).show()
+            } finally {
+                isSavingUser = false
+                confirmarContraseña = ""
+                pendienteGuardar = false
+            }
+        }
+    }
 
     // Cargar datos del usuario desde Supabase al iniciar
     LaunchedEffect(Unit) {
@@ -292,22 +369,134 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     nombreText = usuario.nombre
                     apellidoText = usuario.apellido ?: ""
                     correoText = usuario.correo
+                    correoOriginal = usuario.correo // Guardar correo original
                     fechaText = usuario.fechaNacimiento.replace("-", "")
                 }
                 else -> {
-                    Toast.makeText(context, "Error cargando datos de perfil", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_error_loading_profile), Toast.LENGTH_SHORT).show()
                 }
             }
         }
         isLoadingUserData = false
     }
 
+    // Diálogo de verificación de correo
+    if (mostrarDialogoVerificacion) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!enviandoCodigo) {
+                    mostrarDialogoVerificacion = false
+                    codigoIngresado = ""
+                    codigoVerificado = false
+                    errorCodigo = false
+                }
+            },
+            title = { Text(stringResource(R.string.profile_verify_email_title), fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.profile_verify_email_body, correoText),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
 
+                    OutlinedTextField(
+                        value = codigoIngresado,
+                        onValueChange = {
+                            if (it.length <= 6 && it.all { c -> c.isDigit() }) {
+                                codigoIngresado = it
+                                errorCodigo = false
+                            }
+                        },
+                        label = { Text(stringResource(R.string.recovery_code_placeholder)) },
+                        singleLine = true,
+                        enabled = !codigoVerificado && !enviandoCodigo,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primario,
+                            unfocusedBorderColor = Color.LightGray
+                        )
+                    )
 
+                    if (codigoVerificado) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.profile_verify_email_ok),
+                                color = Color(0xFF4CAF50),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    if (errorCodigo) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.profile_verify_email_error),
+                            color = Color(0xFFF44336),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (codigoVerificado) {
+                    Button(
+                        onClick = {
+                            mostrarDialogoVerificacion = false
+                            guardarCambiosPerfil()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                    ) {
+                        Text(stringResource(R.string.btn_confirm), color = Blanco)
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            if (codigoIngresado == codigoGenerado) {
+                                codigoVerificado = true
+                                errorCodigo = false
+                            } else {
+                                errorCodigo = true
+                            }
+                        },
+                        enabled = codigoIngresado.length == 6 && !enviandoCodigo,
+                        colors = ButtonDefaults.buttonColors(containerColor = Primario)
+                    ) {
+                        Text(stringResource(R.string.profile_verify_email_btn))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        if (!enviandoCodigo) {
+                            mostrarDialogoVerificacion = false
+                            codigoIngresado = ""
+                            codigoVerificado = false
+                            errorCodigo = false
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
+        )
+    }
         Scaffold(
             topBar = {
-               CenterAlignedTopAppBar(
-                    title = { 
+                CenterAlignedTopAppBar(
+                    title = {
                         Text(stringResource(R.string.settings_edit_profile), color = Negro, fontWeight = FontWeight.Bold)
                     },
                     navigationIcon = {
@@ -315,30 +504,45 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                             Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Negro)
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Transparente)
                 )
             },
-            containerColor = Color.Transparent
+            containerColor = FondoSecundario // Usar fondo claro secundario
         ) { paddingValues ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(brochaGradiente)
                     .padding(paddingValues)
             ) {
+                // Fondo decorativo en la parte superior
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(Primario, Color(0xFF80DEEA))
+                            ),
+                            shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
+                        )
+                )
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp)
+                        .padding(horizontal = 24.dp)
                         .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Spacer(modifier = Modifier.height(60.dp)) // Espacio para que la foto superponga el header
+
+                    // Foto de Perfil superpuesta
                     Box(
                         modifier = Modifier
-                            .size(160.dp)
+                            .size(130.dp)
                             .clip(CircleShape)
                             .background(Blanco)
-                            .border(4.dp, Color(0xFF004D40), CircleShape)
+                            .border(4.dp, Blanco, CircleShape)
                             .clickable { showImageSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
@@ -354,7 +558,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                 imageVector = Icons.Default.Person,
                                 contentDescription = stringResource(R.string.settings_profile),
                                 modifier = Modifier.size(80.dp),
-                                tint = Negro
+                                tint = Color.Gray
                             )
                         }
                         
@@ -366,138 +570,176 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                 strokeWidth = 3.dp
                             )
                         }
+                        
+                        // Icono de pequeña cámara superpuesto
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset(x = (-4).dp, y = (-4).dp)
+                                .size(36.dp)
+                                .background(Primario, CircleShape)
+                                .border(2.dp, Blanco, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Blanco, modifier = Modifier.size(20.dp))
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
                     if (!isLoadingUserData) {
-                        // Campo Nombre
-                        OutlinedTextField(
-                            value = nombreText,
-                            onValueChange = { nombreText = it },
-                            label = { Text(stringResource(R.string.register_name_placeholder)) },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Blanco.copy(alpha = 0.9f),
-                                unfocusedContainerColor = Blanco.copy(alpha = 0.9f),
-                                focusedBorderColor = Primario,
-                                unfocusedBorderColor = Primario.copy(alpha = 0.5f)
-                            )
-                        )
+                        // Tarjeta Principal de Información
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(containerColor = Blanco),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.profile_info_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = TextUnit(18f, TextUnitType.Sp),
+                                    color = TextoSecundario,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
 
-                        // Campo Apellido
-                        OutlinedTextField(
-                            value = apellidoText,
-                            onValueChange = { apellidoText = it },
-                            label = { Text(stringResource(R.string.register_lastname_placeholder)) },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Blanco.copy(alpha = 0.9f),
-                                unfocusedContainerColor = Blanco.copy(alpha = 0.9f),
-                                focusedBorderColor = Primario,
-                                unfocusedBorderColor = Primario.copy(alpha = 0.5f)
-                            )
-                        )
+                                // Campo Nombre
+                                OutlinedTextField(
+                                    value = nombreText,
+                                    onValueChange = { nombreText = it },
+                                    label = { Text(stringResource(R.string.register_name_placeholder)) },
+                                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = Primario) },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Primario,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
 
-                        // Campo Fecha
-                        com.example.rest.ui.components.inputs.CampoFechaAutoFormato(
-                            value = fechaText,
-                            onValueChange = { fechaText = it },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
-                        )
+                                // Campo Apellido
+                                OutlinedTextField(
+                                    value = apellidoText,
+                                    onValueChange = { apellidoText = it },
+                                    label = { Text(stringResource(R.string.register_lastname_placeholder)) },
+                                    leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null, tint = Primario) },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Primario,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
 
-                        // Campo Correo
-                        OutlinedTextField(
-                            value = correoText,
-                            onValueChange = { correoText = it },
-                            label = { Text(stringResource(R.string.register_email_placeholder)) },
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Blanco.copy(alpha = 0.9f),
-                                unfocusedContainerColor = Blanco.copy(alpha = 0.9f),
-                                focusedBorderColor = Primario,
-                                unfocusedBorderColor = Primario.copy(alpha = 0.5f)
-                            )
-                        )
-                        // Campo Confirmar Contraseña
-                        OutlinedTextField(
-                            value = confirmarContraseña,
-                            onValueChange = { confirmarContraseña = it },
-                            label = { Text(stringResource(R.string.register_confirm_password_placeholder)) },
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Blanco.copy(alpha = 0.9f),
-                                unfocusedContainerColor = Blanco.copy(alpha = 0.9f),
-                                focusedBorderColor = Primario,
-                                unfocusedBorderColor = Primario.copy(alpha = 0.5f)
-                            )
-                        )
+                                // Campo Fecha
+                                com.example.rest.ui.components.inputs.CampoFechaAutoFormato(
+                                    value = fechaText,
+                                    onValueChange = { fechaText = it },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                                    // Nota: Para que el icono y forma entren aquí, CampoFechaAutoFormato tendría que exponer esas propiedades o tendríamos que modificar dicho componente. 
+                                    // De lo contrario aplicará su diseño original.
+                                )
 
+                                // Campo Correo
+                                OutlinedTextField(
+                                    value = correoText,
+                                    onValueChange = { correoText = it },
+                                    label = { Text(stringResource(R.string.register_email_placeholder)) },
+                                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = Primario) },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Primario,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
+                                
+                                Divider(color = FondoSecundario, modifier = Modifier.padding(vertical = 8.dp))
 
+                                // Campo Confirmar Contraseña (para validación)
+                                Text(
+                                    text = stringResource(R.string.profile_confirm_identity),
+                                    fontSize = TextUnit(14f, TextUnitType.Sp),
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                OutlinedTextField(
+                                    value = confirmarContraseña,
+                                    onValueChange = { confirmarContraseña = it },
+                                    label = { Text(stringResource(R.string.register_confirm_password_placeholder)) },
+                                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Primario) },
+                                    trailingIcon = {
+                                        IconButton(onClick = { mostrarContraseña = !mostrarContraseña }) {
+                                            Icon(
+                                                imageVector = if (mostrarContraseña) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                                contentDescription = if (mostrarContraseña) "Ocultar contraseña" else "Mostrar contraseña",
+                                                tint = Color.Gray
+                                            )
+                                        }
+                                    },
+                                    visualTransformation = if (mostrarContraseña) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Primario,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
+                            }
+                        }
 
-                        // Botón de Guardar Cambios (mantener existente)
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Botón de Guardar Cambios
                         Button(
                             onClick = {
                                 if (nombreText.isBlank() || correoText.isBlank() || fechaText.length != 8) {
                                     Toast.makeText(context, context.getString(R.string.err_empty_fields), Toast.LENGTH_SHORT).show()
                                     return@Button
                                 }
+                                
+                                // Validar formato de correo
+                                if (!esCorreoValido(correoText)) {
+                                    Toast.makeText(context, context.getString(R.string.toast_invalid_email_format), Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                
                                 if (confirmarContraseña.isBlank()) {
                                     Toast.makeText(context, context.getString(R.string.err_empty_confirm_password), Toast.LENGTH_SHORT).show()
                                     return@Button
                                 }
 
-                                isSavingUser = true
-                                scope.launch {
-                                    try {
-                                        // Obtener usuario base primero para tener rol y contrasena si no la cambia
-                                        val getRes = usuarioRepository.obtenerUsuarioPorId(userId)
-                                        if (getRes is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
-                                            val currentUsuario = getRes.data
-
-                                            if (!com.example.rest.utils.SecurityUtils.verifyPassword(confirmarContraseña, currentUsuario.contraseña)) {
-                                                Toast.makeText(context, context.getString(R.string.err_password_mismatch), Toast.LENGTH_SHORT).show()
-                                                isSavingUser = false
-                                                return@launch
+                                // Si el correo cambió, solicitar verificación
+                                if (correoText.trim().lowercase() != correoOriginal.trim().lowercase()) {
+                                    enviandoCodigo = true
+                                    codigoVerificado = false
+                                    codigoIngresado = ""
+                                    errorCodigo = false
+                                    scope.launch {
+                                        val resultado = recuperacionRepository.enviarCodigoVerificacionCorreo(correoText.trim())
+                                        enviandoCodigo = false
+                                        when (resultado) {
+                                            is com.example.rest.data.repository.RecuperacionRepository.Result.Success -> {
+                                                codigoGenerado = resultado.data
+                                                mostrarDialogoVerificacion = true
+                                                Toast.makeText(context, context.getString(R.string.toast_code_sent_to, correoText), Toast.LENGTH_SHORT).show()
                                             }
-
-                                            val fechaFormateada = if (fechaText.length == 8) {
-                                                "${fechaText.substring(0, 4)}-${fechaText.substring(4, 6)}-${fechaText.substring(6, 8)}"
-                                            } else {
-                                                fechaText
+                                            is com.example.rest.data.repository.RecuperacionRepository.Result.Error -> {
+                                                Toast.makeText(context, context.getString(R.string.toast_code_send_error, resultado.message), Toast.LENGTH_LONG).show()
                                             }
-
-                                            val updatedUsuario = currentUsuario.copy(
-                                                nombre = nombreText,
-                                                apellido = apellidoText.ifBlank { null },
-                                                correo = correoText,
-                                                fechaNacimiento = fechaFormateada
-                                            )
-
-                                            when (val updateRes = usuarioRepository.actualizarUsuario(userId, updatedUsuario)) {
-                                                is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
-                                                    Toast.makeText(context, context.getString(R.string.toast_profile_updated), Toast.LENGTH_SHORT).show()
-                                                    val prefs = com.example.rest.utils.PreferencesManager(context)
-                                                    prefs.saveUserName(nombreText)
-                                                    prefs.saveUserEmail(correoText)
-                                                }
-                                                is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
-                                                    Toast.makeText(context, "Error: ${updateRes.message}", Toast.LENGTH_SHORT).show()
-                                                }
-                                                else -> {}
-                                            }
+                                            else -> {}
                                         }
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Excepción: ${e.message}", Toast.LENGTH_SHORT).show()
-                                    } finally {
-                                        isSavingUser = false
-                                        confirmarContraseña = ""
                                     }
+                                } else {
+                                    // Correo no cambió, guardar directamente
+                                    guardarCambiosPerfil()
                                 }
                             },
                             modifier = Modifier
@@ -505,7 +747,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                 .height(56.dp),
                             shape = RoundedCornerShape(28.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Primario),
-                            enabled = !isSavingUser
+                            enabled = !isSavingUser,
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                         ) {
                             if (isSavingUser) {
                                 CircularProgressIndicator(color = Blanco, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -515,12 +758,11 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                 Text(stringResource(R.string.settings_edit_profile), color = Blanco, fontWeight = FontWeight.Bold, fontSize = TextUnit(18f, TextUnitType.Sp))
                             }
                         }
-                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Botón para cambiar contraseña
-                        Button(
+                        // Botón para cambiar contraseña (Secundario/Tonal)
+                        OutlinedButton(
                             onClick = {
                                 context.startActivity(android.content.Intent(context, com.example.rest.features.home.CambiarContrasenaComposeActivity::class.java))
                             },
@@ -528,14 +770,20 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                 .fillMaxWidth()
                                 .height(56.dp),
                             shape = RoundedCornerShape(28.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Primario)
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Primario),
+                            border = BorderStroke(1.dp, Primario)
                         ) {
-                            Text(stringResource(R.string.change_password_title), color = Blanco, fontWeight = FontWeight.Bold, fontSize = TextUnit(18f, TextUnitType.Sp))
+                            Icon(Icons.Default.LockReset, contentDescription = null, tint = Primario)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.change_password_title), color = Primario, fontWeight = FontWeight.Bold, fontSize = TextUnit(18f, TextUnitType.Sp))
                         }
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
-            }
         }
+    }
+}
 
 fun createImageFile(context: Context): File {
     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
@@ -603,7 +851,7 @@ suspend fun subirFotoASupabase(context: Context, bitmap: Bitmap) {
             
             if (userId == -1) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_error_unidentified_user), Toast.LENGTH_SHORT).show()
                 }
                 return@withContext
             }
@@ -716,7 +964,7 @@ suspend fun eliminarFotoDeSupabase(context: Context) {
             
             if (userId == -1) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_error_unidentified_user), Toast.LENGTH_SHORT).show()
                 }
                 return@withContext
             }
@@ -731,14 +979,14 @@ suspend fun eliminarFotoDeSupabase(context: Context) {
                         Log.d("PerfilDebug", "Foto eliminada de Supabase")
                     }
                     is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
-                        Toast.makeText(context, "Error al eliminar de servidor: ${result.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, context.getString(R.string.toast_error_server_delete, result.message), Toast.LENGTH_LONG).show()
                     }
                     else -> {}
                 }
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Error al eliminar foto: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.toast_error_photo_delete, e.message), Toast.LENGTH_LONG).show()
             }
         }
     }

@@ -340,16 +340,16 @@ fun PantallaNotas(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = { 
                     notaEnEdicion = null // Nueva nota
                     mostrarDialogo = true
                 },
                 containerColor = Color(0xFF00BCD4),
-                contentColor = Negro
-            ) {
-                Icon(Icons.Default.Add, stringResource(R.string.notes_content_desc_add))
-            }
+                contentColor = Negro,
+                icon = { Icon(Icons.Default.Add, stringResource(R.string.notes_content_desc_add)) },
+                text = { Text(stringResource(R.string.dialog_note_title_new), fontWeight = FontWeight.Bold) }
+            )
         },
         containerColor = Color.Transparent
     ) { paddingValues ->

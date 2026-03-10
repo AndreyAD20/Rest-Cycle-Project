@@ -61,6 +61,8 @@ fun DialogoNota(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
                         focusedBorderColor = Color(0xFF00BCD4),
                         unfocusedBorderColor = Color(0xFFB0BEC5)
                     )
@@ -77,6 +79,8 @@ fun DialogoNota(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
                         focusedBorderColor = Color(0xFF00BCD4),
                         unfocusedBorderColor = Color(0xFFB0BEC5)
                     )

@@ -16,7 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import com.example.rest.BaseComposeActivity
+import com.example.rest.R
 import com.example.rest.ui.theme.*
 import com.example.rest.utils.SecurityUtils
 import kotlinx.coroutines.launch
@@ -58,10 +60,10 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Cambiar Contraseña", color = Negro, fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.change_password_screen_title), color = Negro, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, "Regresar", tint = Negro)
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Negro)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -85,7 +87,7 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                 OutlinedTextField(
                     value = actualPwd,
                     onValueChange = { actualPwd = it },
-                    label = { Text("Contraseña Actual") },
+                    label = { Text(stringResource(R.string.change_password_current_label)) },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     shape = RoundedCornerShape(16.dp),
@@ -99,7 +101,7 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                 OutlinedTextField(
                     value = nuevaPwd,
                     onValueChange = { nuevaPwd = it },
-                    label = { Text("Nueva Contraseña") },
+                    label = { Text(stringResource(R.string.change_password_new_label)) },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     shape = RoundedCornerShape(16.dp),
@@ -113,7 +115,7 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                 OutlinedTextField(
                     value = confirmarPwd,
                     onValueChange = { confirmarPwd = it },
-                    label = { Text("Confirmar Nueva Contraseña") },
+                    label = { Text(stringResource(R.string.change_password_confirm_new_label)) },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                     shape = RoundedCornerShape(16.dp),
@@ -127,11 +129,11 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                 Button(
                     onClick = {
                         if (actualPwd.isBlank() || nuevaPwd.isBlank() || confirmarPwd.isBlank()) {
-                            Toast.makeText(context, "Complete todos los campos", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.toast_fill_all_fields), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         if (nuevaPwd != confirmarPwd) {
-                            Toast.makeText(context, "Las nuevas contraseñas no coinciden", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.toast_passwords_no_match), Toast.LENGTH_SHORT).show()
                             return@Button
                         }
                         isSaving = true
@@ -146,14 +148,14 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                                     val isValid = SecurityUtils.verifyPassword(actualPwd, user.contraseña)
                                     
                                     if (!isValid) {
-                                        Toast.makeText(context, "Contraseña actual incorrecta", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.toast_password_incorrect), Toast.LENGTH_SHORT).show()
                                         return@launch
                                     }
                                     
                                     // Validar complejidad de nueva contraseña
                                     val passwordRegex = "^(?=.*[A-Z])(?=.*\\d).{8,}\$".toRegex()
                                     if (!nuevaPwd.matches(passwordRegex)) {
-                                        Toast.makeText(context, "La clave debe tener al menos 8 caracteres, 1 mayúscula y 1 número.", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(context, context.getString(R.string.toast_password_complexity), Toast.LENGTH_LONG).show()
                                         return@launch
                                     }
 
@@ -162,17 +164,17 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                                     val updated = user.copy(contraseña = nuevaHash)
                                     when (val updRes = usuarioRepository.actualizarUsuario(userId, updated)) {
                                         is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
-                                            Toast.makeText(context, "Contraseña actualizada", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.toast_password_updated), Toast.LENGTH_SHORT).show()
                                             onBackClick() // finaliza
                                         }
                                         is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
-                                            Toast.makeText(context, "Error: ${updRes.message}", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.toast_password_update_error, updRes.message), Toast.LENGTH_SHORT).show()
                                         }
                                         else -> {}
                                     }
                                 }
                             } catch (e: Exception) {
-                                Toast.makeText(context, "Excepción: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.toast_exception_saving_profile, e.message), Toast.LENGTH_SHORT).show()
                             } finally {
                                 isSaving = false
                             }
@@ -186,7 +188,7 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                     if (isSaving) {
                         CircularProgressIndicator(color = Blanco, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("Cambiar", color = Blanco, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.change_password_button), color = Blanco, fontWeight = FontWeight.Bold)
                     }
                 }
             }

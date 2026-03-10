@@ -24,14 +24,9 @@ object ThemeManager {
     }
 
     /**
-     * Obtener el factor de escala de fuente actual
+     * Siempre retorna escala mediana (opción de tamaño de fuente eliminada de la UI)
      */
     fun getFontSizeScale(context: Context): Float {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return when (prefs.getString("TAMANO_FUENTE_KEY", "medium")) {
-            "small" -> 0.92f // Antes 0.85f, ahora un poco menos pequeño
-            "large" -> 1.30f // Antes 1.15f, ahora más grande
-            else -> 1.0f
-        }
+        return 1.0f
     }
 }
