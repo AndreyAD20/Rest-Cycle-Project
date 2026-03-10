@@ -54,9 +54,9 @@ fun SplashScreen(onTimeout: () -> Unit) {
         
         var navigateToLogin = true
         var forceLogoutMessage = false
+        val prefs = com.example.rest.utils.PreferencesManager(context)
         
         try {
-            val prefs = com.example.rest.utils.PreferencesManager(context)
             val idUsuario = prefs.getUserId()
             val tokenLocal = prefs.getSessionToken()
             
@@ -86,7 +86,6 @@ fun SplashScreen(onTimeout: () -> Unit) {
             }
         } catch (e: Exception) {
             // Error de hardware/encriptación o red muy severo
-            val prefs = com.example.rest.utils.PreferencesManager(context)
             prefs.clearPreferences()
         }
         
