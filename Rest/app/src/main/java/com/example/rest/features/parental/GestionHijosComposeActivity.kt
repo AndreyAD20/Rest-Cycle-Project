@@ -52,7 +52,7 @@ class GestionHijosComposeActivity : BaseComposeActivity() {
                 PantallaGestionHijos(
                     onBack = { finish() },
                     onEnlazarNuevo = {
-                        startActivity(Intent(this, CrearHijoActivity::class.java))
+                        startActivity(Intent(this, VincularHijoActivity::class.java))
                     }
                 )
             }

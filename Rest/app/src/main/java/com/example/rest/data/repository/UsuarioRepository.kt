@@ -159,6 +159,74 @@ class UsuarioRepository {
     }
 
     /**
+     * Vincula un hijo con el padre usando el código de vinculación del hijo.
+     * (1) Busca al hijo por su código de vinculación.
+     * (2) Hashea la contraseña parental.
+     * (3) Graba en `conexion_parentales`.
+     * (4) Borra el código de vinculación del hijo (lo marca como usado).
+     * @param idPadre ID del usuario padre.
+     * @param codigoVinculacion Código de 6 caracteres del hijo.
+     * @param contrasenaParental Contraseña libre que elige el padre (se guarda hasheada).
+     * @return Result<Unit>
+     */
+    suspend fun vincularHijo(idPadre: Int, codigoVinculacion: String, contrasenaParental: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1 — Buscar al hijo por su código de vinculación
+                val searchResponse = api.verificarCorreo(
+                    correo = "", select = "*"
+                )
+                // Usamos el endpoint genérico para buscar por codigo_vinculacion:
+                val hijoResponse = api.obtenerUsuarioPorId(
+                    id = "",
+                    select = "*"
+                )
+                // Realizamos la búsqueda directamente con el PATCH de código verificación
+                // que acepta un query param arbitrario p.e. ?codigo_vinculacion=eq.AB45XC
+                // Como no tenemos endpoint específico aún, hacemos GET con el filtro de código
+                val busquedaResponse = api.buscarPorCodigoVinculacion(codigoVinculacion = "eq.${codigoVinculacion.uppercase()}")
+
+                if (!busquedaResponse.isSuccessful || busquedaResponse.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("Código de vinculación incorrecto o ya fue usado.")
+                }
+
+                val hijo = busquedaResponse.body()!![0]
+                val idHijo = hijo.id ?: return@withContext Result.Error("Error obteniendo el ID del hijo.")
+
+                // 2 — No vincular si ya está vinculado con alguien
+                val yaVinculado = api.obtenerConexionesPorHijo(idHijo = "eq.$idHijo")
+                if (yaVinculado.isSuccessful && !yaVinculado.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("Este hijo ya está vinculado con un padre.")
+                }
+
+                // 3 — Hashear la contraseña parental
+                val contrasenaHash = com.example.rest.utils.SecurityUtils.hashPassword(contrasenaParental)
+
+                // 4 — Guardar la conexión
+                val conexion = com.example.rest.data.models.ConexionParental(
+                    idPadre = idPadre,
+                    idHijo = idHijo,
+                    contrasenaSegura = contrasenaHash
+                )
+                val saveResponse = api.crearConexionParental(conexion)
+                if (!saveResponse.isSuccessful) {
+                    return@withContext Result.Error("Error al guardar la conexión parental.")
+                }
+
+                // 5 — Borrar el código de vinculación del hijo (marcar como usado)
+                api.actualizarFotoPerfil(
+                    id = "eq.$idHijo",
+                    update = mapOf("codigo_vinculacion" to null, "codigo_vinculacion_expiracion" to null)
+                )
+
+                Result.Success(Unit)
+            } catch (e: Exception) {
+                Result.Error("Error al vincular: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Registrar nuevo usuario
      * @param request Datos del usuario a registrar
      * @return Result con el usuario creado

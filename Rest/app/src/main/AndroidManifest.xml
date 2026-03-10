@@ -76,6 +76,7 @@
         <!-- Parental Activities -->
         <activity android:name=".features.parental.GestionHijosComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.parental.CrearHijoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.parental.VincularHijoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <!-- Hijo Activities -->
         <activity android:name=".features.hijo.EnlaceHijoComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />

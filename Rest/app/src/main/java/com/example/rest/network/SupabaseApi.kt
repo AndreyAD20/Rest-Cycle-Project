@@ -106,6 +106,15 @@ interface SupabaseApi {
     suspend fun eliminarUsuario(
         @Query("id") id: String
     ): Response<Void>
+
+    /**
+     * Buscar usuario por código de vinculación (para enlace parental)
+     */
+    @GET("usuario")
+    suspend fun buscarPorCodigoVinculacion(
+        @Query("codigo_vinculacion") codigoVinculacion: String,
+        @Query("select") select: String = "*"
+    ): Response<List<Usuario>>
     
     // ==================== DISPOSITIVOS ====================
     
