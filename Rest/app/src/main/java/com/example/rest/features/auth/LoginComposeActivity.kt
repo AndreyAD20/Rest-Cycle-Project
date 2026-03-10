@@ -44,18 +44,6 @@ class LoginComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Verificar si ya hay una sesión activa
-        val preferencesManager = com.example.rest.utils.PreferencesManager(this)
-        val idUsuario = preferencesManager.getUserId()
-
-        if (idUsuario != -1) {
-            // Ya existe una sesión, ir directo al inicio
-            val intent = Intent(this, InicioComposeActivity::class.java)
-            startActivity(intent)
-            finish()
-            return // Importante para no cargar la UI de login
-        }
-
         setContent {
             TemaRest {
                 var cargando by remember { mutableStateOf(false) }
@@ -113,7 +101,7 @@ class LoginComposeActivity : BaseComposeActivity() {
         
         lifecycleScope.launch {
             try {
-                when (val resultado = usuarioRepository.login(correo, contraseña)) {
+                when (val resultado = usuarioRepository.login(this@LoginComposeActivity, correo, contraseña)) {
                     is UsuarioRepository.Result.Success -> {
                         val usuario = resultado.data
                         runOnUiThread {

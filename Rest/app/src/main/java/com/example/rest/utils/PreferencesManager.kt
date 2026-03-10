@@ -18,14 +18,36 @@ class PreferencesManager(context: Context) {
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
 
-    // Instancia de las preferencias encriptadas
-    private val sharedPreferences: SharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        PREFS_FILE,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    // Instancia de las preferencias encriptadas con mecanismo de auto-recuperación
+    private val sharedPreferences: SharedPreferences = try {
+        EncryptedSharedPreferences.create(
+            context,
+            PREFS_FILE,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        // Si hay un error de seguridad (ej: la llave maestra cambió, app reinstalada, o datos corruptos)
+        // Eliminamos el archivo corrupto físicamente para evitar que la app se cierre por completo.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+            context.deleteSharedPreferences(PREFS_FILE)
+        } else {
+            val prefFile = java.io.File("${context.applicationInfo.dataDir}/shared_prefs/$PREFS_FILE.xml")
+            if (prefFile.exists()) {
+                prefFile.delete()
+            }
+        }
+        
+        // Intentamos crearlo de nuevo desde cero
+        EncryptedSharedPreferences.create(
+            context,
+            PREFS_FILE,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
 
     /**
      * Guarda el ID del usuario de forma encriptada
@@ -67,6 +89,20 @@ class PreferencesManager(context: Context) {
      */
     fun getUserEmail(): String? {
         return sharedPreferences.getString("CORREO_USUARIO", null)
+    }
+
+    /**
+     * Guarda el Token Único de Sesión
+     */
+    fun saveSessionToken(token: String) {
+        sharedPreferences.edit().putString("SESSION_TOKEN", token).apply()
+    }
+
+    /**
+     * Recupera el Token Único de Sesión
+     */
+    fun getSessionToken(): String? {
+        return sharedPreferences.getString("SESSION_TOKEN", null)
     }
 
     /**

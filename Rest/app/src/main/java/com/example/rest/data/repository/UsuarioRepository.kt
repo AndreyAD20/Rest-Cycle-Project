@@ -29,11 +29,12 @@ class UsuarioRepository {
     
     /**
      * Realizar login
+     * @param context Contexto de la aplicación para guardar preferencias
      * @param correo Correo electrónico del usuario
      * @param contraseña Contraseña del usuario en texto plano
      * @return Result con el usuario si las credenciales son correctas
      */
-    suspend fun login(correo: String, contraseña: String): Result<Usuario> {
+    suspend fun login(context: android.content.Context, correo: String, contraseña: String): Result<Usuario> {
         return withContext(Dispatchers.IO) {
             try {
                 // Paso 1: Buscar al usuario solo por correo
@@ -50,7 +51,21 @@ class UsuarioRepository {
                         val esValida = com.example.rest.utils.SecurityUtils.verifyPassword(contraseña, usuario.contraseña)
                         
                         if (esValida) {
-                            Result.Success(usuario)
+                            // Generar nuevo token de sesión único
+                            val nuevoToken = java.util.UUID.randomUUID().toString()
+                            
+                            // Guardarlo en Supabase
+                            val updateData = mapOf("ultimo_token_sesion" to nuevoToken)
+                            val updateResponse = api.actualizarUsuario(id = "eq.${usuario.id}", usuario = usuario.copy(ultimoTokenSesion = nuevoToken))
+                            
+                            // Si se pudo actualizar el token en servidor, lo guardamos local
+                            if (updateResponse.isSuccessful) {
+                                val prefs = com.example.rest.utils.PreferencesManager(context)
+                                prefs.saveSessionToken(nuevoToken)
+                                Result.Success(usuario.copy(ultimoTokenSesion = nuevoToken))
+                            } else {
+                                Result.Error("Error al iniciar la sesión: No se pudo asignar el token único.")
+                            }
                         } else {
                             Result.Error("Correo o contraseña incorrectos")
                         }

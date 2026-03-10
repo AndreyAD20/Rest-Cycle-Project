@@ -40,7 +40,10 @@ data class Usuario(
     val codigoExpiracion: String? = null,
 
     @SerializedName("foto_perfil")
-    val fotoPerfil: String? = null
+    val fotoPerfil: String? = null,
+    
+    @SerializedName("ultimo_token_sesion")
+    val ultimoTokenSesion: String? = null
 )
 
 /**
