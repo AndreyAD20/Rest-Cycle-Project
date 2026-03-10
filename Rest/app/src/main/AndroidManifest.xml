@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -76,6 +76,9 @@
         <!-- Parental Activities -->
         <activity android:name=".features.parental.GestionHijosComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.parental.CrearHijoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+        <!-- Hijo Activities -->
+        <activity android:name=".features.hijo.EnlaceHijoComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <!-- Habits Activities -->
         <activity android:name=".features.habits.EstadisticasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />

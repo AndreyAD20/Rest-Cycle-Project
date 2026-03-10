@@ -101,7 +101,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                             }
                         } else if (!contraseña.isNullOrBlank()) {
                             // Auto-login con las credenciales del registro
-                            when (val loginResult = usuarioRepository.login(correo, contraseña)) {
+                            when (val loginResult = usuarioRepository.login(this@VerificacionCodigoActivity, correo, contraseña)) {
                                 is UsuarioRepository.Result.Success -> {
                                     val usuario = loginResult.data
                                     runOnUiThread {

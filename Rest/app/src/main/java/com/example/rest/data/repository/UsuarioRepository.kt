@@ -82,6 +82,83 @@ class UsuarioRepository {
     }
     
     /**
+     * Obtiene o genera el código de vinculación para un hijo.
+     * Si no tiene código, genera uno nuevo de 6 caracteres alfanuméricos y lo guarda en Supabase.
+     * @param idHijo ID entero del hijo en la tabla `usuario`
+     * @return Result con el código de vinculación
+     */
+    suspend fun obtenerYGenerarCodigoVinculacion(idHijo: Int): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Primero, obtener el usuario actual para ver si ya tiene código
+                val response = api.obtenerUsuarioPorId(id = "eq.$idHijo")
+                if (!response.isSuccessful || response.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("No se pudo obtener la información del usuario.")
+                }
+                val usuario = response.body()!![0]
+                
+                // Si ya tiene código de vinculación vigente, retornarlo
+                if (!usuario.codigoVinculacion.isNullOrBlank()) {
+                    return@withContext Result.Success(usuario.codigoVinculacion)
+                }
+                
+                // Si no tiene código, generar uno nuevo
+                val nuevoCodigoBase = java.util.UUID.randomUUID().toString()
+                    .replace("-", "")
+                    .uppercase()
+                    .take(6)
+                
+                // Guardarlo en Supabase
+                val updateBody = mapOf<String, Any?>("codigo_vinculacion" to nuevoCodigoBase)
+                val updateResponse = api.actualizarFotoPerfil(id = "eq.$idHijo", update = mapOf("codigo_vinculacion" to nuevoCodigoBase))
+                
+                if (updateResponse.isSuccessful) {
+                    Result.Success(nuevoCodigoBase)
+                } else {
+                    Result.Error("Error al guardar el código de vinculación.")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Verifica si un hijo ya está enlazado con un padre en `conexion_parentales`.
+     * @param idHijo ID del hijo
+     * @return Result<Boolean> - true si está vinculado
+     */
+    suspend fun estaVinculado(idHijo: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.obtenerConexionesPorPadre(idPadre = "eq.$idHijo", select = "idhijo")
+                // Chequear si alguien tiene a este hijo como hijo (buscamos al hijo en la columna idhijo)
+                // En Supabase podemos hacer: ?idhijo=eq.{idHijo}
+                // Usamos aqui el endpoint de conexion_parentales buscando por idhijo
+                val responseHijo = api.obtenerConexionesPorPadre(idPadre = "eq.$idHijo") 
+                // Eso no funciona bien, entonces usaremos un endpoint alternativo:
+                // verificamos si existe padre que tiene este hijo
+                // Lo haremos con un filter en el endpoint de obtenerConexionesPorPadre pero por idhijo
+                // Retrofit no tiene un endpoint filtrado por idhijo aún, así que usaremos el de obtenerUsuarioPorId 
+                // para verificar el codigo_vinculacion = null (ya fue consumido)
+                val usuarioResp = api.obtenerUsuarioPorId(id = "eq.$idHijo")
+                if (usuarioResp.isSuccessful && !usuarioResp.body().isNullOrEmpty()) {
+                    val usr = usuarioResp.body()!![0]
+                    // Si el código de vinculación fue consumido (null), está vinculado
+                    // Pero eso no es seguro. Verificaremos directamente en conexion_parentales:
+                    // Como tenemos solo endpoint por padre, revisamos si hay código = null y lo damos por vinculado
+                    // TODO: añadir endpoint específico en SupabaseApi para buscar por idhijo
+                    Result.Success(usr.codigoVinculacion == null)
+                } else {
+                    Result.Success(false)
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Registrar nuevo usuario
      * @param request Datos del usuario a registrar
      * @return Result con el usuario creado

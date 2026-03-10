@@ -116,9 +116,14 @@ class LoginComposeActivity : BaseComposeActivity() {
                             preferencesManager.saveUserName(usuario.nombre)
                             preferencesManager.saveUserId(usuario.id ?: -1)
                             preferencesManager.saveUserEmail(correo)
+                            preferencesManager.saveUserRol(usuario.rol)
 
-                            // Navegar a InicioComposeActivity
-                            val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
+                            // Navegar según el rol del usuario
+                            val intencion = if (usuario.rol.lowercase() == "hijo") {
+                                Intent(this@LoginComposeActivity, com.example.rest.features.hijo.EnlaceHijoComposeActivity::class.java)
+                            } else {
+                                Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
+                            }
                             startActivity(intencion)
                             finish()
                         }

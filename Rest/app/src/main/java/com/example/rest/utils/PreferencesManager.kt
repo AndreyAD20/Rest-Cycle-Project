@@ -92,6 +92,20 @@ class PreferencesManager(context: Context) {
     }
 
     /**
+     * Guarda el Rol del usuario de forma encriptada
+     */
+    fun saveUserRol(rol: String) {
+        sharedPreferences.edit().putString("ROL_USUARIO", rol).apply()
+    }
+
+    /**
+     * Recupera el Rol del usuario encriptado
+     */
+    fun getUserRol(): String? {
+        return sharedPreferences.getString("ROL_USUARIO", null)
+    }
+
+    /**
      * Guarda el Token Único de Sesión
      */
     fun saveSessionToken(token: String) {

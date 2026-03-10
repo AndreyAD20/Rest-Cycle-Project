@@ -43,7 +43,13 @@ data class Usuario(
     val fotoPerfil: String? = null,
     
     @SerializedName("ultimo_token_sesion")
-    val ultimoTokenSesion: String? = null
+    val ultimoTokenSesion: String? = null,
+    
+    @SerializedName("codigo_vinculacion")
+    val codigoVinculacion: String? = null,
+    
+    @SerializedName("codigo_vinculacion_expiracion")
+    val codigoVinculacionExpiracion: String? = null
 )
 
 /**

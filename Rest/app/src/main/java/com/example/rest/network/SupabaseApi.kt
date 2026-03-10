@@ -410,6 +410,15 @@ interface SupabaseApi {
         @Query("idpadre") idPadre: String,
         @Query("select") select: String = "*"
     ): Response<List<ConexionParental>>
+
+    /**
+     * Obtener conexiones por hijo
+     */
+    @GET("conexion_parentales")
+    suspend fun obtenerConexionesPorHijo(
+        @Query("idhijo") idHijo: String,
+        @Query("select") select: String = "*"
+    ): Response<List<ConexionParental>>
     // ==================== APPS VINCULADAS (ESTADÍSTICAS) ====================
 
     /**
