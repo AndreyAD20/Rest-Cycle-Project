@@ -21,6 +21,7 @@ fun loadTasks(context: Context): List<Tarea> {
     val sharedPreferences = context.getSharedPreferences("tasks_prefs", Context.MODE_PRIVATE)
     val json = sharedPreferences.getString("tasks_list", null) ?: return emptyList()
     val gson = Gson()
-    val type = object : TypeToken<List<Tarea>>() {}.type
-    return gson.fromJson(json, type) ?: emptyList()
+    val type = object : TypeToken<ArrayList<Tarea>>() {}.type
+    val result: ArrayList<Tarea>? = gson.fromJson(json, type)
+    return result ?: emptyList()
 }

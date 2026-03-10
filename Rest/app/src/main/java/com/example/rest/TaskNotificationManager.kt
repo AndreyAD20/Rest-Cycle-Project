@@ -15,6 +15,8 @@ import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.example.rest.features.tools.TareasComposeActivity
+import com.example.rest.utils.BubbleHelper
 import java.util.Calendar
 
 object TaskNotificationManager {
@@ -72,9 +74,8 @@ object TaskNotificationManager {
         }
 
         // Intent para abrir la app al tocar la notificación
-        val intent = Intent(context, TareasComposeActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
+        val intent = Intent(context, TareasComposeActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         val pendingIntent = PendingIntent.getActivity(
             context,
             taskId,
@@ -82,15 +83,40 @@ object TaskNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Construir notificación
+        val textContent = note.ifEmpty { "Es hora de realizar esta tarea" }
+        
+        // ── Fase 4: Centralizar en el Historial del Asistente (Burbuja Rest Cycle) ──
+        com.example.rest.data.NotificationRepository.addNotification(
+            title = title,
+            message = textContent,
+            category = "Notificación de Tarea",
+            sourceClass = "com.example.rest.features.tools.TareasComposeActivity",
+            systemId = taskId // ← ID para sincronización con OS
+        )
+        // Forzamos levantar el globo flotante
+        com.example.rest.ChatHeadManager.showChat(context, "rest_cycle_assistant", "Asistente Rest Cycle")
+
+        // Construir notificación clásica (silenciosa y como respaldo)
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
-            .setContentText(note.ifEmpty { "Es hora de realizar esta tarea" })
+            .setContentText(textContent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            // Cambiado a CATEGORY_MESSAGE para tener mayor probabilidad de ser mostrado como Burbuja
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+
+        // Configuración de Burbuja (Bubbles API)
+        val bubbleData = BubbleHelper.createBubbleMetadata(context, pendingIntent)
+        if (bubbleData != null) {
+            builder.setBubbleMetadata(bubbleData)
+            val person = BubbleHelper.createBotPerson()
+            builder.addPerson(person)
+            // MessagingStyle es requerido por Android 11+ para las notificaciones en formato Burbuja
+            builder.setStyle(NotificationCompat.MessagingStyle(person)
+                .addMessage(textContent, System.currentTimeMillis(), person))
+        }
 
         // Configurar vibración
         if (vibrate) {

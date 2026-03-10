@@ -1,50 +1,46 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Permiso de Internet para llamadas a Supabase -->
+
+    <!-- ===== PERMISOS DE RED ===== -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- ===== PERMISOS DE ARRANQUE ===== -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    
-    <!-- Permiso especial para acceder a estadísticas de uso de aplicaciones -->
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" 
-        tools:ignore="ProtectedPermissions" />
 
-    <!-- Permiso para ver todas las apps instaladas (necesario para Android 11+) -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" 
-        tools:ignore="QueryAllPackagesPermission" />
-
-    <!-- Permiso para superponerse a otras aplicaciones -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    
-    <!-- Permiso para controlar No Molestar (Modo Hora de Dormir) -->
-    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
-    
-    <!-- Permiso para cambiar a escala de grises (Requiere ADB grant) -->
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
-    
-    <!-- Permisos para notificaciones de tareas -->
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" 
+    <!-- ===== ESTADÍSTICAS DE USO ===== -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- ===== SERVICIOS EN PRIMER PLANO ===== -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- ===== SUPERPOSICIÓN / OVERLAY ===== -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <!-- Permisos para Hora de Descanso -->
+
+    <!-- ===== NOTIFICACIONES ===== -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- ===== ALARMAS EXACTAS (Tareas) ===== -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- ===== HORA DE DESCANSO (DND + Grayscale) ===== -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-    
-    <!-- Permisos para Foto de Perfil -->
+
+    <!-- ===== CHAT HEADS (OVERLAY API 17-29+) ===== -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+
+    <!-- ===== CÁMARA / FOTOS DE PERFIL ===== -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -60,12 +56,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Material3.DayNight.NoActionBar">
 
-        <!-- Login Activity (Launcher) -->
+        <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${mapsApiKey}" />
 
-        <!-- Splash Activity (Launcher) -->
+        <!-- ===== SPLASH (Launcher) ===== -->
         <activity
             android:name=".features.auth.SplashActivity"
             android:exported="true"
@@ -76,41 +72,98 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".features.auth.LoginComposeActivity"
+        <!-- ===== AUTH ===== -->
+        <activity android:name=".features.auth.LoginComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.auth.RegistroComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.auth.VerificacionCodigoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.auth.OlvidoContrasenaActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.auth.CodigoRecuperacionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.auth.CambioContrasenaActivity"
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
-        <!-- Auth Activities -->
-        <activity android:name=".features.auth.RegistroComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.auth.VerificacionCodigoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.auth.OlvidoContrasenaActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.auth.CodigoRecuperacionActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.auth.CambioContrasenaActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <!-- ===== HOME ===== -->
+        <activity android:name=".features.home.InicioComposeActivity"
+            android:exported="true"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.home.PerfilComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
-        <!-- Home Activities -->
-        <activity android:name=".features.home.InicioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.home.PerfilComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <!-- ===== TOOLS ===== -->
+        <activity android:name=".features.tools.NotasComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.tools.BloqueoAppsComposeActivity"
+            android:exported="true"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.tools.HoraDescansoComposeActivity"
+            android:exported="true"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.tools.TareasComposeActivity"
+            android:exported="true"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.tools.CalendarioComposeActivity"
+            android:exported="true"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.blocking.BloqueoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
-        <!-- Tools Activities -->
-        <activity android:name=".features.tools.NotasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.BloqueoAppsComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.HoraDescansoComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.TareasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.CalendarioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.blocking.BloqueoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <!-- ===== PARENTAL ===== -->
+        <activity android:name=".features.parental.GestionHijosComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.parental.CrearHijoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
-        <!-- Parental Activities -->
-        <activity android:name=".features.parental.GestionHijosComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.parental.CrearHijoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <!-- ===== HABITS ===== -->
+        <activity android:name=".features.habits.EstadisticasComposeActivity"
+            android:exported="true"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
-        <!-- Habits Activities -->
-        <activity android:name=".features.habits.EstadisticasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <!-- ===== SETTINGS ===== -->
+        <activity android:name=".features.settings.ConfiguracionComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
-        <!-- Settings Activities -->
-        <activity android:name=".features.settings.ConfiguracionComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <!-- ===== OVERLAY (Bloqueo de apps) ===== -->
+        <activity
+            android:name=".BloqueoOverlayActivity"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance" />
 
-        <!-- FileProvider para compartir archivos (cámara) -->
+        <!-- ===== FILE PROVIDER (Cámara) ===== -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -121,39 +174,55 @@
                 android:resource="@xml/provider_paths" />
         </provider>
 
-        <!-- Servicio de Monitoreo de Apps -->
+        <!-- ===== SERVICIOS ===== -->
+
+        <!-- Ventana Flotante tipo Messenger Chat Head (Fallback API 17-29+) -->
+        <service
+            android:name=".services.ChatHeadOverlayService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="systemExempted" />
+
+        <!-- Monitoreo de uso de apps (bloqueo de apps) -->
         <service
             android:name=".services.AppMonitorService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- Servicio de Hora de Descanso (DND + Grayscale) -->
+        <!-- Hora de Descanso: DND + Grayscale (una sola declaración) -->
         <service
             android:name=".UsageMonitorService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <activity
-            android:name=".BloqueoOverlayActivity"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar"
-            android:excludeFromRecents="true"
-            android:launchMode="singleInstance" />
+        <!-- ===== RECEIVERS ===== -->
 
-        <service 
-            android:name=".UsageMonitorService"
-            android:foregroundServiceType="specialUse"
-            android:exported="false">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Monitoreo de uso de aplicaciones para límites de tiempo" />
-        </service>
-
+        <!-- Receptor de alarmas para notificaciones de Tareas -->
         <receiver android:name=".TaskAlarmReceiver"
             android:enabled="true"
             android:exported="false" />
 
+        <!-- Activity de burbuja flotante para eventos del calendario -->
+        <activity android:name=".BubbleEventoActivity"
+            android:exported="false"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:label="Rest Cycle"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+        <!-- Activity de burbuja flotante para Chats (Messenger Heads) -->
+        <activity android:name=".features.tools.BubbleChatActivity"
+            android:exported="false"
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:label="Chat Rest Cycle"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+        <!-- Receptor de arranque: reinicia alarmas al encender el dispositivo -->
         <receiver android:name=".BootReceiver"
             android:enabled="true"
             android:exported="true"

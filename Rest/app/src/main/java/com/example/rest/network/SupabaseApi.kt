@@ -372,7 +372,7 @@ interface SupabaseApi {
      */
     @POST("eventos")
     suspend fun crearEvento(
-        @Body evento: Evento
+        @Body evento: EventoInput
     ): Response<List<Evento>>
     
     /**
@@ -381,7 +381,7 @@ interface SupabaseApi {
     @PATCH("eventos")
     suspend fun actualizarEvento(
         @Query("id") id: String,
-        @Body evento: Evento
+        @Body evento: EventoInput
     ): Response<List<Evento>>
     
     /**

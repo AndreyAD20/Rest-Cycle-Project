@@ -211,6 +211,16 @@ fun PantallaModosDeUso(
     val context = androidx.compose.ui.platform.LocalContext.current
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showNotificationPermissionDialog by remember { mutableStateOf(false) }
+    var showBubblePermissionDialog by remember { mutableStateOf(false) }
+
+    // Función auxiliar para verificar si las burbujas están activas
+    fun areBubblesEnabled(): Boolean {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
+            return notificationManager.areBubblesAllowed()
+        }
+        return true // Para versiones anteriores a Android 11, devolvemos true porque no requieren permiso
+    }
 
     // Verificar permisos al iniciar
     LaunchedEffect(Unit) {
@@ -248,6 +258,11 @@ fun PantallaModosDeUso(
                 // Android < 13, solo iniciar servicio
                 android.util.Log.d("InicioActivity", "Android < 13, iniciando servicio sin permiso de notificaciones")
                 com.example.rest.services.AppMonitorService.startService(context)
+            }
+            
+            // Verificamos si las burbujas están habilitadas
+            if (!areBubblesEnabled()) {
+                showBubblePermissionDialog = true
             }
         }
     }
@@ -305,6 +320,36 @@ fun PantallaModosDeUso(
                     }
                 ) {
                     Text("Ahora no")
+                }
+            }
+        )
+    }
+
+    // Diálogo persuasivo para las Burbujas (Android 11+)
+    if (showBubblePermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showBubblePermissionDialog = false },
+            title = { Text("Habilitar Burbujas Flotantes") },
+            text = { Text("Rest Cycle usa burbujas interactivas para mostrar los reportes y recordatorios de tareas de manera amigable.\n\nPor favor, dirígete a las configuraciones de la aplicación, busca 'Burbujas' o 'Bubbles' y selecciona 'Todas las conversaciones pueden mostrar burbujas'.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showBubblePermissionDialog = false
+                        val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                            putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("Abrir Ajustes")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showBubblePermissionDialog = false }
+                ) {
+                    Text("Más Tarde")
                 }
             }
         )

@@ -141,12 +141,37 @@ class UsageMonitorService : Service() {
      * se configura paso a paso con métodos encadenados hasta llamar .build().
      */
     private fun createNotification(): android.app.Notification {
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val intent = Intent(this, com.example.rest.features.tools.HoraDescansoComposeActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val textContent = "Monitoreando horarios de descanso"
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Hora de Descanso activa")
-            .setContentText("Monitoreando horarios de descanso")
+            .setContentText(textContent)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE) // Ayuda a que aparezca como Burbuja
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+
+        // Configurar metadatos de Burbuja
+        val bubbleData = com.example.rest.utils.BubbleHelper.createBubbleMetadata(this, pendingIntent)
+        if (bubbleData != null) {
+            builder.setBubbleMetadata(bubbleData)
+            val person = com.example.rest.utils.BubbleHelper.createBotPerson()
+            builder.addPerson(person)
+            builder.setStyle(NotificationCompat.MessagingStyle(person)
+                .addMessage(textContent, System.currentTimeMillis(), person))
+        }
+
+        return builder.build()
     }
 
     // ---------------------------------------------------------------------------
