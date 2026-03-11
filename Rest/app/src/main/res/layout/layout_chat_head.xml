@@ -18,7 +18,8 @@
             android:id="@+id/chat_head_profile_iv"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:scaleType="centerCrop"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
             android:src="@mipmap/logo_buho"
             android:background="@drawable/circulo_fondo_burbuja" />
 
