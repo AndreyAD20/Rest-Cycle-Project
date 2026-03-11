@@ -107,6 +107,9 @@
         <activity android:name=".features.tools.NotasComposeActivity"
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.tools.TemasInteresComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.BloqueoAppsComposeActivity"
             android:exported="true"
             android:allowEmbedded="true"

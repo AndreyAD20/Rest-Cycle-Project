@@ -7,6 +7,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -26,6 +30,8 @@ import androidx.compose.ui.unit.sp
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import androidx.compose.ui.platform.LocalContext
+import com.example.rest.data.GeneradorContenidoMock
+import com.example.rest.data.PreferenciasInteresManager
 import com.example.rest.ui.theme.*
 
 class InicioComposeActivity : BaseComposeActivity() {
@@ -70,6 +76,10 @@ class InicioComposeActivity : BaseComposeActivity() {
                     alClickHabitosSaludables = {
                         // Navegar a Perfil
                         val intent = Intent(this, com.example.rest.features.home.PerfilComposeActivity::class.java)
+                        startActivity(intent)
+                    },
+                    alClickTemasInteres = {
+                        val intent = Intent(this, com.example.rest.features.tools.TemasInteresComposeActivity::class.java)
                         startActivity(intent)
                     },
                     onRequestNotificationPermission = {
@@ -206,6 +216,7 @@ fun PantallaModosDeUso(
     alClickConfiguracion: () -> Unit,
     alClickControlParental: () -> Unit,
     alClickHabitosSaludables: () -> Unit,
+    alClickTemasInteres: () -> Unit,
     onRequestNotificationPermission: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -402,11 +413,17 @@ fun PantallaModosDeUso(
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 32.dp, vertical = 80.dp) // Padding top para no solapar los botones superiores
         ) {
+            // Sección Dinámica "Para Ti" basada en los Temas de Interés
+            SeccionParaTi()
+            
+            Spacer(modifier = Modifier.height(20.dp))
+
             // Título "Modos de Uso"
             Text(
                 text = "Modos de Uso",
@@ -478,6 +495,162 @@ fun PantallaModosDeUso(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Negro
+                )
+            }
+
+            Spacer(modifier = Modifier.height(30.dp))
+
+            // Botón Temas de Interés
+            Button(
+                onClick = alClickTemasInteres,
+                modifier = Modifier
+                    .width(260.dp)
+                    .height(56.dp)
+                    .border(
+                        width = 2.dp,
+                        color = Negro,
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFBC02D) // Amarillo mostaza para destacar
+                )
+            ) {
+                Text(
+                    text = "Temas de Interés",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Negro
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+fun SeccionParaTi() {
+    val context = LocalContext.current
+    val temasElegidos by remember {
+        mutableStateOf(PreferenciasInteresManager.obtenerTemas(context))
+    }
+
+    // Solo mostramos si el usuario ha elegido temas
+    if (temasElegidos.isNotEmpty()) {
+        val fraseDelDia by remember { mutableStateOf(GeneradorContenidoMock.generarFraseMotivacional(temasElegidos)) }
+        val noticiasRecomendadas by remember { mutableStateOf(GeneradorContenidoMock.obtenerNoticiasParaTemas(temasElegidos)) }
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = "Para ti",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Negro
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Frase motivacional
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "\"$fraseDelDia\"",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    modifier = Modifier.padding(16.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (noticiasRecomendadas.isNotEmpty()) {
+                Text(
+                    text = "Recomendaciones:",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Negro
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(noticiasRecomendadas) { articulo ->
+                        Card(
+                            modifier = Modifier.width(240.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                // Etiqueta del Tema
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                ) {
+                                    Text(
+                                        text = articulo.tema,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                
+                                Text(
+                                    text = articulo.titulo,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(text = articulo.fuente, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    Text(text = articulo.tiempoLectura, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Mensaje animando a configurar temas
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Personaliza tu experiencia",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Selecciona tus Temas de Interés abajo para ver contenido adaptado a ti.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
                 )
             }
         }
