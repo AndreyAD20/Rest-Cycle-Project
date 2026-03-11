@@ -86,9 +86,12 @@ fun TemaRest(
     val vista = LocalView.current
     if (!vista.isInEditMode) {
         SideEffect {
-            val ventana = (vista.context as Activity).window
-            WindowCompat.setDecorFitsSystemWindows(ventana, false)
-            WindowCompat.getInsetsController(ventana, vista).isAppearanceLightStatusBars = !temaOscuro
+            val context = vista.context
+            if (context is Activity) {
+                val ventana = context.window
+                WindowCompat.setDecorFitsSystemWindows(ventana, false)
+                WindowCompat.getInsetsController(ventana, vista).isAppearanceLightStatusBars = !temaOscuro
+            }
         }
     }
 

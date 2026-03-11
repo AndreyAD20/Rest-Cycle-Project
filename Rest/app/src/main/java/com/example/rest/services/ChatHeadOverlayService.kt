@@ -22,6 +22,19 @@ import androidx.core.app.NotificationCompat
 import com.example.rest.R
 import com.example.rest.data.AppNotification
 import com.example.rest.data.NotificationRepository
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import androidx.compose.ui.platform.ComposeView
+import com.example.rest.features.tools.OverlayNotificationPanel
 
 /**
  * Servicio Overlay tipo Messenger — Sistema NotificationPROM.
@@ -39,13 +52,19 @@ class ChatHeadOverlayService : Service() {
     private var chatHeadView: View? = null
     private var closeView: View? = null
     private var tooltipView: View? = null
+    private var panelView: ComposeView? = null
 
     private lateinit var closeParams: WindowManager.LayoutParams
     private lateinit var bubbleParams: WindowManager.LayoutParams
     private var tooltipParams: WindowManager.LayoutParams? = null
+    private var panelParams: WindowManager.LayoutParams? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var tooltipVisible = false
+    private var isPanelVisible = false
+    private var lastOutsideTouchTime = 0L
+
+    private var myLifecycleOwner: MyLifecycleOwner? = null
 
     /** Cola de notificaciones que llegaron mientras el toast ya estaba activo */
     private val notificationQueue = ArrayDeque<AppNotification>()
@@ -76,6 +95,12 @@ class ChatHeadOverlayService : Service() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, buildForegroundNotification())
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        myLifecycleOwner = MyLifecycleOwner().apply {
+            onCreate()
+            onStart()
+            onResume()
+        }
 
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -144,6 +169,48 @@ class ChatHeadOverlayService : Service() {
         tooltipView?.visibility = View.GONE
         windowManager.addView(tooltipView, tooltipParams!!)
 
+        // ── 3.5 Panel Interactivo de Compose ──────────────────────────────────
+        panelView = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(myLifecycleOwner)
+            setViewTreeSavedStateRegistryOwner(myLifecycleOwner)
+            setViewTreeViewModelStoreOwner(myLifecycleOwner)
+            setContent {
+                OverlayNotificationPanel(
+                    onClosePanel = {
+                        isPanelVisible = false
+                        actualizarVistaPanel()
+                    }
+                )
+            }
+        }
+        
+        panelParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            layoutFlag,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 0
+            y = bubbleParams.y + 200
+        }
+        panelView?.visibility = View.GONE
+        
+        // Detectar clics fuera del panel
+        panelView?.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_OUTSIDE && isPanelVisible) {
+                lastOutsideTouchTime = System.currentTimeMillis()
+                isPanelVisible = false
+                actualizarVistaPanel()
+                true
+            } else {
+                false
+            }
+        }
+        windowManager.addView(panelView, panelParams!!)
+
         // ── 4. Físicas ───────────────────────────────────────────────────────
         configurarFisicas()
     }
@@ -167,6 +234,12 @@ class ChatHeadOverlayService : Service() {
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
+                    // Ocultar panel interactivo si se empieza a arrastrar
+                    if (isPanelVisible) {
+                        isPanelVisible = false
+                        actualizarVistaPanel()
+                    }
+                    
                     bubbleParams.x = iX + (event.rawX - iTX).toInt()
                     bubbleParams.y = iY + (event.rawY - iTY).toInt()
                     windowManager.updateViewLayout(chatHeadView, bubbleParams)
@@ -288,15 +361,14 @@ class ChatHeadOverlayService : Service() {
 
     /** Click en burbuja: navega al historial central (BubbleChatActivity) y oculta el toast. La burbuja permanece. */
     private fun onBubbleClick() {
-        // En vez de ir al sourceClass directo, siempre abrimos el panel de notificaciones
-        try {
-            val intent = Intent(this, com.example.rest.features.tools.BubbleChatActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-            startActivity(intent)
-        } catch (e: Exception) {
-            android.util.Log.e("ChatHead", "Error al abrir BubbleChatActivity: ${e.message}")
+        // Ignorar clic si el panel se acaba de cerrar por un toque "fuera" (el cual cayó sobre la burbuja también)
+        if (System.currentTimeMillis() - lastOutsideTouchTime < 300) {
+            return
         }
+        
+        // Toggle del panel
+        isPanelVisible = !isPanelVisible
+        actualizarVistaPanel()
         
         // Ocultamos el toolTip flotante (Toast rojo)
         if (tooltipVisible) {
@@ -304,6 +376,32 @@ class ChatHeadOverlayService : Service() {
             notificationQueue.clear() // Descartar cola al hacer click manual
             ocultarTooltip()
         }
+    }
+
+    private fun actualizarVistaPanel() {
+        if (isPanelVisible) { // Expandir panel
+            panelView?.visibility = View.VISIBLE
+            panelParams?.y = bubbleParams.y + (chatHeadView?.height ?: 180) + 16
+            
+            panelView?.translationY = -50f
+            panelView?.alpha = 0f
+            panelView?.animate()?.translationY(0f)?.alpha(1f)?.setDuration(ANIM_DURATION)?.start()
+            
+            // Requerido para capturar Action Outside
+            panelParams?.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or 
+                                 WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
+                                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        } else { // Contraer panel
+            panelView?.animate()?.translationY(-50f)?.alpha(0f)?.setDuration(ANIM_DURATION)?.withEndAction {
+                panelView?.visibility = View.GONE
+            }?.start()
+            
+            // Volver flag a NOT_FOCUSABLE para no atrapar clics fantasmas en la pantalla trasera
+            panelParams?.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        }
+        
+        try { windowManager.updateViewLayout(panelView, panelParams) } catch (e: Exception) { }
     }
 
     private fun moverTooltipJuntoBurbuja() {
@@ -322,9 +420,13 @@ class ChatHeadOverlayService : Service() {
         notificationQueue.clear()
         NotificationRepository.setBadgeObserver(null)
         NotificationRepository.setNewNotificationObserver(null)
+        myLifecycleOwner?.onPause()
+        myLifecycleOwner?.onStop()
+        myLifecycleOwner?.onDestroy()
         chatHeadView?.let { try { windowManager.removeView(it) } catch (_: Exception) {} }
         closeView?.let    { try { windowManager.removeView(it) } catch (_: Exception) {} }
         tooltipView?.let  { try { windowManager.removeView(it) } catch (_: Exception) {} }
+        panelView?.let    { try { windowManager.removeView(it) } catch (_: Exception) {} }
     }
 
     private fun buildForegroundNotification(): Notification {
@@ -338,5 +440,48 @@ class ChatHeadOverlayService : Service() {
             .setSmallIcon(R.mipmap.logo_buho)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
+    }
+}
+
+/**
+ * Boilerplate necesario para insertar una View de Jetpack Compose de forma standalone
+ * en el `WindowManager` desde un `Service`.
+ */
+private class MyLifecycleOwner : SavedStateRegistryOwner, LifecycleOwner, ViewModelStoreOwner {
+    private val store = ViewModelStore()
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    private val savedStateRegistryController = SavedStateRegistryController.create(this)
+
+    override val viewModelStore: ViewModelStore
+        get() = store
+    override val lifecycle: Lifecycle
+        get() = lifecycleRegistry
+    override val savedStateRegistry: SavedStateRegistry
+        get() = savedStateRegistryController.savedStateRegistry
+
+    fun onCreate() {
+        savedStateRegistryController.performRestore(null)
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+    }
+
+    fun onStart() {
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+    }
+
+    fun onResume() {
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+
+    fun onPause() {
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+    }
+    
+    fun onStop() {
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+    }
+
+    fun onDestroy() {
+        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        store.clear()
     }
 }
