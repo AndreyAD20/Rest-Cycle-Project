@@ -55,6 +55,12 @@ class InicioComposeActivity : BaseComposeActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Iniciar el servicio de notificaciones periódicas si ya se han elegido temas
+        if (com.example.rest.data.PreferenciasInteresManager.obtenerTemas(this).isNotEmpty()) {
+            com.example.rest.services.TopicNotificationService.startService(this)
+        }
+        
         setContent {
             val isDarkMode = com.example.rest.utils.ThemeManager.isDarkMode(this)
             TemaRest(temaOscuro = isDarkMode) {
