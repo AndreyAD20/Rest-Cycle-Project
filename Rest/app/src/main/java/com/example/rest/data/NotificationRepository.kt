@@ -10,8 +10,13 @@ import java.util.UUID
 
 /**
  * Modelo de datos para las notificaciones internalizadas en el Chat Head.
+ * 
+ * "data class" en Kotlin se usa para crear clases cuyo objetivo principal es
+ * únicamente retener datos (como un POJO o un Model). El compilador genera
+ * automáticamente métodos útiles como equals(), hashCode() y toString() detrás de escena.
  */
 data class AppNotification(
+    // UUID.randomUUID() genera un identificador único alfanumérico globalmente para cada notificación
     val id: String = UUID.randomUUID().toString(),
     val title: String,
     val message: String,
@@ -25,11 +30,24 @@ data class AppNotification(
 /**
  * Repositorio en Memoria (StateFlow) que actúa como el "Historial de Chat"
  * entre todos los emisores del proyecto y la burbuja universal de Rest Cycle.
+ * 
+ * La palabra clave "object" en Kotlin declara una clase que es también un Singleton real. 
+ * Esto significa que solo existirá UNA ÚNICA INSTANCIA de NotificationRepository 
+ * en toda la aplicación durante su tiempo de vida en memoria viva.
  */
 object NotificationRepository {
 
-    // Lista inmutable pública reactiva
+    // ---------------------------------------------------------------------------------
+    // PATRÓN BACKING PROPERTY (Propiedad de Respaldo)
+    // ---------------------------------------------------------------------------------
+    // MutableStateFlow (privado): Es la propiedad real que guarda los datos y permite modificarlos.
+    // Solo puede ser mutado desde DENTRO de este archivo.
     private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
+    
+    // StateFlow (público): Es una versión de solo-lectura expuesta hacia afuera.
+    // Las Views (Activities, Services) se suscriben a esta variable para ser notificadas
+    // cuando '_notifications' cambia, sin riesgo de que alguien cambie los datos accidentalmente de afuera.
+    // "StateFlow" está diseñado para manejar estados reactivos en la interfaz y está inspirado en RxJava/LiveData.
     val notifications: StateFlow<List<AppNotification>> = _notifications.asStateFlow()
 
     // ── Observadores ────────────────────────────────────────────────────────────
@@ -73,6 +91,9 @@ object NotificationRepository {
             systemNotificationId = systemId
         )
         // Agregamos al principio (más reciente primero)
+        // La función .update bloquea temporalmente el flujo para leer el estado anterior (current)
+        // y calcular y asignar el estado nuevo en un solo paso atómico.
+        // Esto previene que se pierdan datos si dos hilos (threads) intentan agregar notificaciones a la vez (Race condition).
         _notifications.update { current -> listOf(newNotif) + current }
 
         // Avisar al Badge (contador rojo)

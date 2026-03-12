@@ -45,9 +45,15 @@ import com.example.rest.features.tools.OverlayNotificationPanel
  * - Notificaciones consecutivas: se encolan y muestran secuencialmente
  * - Tap mientras toast visible: re-muestra la más reciente
  * - Tap: navega al origen, oculta toast, burbuja permanece
+ * 
+ * "WindowManager" permite dibujar Vistas (Views) por encima de otras aplicaciones.
+ * Para funcionar, requiere que el usuario otorgue el permiso especial 
+ * "SYSTEM_ALERT_WINDOW" (Dibujar sobre otras apps).
  */
 class ChatHeadOverlayService : Service() {
 
+    // "lateinit" indica a Kotlin que esta variable se inicializará más tarde (en el onCreate),
+    // esto evita el tener que declararla como nullable (WindowManager?) llenando el código de null checks (!! o ?).
     private lateinit var windowManager: WindowManager
     private var chatHeadView: View? = null
     private var closeView: View? = null
@@ -102,12 +108,21 @@ class ChatHeadOverlayService : Service() {
             onResume()
         }
 
+        // ---------------------------------------------------------------------------------
+        // FLAG DE VENTANA OVERLAY
+        // ---------------------------------------------------------------------------------
+        // En Android Oreo (API 26) y superior, el tipo de ventana debe ser TYPE_APPLICATION_OVERLAY.
+        // En versiones anteriores, se usaba TYPE_PHONE.
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         else @Suppress("DEPRECATION") WindowManager.LayoutParams.TYPE_PHONE
 
         // ── 1. Burbuja principal ─────────────────────────────────────────────
+        // LayoutInflater "infla" o convierte un archivo visual en formato XML 
+        // a objetos interactuables en memoria de Java/Kotlin (objetos View).
         chatHeadView = LayoutInflater.from(this).inflate(R.layout.layout_chat_head, null)
+        
+        // Configuramos la física de la burbuja (envuelta = wrap_content, no enfoca teclado = flag_not_focusable)
         bubbleParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -219,6 +234,10 @@ class ChatHeadOverlayService : Service() {
     // Arrastre y click
     // ──────────────────────────────────────────────────────────────────────────
 
+    // ---------------------------------------------------------------------------------
+    // FÍSICAS DE ARRASTRE Y CLICS
+    // ---------------------------------------------------------------------------------
+    // Interceptamos todos los toques matemáticamente en los ejes X y Y de la pantalla.
     private fun configurarFisicas() {
         val chatIcon = chatHeadView?.findViewById<ImageView>(R.id.chat_head_profile_iv)
         var iX = 0; var iY = 0; var iTX = 0f; var iTY = 0f
@@ -226,6 +245,8 @@ class ChatHeadOverlayService : Service() {
         val sh = resources.displayMetrics.heightPixels
 
         chatIcon?.setOnTouchListener { view, event ->
+            // Un MotionEvent detecta cuando el dedo baja (DOWN), se mueve (MOVE) o sube (UP).
+            // A partir de las deltas (diferencia entre posición original y actual) reposicionamos la vista.
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     iX = bubbleParams.x; iY = bubbleParams.y
@@ -444,8 +465,14 @@ class ChatHeadOverlayService : Service() {
 }
 
 /**
- * Boilerplate necesario para insertar una View de Jetpack Compose de forma standalone
- * en el `WindowManager` desde un `Service`.
+ * ---------------------------------------------------------------------------------
+ * INYECCIÓN DE COMPOSE EN COMPONENTES DEL SO (Services)
+ * ---------------------------------------------------------------------------------
+ * Jetpack Compose está diseñado estructuralmente para vivir dentro de una Activity o Fragment.
+ * Para poder incrustar una vista de Compose pura dentro de un Service en Background y dibujarlo 
+ * libremente por WindowManager, es necesario construir y falsificar manualmente el "contexto vital" 
+ * o "Ciclo de vida" (Lifecycle) que Compose demanda.
+ * Para eso creamos esta clase MyLifecycleOwner que implementa las interfaces de registro de estados.
  */
 private class MyLifecycleOwner : SavedStateRegistryOwner, LifecycleOwner, ViewModelStoreOwner {
     private val store = ViewModelStore()

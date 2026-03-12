@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -223,6 +224,16 @@ fun PantallaModosDeUso(
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showNotificationPermissionDialog by remember { mutableStateOf(false) }
     var showBubblePermissionDialog by remember { mutableStateOf(false) }
+    
+    // Variable para controlar la animación del Tooltip de 7 segundos
+    var showTooltip by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1000) // 1 segundo antes de aparecer
+        showTooltip = true
+        kotlinx.coroutines.delay(7000) // Se queda por 7 segundos
+        showTooltip = false
+    }
 
     // Función auxiliar para verificar si las burbujas están activas
     fun areBubblesEnabled(): Boolean {
@@ -420,7 +431,7 @@ fun PantallaModosDeUso(
                 .padding(horizontal = 32.dp, vertical = 80.dp) // Padding top para no solapar los botones superiores
         ) {
             // Sección Dinámica "Para Ti" basada en los Temas de Interés
-            SeccionParaTi()
+            SeccionParaTi(alClickTemasInteres = alClickTemasInteres)
             
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -498,161 +509,145 @@ fun PantallaModosDeUso(
                 )
             }
 
-            Spacer(modifier = Modifier.height(30.dp))
-
-            // Botón Temas de Interés
-            Button(
-                onClick = alClickTemasInteres,
-                modifier = Modifier
-                    .width(260.dp)
-                    .height(56.dp)
-                    .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFBC02D) // Amarillo mostaza para destacar
-                )
-            ) {
-                Text(
-                    text = "Temas de Interés",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Negro
-                )
-            }
-            
             Spacer(modifier = Modifier.height(40.dp))
+        }
+
+        // Botón Temas de Interés (Bombillo) Flotante Arriba a la Derecha con Tooltip
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 80.dp, end = 16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Tooltip animado que dura visible 7 segundos
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showTooltip,
+                    enter = androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(500)
+                    ) + androidx.compose.animation.expandHorizontally(
+                        expandFrom = Alignment.End, 
+                        animationSpec = androidx.compose.animation.core.tween(500)
+                    ),
+                    exit = androidx.compose.animation.fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(500)
+                    ) + androidx.compose.animation.shrinkHorizontally(
+                        shrinkTowards = Alignment.End, 
+                        animationSpec = androidx.compose.animation.core.tween(500)
+                    )
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .widthIn(max = 200.dp)
+                            .padding(end = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp, topEnd = 4.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Personaliza tu experiencia",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Toca aquí para elegir tus Temas de Interés y ver contenido adaptado a ti.",
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // Bombillo ajustado de tamaño
+                IconButton(
+                    onClick = {
+                        showTooltip = false // Lo ocultamos al tocar
+                        alClickTemasInteres()
+                    },
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color(0xFFFFF59D).copy(alpha = 0.9f), Color.Transparent),
+                                radius = 120f
+                            ),
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lightbulb,
+                        contentDescription = "Temas de Interés",
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun SeccionParaTi() {
+fun SeccionParaTi(alClickTemasInteres: () -> Unit) {
     val context = LocalContext.current
-    val temasElegidos by remember {
-        mutableStateOf(PreferenciasInteresManager.obtenerTemas(context))
+    var temasElegidos by remember { mutableStateOf(PreferenciasInteresManager.obtenerTemas(context)) }
+    var fraseDelDia by remember { mutableStateOf("") }
+    
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                // Actualizar temas elegidos y generar nueva frase cada vez que la pantalla vuelve al frente
+                temasElegidos = PreferenciasInteresManager.obtenerTemas(context)
+                if (temasElegidos.isNotEmpty()) {
+                    fraseDelDia = GeneradorContenidoMock.generarFraseMotivacional(temasElegidos)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
-    // Solo mostramos si el usuario ha elegido temas
-    if (temasElegidos.isNotEmpty()) {
-        val fraseDelDia by remember { mutableStateOf(GeneradorContenidoMock.generarFraseMotivacional(temasElegidos)) }
-        val noticiasRecomendadas by remember { mutableStateOf(GeneradorContenidoMock.obtenerNoticiasParaTemas(temasElegidos)) }
-
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Text(
-                text = "Para ti",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Negro
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Frase motivacional
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (temasElegidos.isNotEmpty() && fraseDelDia.isNotEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
             ) {
                 Text(
-                    text = "\"$fraseDelDia\"",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                    modifier = Modifier.padding(16.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (noticiasRecomendadas.isNotEmpty()) {
-                Text(
-                    text = "Recomendaciones:",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    text = "Para ti",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
                     color = Negro
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                
+                // Frase motivacional
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(noticiasRecomendadas) { articulo ->
-                        Card(
-                            modifier = Modifier.width(240.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                // Etiqueta del Tema
-                                Surface(
-                                    color = MaterialTheme.colorScheme.secondaryContainer,
-                                    shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    Text(
-                                        text = articulo.tema,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                                
-                                Text(
-                                    text = articulo.titulo,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 2,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(text = articulo.fuente, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                    Text(text = articulo.tiempoLectura, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                                }
-                            }
-                        }
-                    }
+                    Text(
+                        text = "\"$fraseDelDia\"",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
-    } else {
-        // Mensaje animando a configurar temas
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Personaliza tu experiencia",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Selecciona tus Temas de Interés abajo para ver contenido adaptado a ti.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
+        // Si la lista de temas está vacía, no mostramos nada en esta sección ya que el bombillo flotante 
+        // superior se encarga de recordarle al usuario configurar sus temas.
     }
 }
