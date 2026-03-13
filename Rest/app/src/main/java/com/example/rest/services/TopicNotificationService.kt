@@ -143,6 +143,11 @@ class TopicNotificationService : Service() {
             // le entregamos los datos al repositorio central (NotificationRepository).
             // Cualquier oyente que observe a ese repositorio (como la Burbuja ChatHead)
             // reaccionará de manera reactiva y se encargará de mostrarla en la UI de inmediato.
+            
+            // ¡CRÍTICO! Asegurarnos de que el Overlay Services que dibuja la burbuja esté vivo 
+            // y observando el repositorio antes de inyectar la nueva notificación.
+            com.example.rest.ChatHeadManager.launchOverlayService(this)
+
             NotificationRepository.addNotification(
                 title = titulo,
                 message = mensaje,
