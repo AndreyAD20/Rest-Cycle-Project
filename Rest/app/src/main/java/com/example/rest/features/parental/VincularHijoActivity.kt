@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -26,9 +27,11 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.rest.R
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.BaseComposeActivity
 import com.example.rest.data.repository.UsuarioRepository
@@ -87,9 +90,9 @@ fun PantallaVincularHijo(
     val scope = rememberCoroutineScope()
 
     // Validaciones en tiempo real
-    val codigoValido = codigoVinculacion.length == 6
+    val codigoValido = codigoVinculacion.length == 5
     val contrasenasCoinciden = contrasenaParental == confirmarContrasena
-    val contrasenaFuerte = contrasenaParental.length >= 6
+    val contrasenaFuerte = com.example.rest.utils.SecurityUtils.isValidPassword(contrasenaParental)
     val formularioValido = codigoValido && contrasenasCoinciden && contrasenaFuerte && !cargando
 
     val fondoGradiente = Brush.linearGradient(
@@ -181,9 +184,9 @@ fun PantallaVincularHijo(
                         OutlinedTextField(
                             value = codigoVinculacion,
                             onValueChange = {
-                                if (it.length <= 6) codigoVinculacion = it.uppercase()
+                                if (it.length <= 5) codigoVinculacion = it.uppercase()
                             },
-                            placeholder = { Text("Ej: AB45XC") },
+                            placeholder = { Text("Ej: AB4XC") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
@@ -199,7 +202,7 @@ fun PantallaVincularHijo(
                                         Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF2E7D32))
                                     } else {
                                         Text(
-                                            "${codigoVinculacion.length}/6",
+                                            "${codigoVinculacion.length}/5",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = Color(0xFF90A4AE)
                                         )
@@ -220,16 +223,11 @@ fun PantallaVincularHijo(
                             style = MaterialTheme.typography.labelLarge,
                             color = Color(0xFF37474F)
                         )
-                        Text(
-                            text = "Esta contraseña te permitirá hacer cambios en el control parental.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF78909C)
-                        )
 
                         OutlinedTextField(
                             value = contrasenaParental,
                             onValueChange = { contrasenaParental = it },
-                            placeholder = { Text("Mínimo 6 caracteres") },
+                            label = { Text("Nueva contraseña segura") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
@@ -241,21 +239,44 @@ fun PantallaVincularHijo(
                             trailingIcon = {
                                 IconButton(onClick = { verContrasena = !verContrasena }) {
                                     Icon(
-                                        if (verContrasena) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = null
+                                        if (verContrasena) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = if (verContrasena) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password)
                                     )
                                 }
                             },
+                            isError = contrasenaParental.isNotBlank() && !contrasenaFuerte,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color(0xFF00695C),
                                 unfocusedBorderColor = Color(0xFFB0BEC5)
                             )
                         )
 
+                        // Info banner de requisitos
+                        AnimatedVisibility(visible = contrasenaParental.isNotEmpty() && !contrasenaFuerte) {
+                            Card(
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Info, tint = Color(0xFFF57F17), contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Text(
+                                        "La contraseña debe tener: 8+ caracteres, 1 mayúscula, 1 número y 1 carácter especial (ej: @#\$)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF5D4037)
+                                    )
+                                }
+                            }
+                        }
+
                         OutlinedTextField(
                             value = confirmarContrasena,
                             onValueChange = { confirmarContrasena = it },
-                            placeholder = { Text("Confirmar contraseña") },
+                            label = { Text("Confirmar contraseña") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
@@ -267,8 +288,8 @@ fun PantallaVincularHijo(
                             trailingIcon = {
                                 IconButton(onClick = { verConfirmar = !verConfirmar }) {
                                     Icon(
-                                        if (verConfirmar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = null
+                                        if (verConfirmar) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = if (verConfirmar) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password)
                                     )
                                 }
                             },
@@ -311,9 +332,9 @@ fun PantallaVincularHijo(
                     onClick = {
                         when {
                             !codigoValido ->
-                                onError("El código debe tener exactamente 6 caracteres")
+                                onError("El código debe tener exactamente 5 caracteres")
                             !contrasenaFuerte ->
-                                onError("La contraseña parental debe tener al menos 6 caracteres")
+                                onError("La contraseña parental debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial")
                             !contrasenasCoinciden ->
                                 onError("Las contraseñas no coinciden")
                             else -> {

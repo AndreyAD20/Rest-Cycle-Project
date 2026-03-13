@@ -537,4 +537,44 @@ interface SupabaseApi {
         @Query("id") id: String,
         @Body update: Map<String, @JvmSuppressWildcards Any>
     ): Response<List<HistorialApp>>
+
+    // ==================== UBICACIONES ====================
+
+    /**
+     * Guardar nueva ubicación del hijo
+     */
+    @POST("ubicaciones")
+    suspend fun guardarUbicacion(
+        @Body ubicacion: UbicacionInput,
+        @Query("on_conflict") onConflict: String = "id_usuario"
+    ): Response<List<Ubicacion>>
+
+    /**
+     * Guardar una entrada en el historial de ubicaciones (cada hora)
+     */
+    @POST("historial_ubicacion")
+    suspend fun guardarHistorialUbicacion(
+        @Body historial: HistorialUbicacionInput
+    ): Response<List<Void>>
+
+    /**
+     * Obtener la última ubicación registrada de un usuario (hijo)
+     */
+    @GET("ubicaciones")
+    suspend fun obtenerUltimaUbicacion(
+        @Query("id_usuario") idUsuario: String,
+        @Query("order") order: String = "timestamp.desc",
+        @Query("limit") limit: String = "1",
+        @Query("select") select: String = "*"
+    ): Response<List<Ubicacion>>
+
+    /**
+     * Obtener el historial completo de ubicaciones de un usuario
+     */
+    @GET("historial_ubicacion")
+    suspend fun obtenerHistorialUbicacion(
+        @Query("id_usuario") idUsuario: String,
+        @Query("order") order: String = "fecha.desc,hora.desc",
+        @Query("select") select: String = "*"
+    ): Response<List<HistorialUbicacion>>
 }
