@@ -54,6 +54,18 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
     var idiomaExpandido by remember { mutableStateOf(false) }
     var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
     
+    // Estado para el diálogo de Burbuja
+    var mostrarDialogoBurbuja by remember { mutableStateOf(false) }
+    
+    val gradienteBrush = Brush.linearGradient(
+        colors = listOf(
+            MaterialTheme.colorScheme.primary,
+            MaterialTheme.colorScheme.primaryContainer
+        ),
+        start = Offset(0f, 0f),
+        end = Offset(0f, 2000f)
+    )
+    
     // Estado para los diálogos de Privacidad y Acerca de
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -143,17 +155,11 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
 
 
 
-                // Burbuja
                 item {
-                    OpcionConfiguracionToggle(
+                    OpcionConfiguracion(
                         icono = Icons.Default.MoreHoriz,
                         titulo = stringResource(R.string.settings_bubble),
-                        activado = burbujaActiva,
-                        onToggle = { isEnabled ->
-                            burbujaActiva = isEnabled
-                            sharedPrefs.edit().putBoolean("BURBUJA_ACTIVA", isEnabled).apply()
-                            android.widget.Toast.makeText(context, context.getString(R.string.toast_setting_saved), android.widget.Toast.LENGTH_SHORT).show()
-                        }
+                        onClick = { mostrarDialogoBurbuja = true }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -274,6 +280,173 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     }
                 }
             )
+        }
+    }
+    
+    if (mostrarDialogoBurbuja) {
+        DialogoConfiguracionBurbuja(
+            onDismiss = { mostrarDialogoBurbuja = false }
+        )
+    }
+}
+
+@Composable
+fun DialogoConfiguracionBurbuja(onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+    
+    // Estados del sonido
+    var sonidoExpandido by remember { mutableStateOf(false) }
+    var sonidoSeleccionado by remember { mutableStateOf(sharedPrefs.getString("BURBUJA_SONIDO", "Predeterminado") ?: "Predeterminado") }
+    val opcionesSonido = listOf("Predeterminado", "Burbuja (Pop)", "Campana Suave", "Silencioso")
+    
+    // Estados de temas de interés
+    val temasDisponibles = listOf("Educación", "Salud y Bienestar", "Tecnología", "Deportes", "Productividad")
+    val temasGuardados = sharedPrefs.getStringSet("BURBUJA_TEMAS", setOf("Salud y Bienestar", "Productividad")) ?: setOf()
+    
+    var temasSeleccionados by remember { mutableStateOf(temasGuardados.toMutableSet()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Configuración de Burbuja",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                // 1. Selector de Sonido
+                Text(
+                    text = "Sonido de la Burbuja",
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                ExposedDropdownMenuBoxContainer(
+                    valorSeleccionado = sonidoSeleccionado,
+                    opciones = opcionesSonido,
+                    onSeleccion = { sonidoSeleccionado = it }
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // 2. Multiselección de Temas de Interés
+                Text(
+                    text = "Temas de Interés",
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = "Selecciona qué tipo de contenido te gustaría ver en los reportes rápidos de las burbujas.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                temasDisponibles.forEach { tema ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val nuevoSet = temasSeleccionados.toMutableSet()
+                                if (nuevoSet.contains(tema)) nuevoSet.remove(tema) else nuevoSet.add(tema)
+                                temasSeleccionados = nuevoSet
+                            }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = temasSeleccionados.contains(tema),
+                            onCheckedChange = { isChecked ->
+                                val nuevoSet = temasSeleccionados.toMutableSet()
+                                if (isChecked) nuevoSet.add(tema) else nuevoSet.remove(tema)
+                                temasSeleccionados = nuevoSet
+                            }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = tema, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    // Guardar preferencias
+                    sharedPrefs.edit()
+                        .putString("BURBUJA_SONIDO", sonidoSeleccionado)
+                        .putStringSet("BURBUJA_TEMAS", temasSeleccionados)
+                        .apply()
+                    
+                    android.widget.Toast.makeText(context, "Configuración de burbuja guardada", android.widget.Toast.LENGTH_SHORT).show()
+                    onDismiss()
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+fun ExposedDropdownMenuBoxContainer(
+    valorSeleccionado: String,
+    opciones: List<String>,
+    onSeleccion: (String) -> Unit
+) {
+    var expandido by remember { mutableStateOf(false) }
+    
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(
+            onClick = { expandido = true },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = valorSeleccionado,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+        
+        DropdownMenu(
+            expanded = expandido,
+            onDismissRequest = { expandido = false },
+            modifier = Modifier.fillMaxWidth(0.8f)
+        ) {
+            opciones.forEach { opcion ->
+                DropdownMenuItem(
+                    text = { Text(opcion) },
+                    onClick = {
+                        onSeleccion(opcion)
+                        expandido = false
+                    }
+                )
+            }
         }
     }
 }

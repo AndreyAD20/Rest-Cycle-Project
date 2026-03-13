@@ -746,13 +746,35 @@ class AppMonitorService : Service() {
      * Crea la notificación foreground
      */
     private fun createNotification(contentText: String = "Registrando sesiones de apps"): Notification {
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val intent = Intent(this, com.example.rest.features.home.InicioComposeActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("RestCycle - Monitoreando uso")
             .setContentText(contentText)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setOngoing(true)
-            .build()
+            .setContentIntent(pendingIntent)
+
+        // Integración de API de Burbujas
+        val bubbleData = com.example.rest.utils.BubbleHelper.createBubbleMetadata(this, pendingIntent)
+        if (bubbleData != null) {
+            builder.setBubbleMetadata(bubbleData)
+            val person = com.example.rest.utils.BubbleHelper.createBotPerson()
+            builder.addPerson(person)
+            builder.setStyle(NotificationCompat.MessagingStyle(person)
+                .addMessage(contentText, System.currentTimeMillis(), person))
+        }
+
+        return builder.build()
     }
     
     /**

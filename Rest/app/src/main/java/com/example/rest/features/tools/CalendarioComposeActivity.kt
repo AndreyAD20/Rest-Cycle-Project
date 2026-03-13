@@ -40,6 +40,10 @@ import java.util.Locale
 import com.example.rest.data.models.Evento
 import com.example.rest.network.SupabaseClient
 import com.example.rest.ui.components.dialogs.DialogoEvento
+import com.example.rest.EventoNotificationManager
+import com.example.rest.data.models.EventoInput
+import com.example.rest.TaskAlarmReceiver
+import com.example.rest.utils.BubbleHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
@@ -47,6 +51,15 @@ import android.widget.Toast
 import androidx.compose.ui.res.stringResource
 import com.example.rest.R
 import kotlinx.coroutines.launch
+import android.util.Log
+import android.app.AlarmManager
+import android.app.PendingIntent
+import android.app.NotificationManager
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.os.Build
+import com.example.rest.ChatHeadManager
 
 class CalendarioComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,15 +88,48 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
     // Estado de datos
     var eventos by remember { mutableStateOf<List<Evento>>(emptyList()) }
     var mostrarDialogo by remember { mutableStateOf(false) }
-    var eventoAEditar by remember { mutableStateOf<Evento?>(null) } // Evento seleccionado para editar
+    var eventoAEditar by remember { mutableStateOf<Evento?>(null) }
+    var mostrarDialogoBurbujas by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
-    
-    // Cargar eventos del usuario
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // ── Paso 1: Publicar shortcut de burbujas desde primer plano (siempre funciona) ──
+    LaunchedEffect(Unit) {
+        BubbleHelper.publishCalendarioShortcut(context)
+        Log.d("CalendarioDEBUG", "Shortcut publicado desde primer plano")
+    }
+
+    // ── Verificar permiso de burbujas (Android 10+) ──────────────────
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val nm = context.getSystemService(NotificationManager::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val pref = nm.bubblePreference
+                val prefLabel = when (pref) {
+                    NotificationManager.BUBBLE_PREFERENCE_ALL      -> "ALL ✅"
+                    NotificationManager.BUBBLE_PREFERENCE_SELECTED -> "SELECTED ⚠️"
+                    NotificationManager.BUBBLE_PREFERENCE_NONE     -> "NONE ❌"
+                    else                                           -> "DESCONOCIDO($pref)"
+                }
+                Log.d("CalendarioDEBUG", "BubblePreference: $prefLabel")
+                // Mostrar dialog si NO es ALL — SELECTED no permite nuevas conversaciones automáticamente
+                if (pref != NotificationManager.BUBBLE_PREFERENCE_ALL) {
+                    mostrarDialogoBurbujas = true
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                if (!nm.areBubblesAllowed()) {
+                    mostrarDialogoBurbujas = true
+                }
+            }
+        }
+    }
+
+    // ── Cargar eventos del usuario ───────────────────────────────────────────
     LaunchedEffect(Unit) {
         val prefs = com.example.rest.utils.PreferencesManager(context)
         val idUsuario = prefs.getUserId()
-        
         if (idUsuario != -1) {
             withContext(Dispatchers.IO) {
                 try {
@@ -92,10 +138,46 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                         eventos = response.body() ?: emptyList()
                     }
                 } catch (e: Exception) {
-                    // Error silencioso o log
+                    Log.e("CalendarioDEBUG", "Error cargando eventos: ${e.message}")
                 }
             }
         }
+    }
+
+    // ── Dialog: activar burbujas ──────────────────────────────────────────────
+    if (mostrarDialogoBurbujas) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoBurbujas = false },
+            title = { Text("🫧 Activa las Burbujas") },
+            text = {
+                Text(
+                    "Para recibir alertas de eventos como burbujas flotantes (estilo Messenger), " +
+                    "activa las burbujas para Rest Cycle en Ajustes.\n\n" +
+                    "Ajustes → Notificaciones → Rest Cycle → Burbujas → Todos"
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    mostrarDialogoBurbujas = false
+                    try {
+                        val i = Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS).apply {
+                            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(i)
+                    } catch (e: Exception) {
+                        val i = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(i)
+                    }
+                }) { Text("Ir a Ajustes") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDialogoBurbujas = false }) { Text("Ahora no") }
+            }
+        )
     }
 
     Scaffold(
@@ -108,8 +190,57 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                     }
                 },
                 actions = {
+                    // ── Botón Chat Head (Overlay) ───────────────────────────────────────
+                    IconButton(onClick = {
+                        try {
+                            ChatHeadManager.showChat(context, "chat_01", "Conversación 01")
+                        } catch (e: Exception) {
+                            val msg = "ERROR Overlay: ${e.message}"
+                            Log.e("CalendarioDEBUG", msg, e)
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                    }) {
+                        Text("💬", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+                    }
+
+                    // ── Botón diagnóstico (Burbuja Nativa) ──────────────────────────────
+                    IconButton(onClick = {
+                        try {
+                            val nm = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE)
+                                    as android.app.NotificationManager
+
+                            // ── Estado del permiso de burbujas ────────────────────────────
+                            val prefMsg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                when (nm.bubblePreference) {
+                                    NotificationManager.BUBBLE_PREFERENCE_ALL      -> "🟢 ALL — burbujas activas"
+                                    NotificationManager.BUBBLE_PREFERENCE_SELECTED -> "🟡 SELECTED — debes activar en Ajustes"
+                                    NotificationManager.BUBBLE_PREFERENCE_NONE     -> "🔴 NONE — burbujas desactivadas"
+                                    else -> "❓ pref=${nm.bubblePreference}"
+                                }
+                            } else "Android < 12"
+
+                            Log.d("CalendarioDEBUG", "BubblePref: $prefMsg")
+                            Toast.makeText(context, prefMsg, Toast.LENGTH_LONG).show()
+
+                            // ── Notificación con BubbleMetadata desde primer plano ────────
+                            EventoNotificationManager.showEventoNotification(
+                                context = context,
+                                notifId = 88888,
+                                titulo  = "Prueba Burbuja 🫧",
+                                tipo    = "Test"
+                            )
+
+                        } catch (e: Exception) {
+                            val msg = "ERROR: ${e.javaClass.simpleName}: ${e.message}"
+                            Log.e("CalendarioDEBUG", msg, e)
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                        }
+                    }) {
+                        Text("🧪", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+                    }
+
                     // Botón para alternar vista
-                    IconButton(onClick = { 
+                    IconButton(onClick = {
                         vistaActual = if (vistaActual == "dia") "lista" else "dia"
                     }) {
                         Icon(
@@ -122,6 +253,7 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { mostrarDialogo = true },
@@ -189,13 +321,11 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                         scope.launch(Dispatchers.IO) {
                             val prefs = com.example.rest.utils.PreferencesManager(context)
                             val idUsuario = prefs.getUserId()
-                            
                             if (idUsuario != -1) {
                                 try {
-                                    val res = if (eventoAEditar != null) {
-                                        // Actualizar evento existente
-                                        val eventoActualizado = Evento(
-                                            id = eventoAEditar!!.id,
+                                    if (eventoAEditar != null) {
+                                        // ── EDITAR evento existente ──────────────────────────────
+                                        val eventoActualizado = EventoInput(
                                             idUsuario = idUsuario,
                                             titulo = titulo,
                                             tipo = tipo,
@@ -204,7 +334,37 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                             latitud = lat,
                                             longitud = long
                                         )
-                                        SupabaseClient.api.actualizarEvento("eq.${eventoAEditar!!.id}", eventoActualizado)
+                                        val res = SupabaseClient.api.actualizarEvento("eq.${eventoAEditar!!.id}", eventoActualizado)
+                                        if (res.isSuccessful) {
+                                            // Cancelar alarma vieja y reprogramar con datos nuevos
+                                            eventoAEditar?.id?.let { oldId ->
+                                                EventoNotificationManager.cancelEventoAlarm(context, oldId)
+                                            }
+                                            // Usar el evento devuelto por Supabase, o construir uno con los datos conocidos
+                                            val eventoConId: Evento = res.body()?.firstOrNull() ?: Evento(
+                                                id = eventoAEditar!!.id,
+                                                idUsuario = idUsuario,
+                                                titulo = titulo,
+                                                tipo = tipo,
+                                                fechaInicio = inicioIso,
+                                                fechaFin = finIso,
+                                                latitud = lat,
+                                                longitud = long
+                                            )
+                                            EventoNotificationManager.scheduleEventoAlarm(context, eventoConId)
+
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(context, context.getString(R.string.calendar_event_updated), Toast.LENGTH_SHORT).show()
+                                                eventoAEditar = null
+                                                val refresh = SupabaseClient.api.obtenerEventosPorUsuario(idUsuario = "eq.$idUsuario")
+                                                if (refresh.isSuccessful) eventos = refresh.body() ?: emptyList()
+                                            }
+                                        } else {
+                                            withContext(Dispatchers.Main) {
+                                                val errorBody = res.errorBody()?.string() ?: "Error desconocido"
+                                                Toast.makeText(context, context.getString(R.string.calendar_error_generic, "${res.code()}: $errorBody"), Toast.LENGTH_LONG).show()
+                                            }
+                                        }
                                     } else {
                                         // Validar fecha futura o actual
                                         val fechaInicio = try {
@@ -231,37 +391,36 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                             latitud = lat,
                                             longitud = long
                                         )
-                                        SupabaseClient.api.crearEvento(nuevoEvento)
-                                    }
-                                    if (res.isSuccessful) {
-                                        withContext(Dispatchers.Main) {
-                                            val mensaje = if (eventoAEditar != null) context.getString(R.string.calendar_event_updated) else context.getString(R.string.calendar_event_created)
-                                            Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
-                                            eventoAEditar = null
-                                            // Recargar eventos
-                                            val refresh = SupabaseClient.api.obtenerEventosPorUsuario(idUsuario = "eq.$idUsuario")
-                                            if (refresh.isSuccessful) {
-                                                eventos = refresh.body() ?: emptyList()
+                                        val res = SupabaseClient.api.crearEvento(nuevoEvento)
+                                        if (res.isSuccessful) {
+                                            // El ID real viene en la respuesta de Supabase
+                                            val eventoCreado = res.body()?.firstOrNull()
+                                            if (eventoCreado != null) {
+                                                EventoNotificationManager.scheduleEventoAlarm(context, eventoCreado)
                                             }
-                                        }
-                                    } else {
-                                        withContext(Dispatchers.Main) {
-                                            val errorBody = res.errorBody()?.string() ?: "Error desconocido"
-                                            Toast.makeText(context, context.getString(R.string.calendar_error_generic, "${res.code()}: $errorBody"), Toast.LENGTH_LONG).show()
+
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(context, context.getString(R.string.calendar_event_created), Toast.LENGTH_SHORT).show()
+                                                eventoAEditar = null
+                                                val refresh = SupabaseClient.api.obtenerEventosPorUsuario(idUsuario = "eq.$idUsuario")
+                                                if (refresh.isSuccessful) eventos = refresh.body() ?: emptyList()
+                                            }
+                                        } else {
+                                            withContext(Dispatchers.Main) {
+                                                val errorBody = res.errorBody()?.string() ?: "Error desconocido"
+                                                Toast.makeText(context, context.getString(R.string.calendar_error_generic, "${res.code()}: $errorBody"), Toast.LENGTH_LONG).show()
+                                            }
                                         }
                                     }
                                 } catch (e: Exception) {
                                      withContext(Dispatchers.Main) {
                                          Toast.makeText(context, context.getString(R.string.calendar_error_create, e.message ?: ""), Toast.LENGTH_SHORT).show()
                                      }
-                                } catch (e: Exception) {
-                                     withContext(Dispatchers.Main) {
-                                         Toast.makeText(context, context.getString(R.string.calendar_error_generic, e.message ?: ""), Toast.LENGTH_SHORT).show()
-                                     }
                                 }
                             }
                         }
                     },
+
                     onEliminar = if (eventoAEditar != null) {
                         {
                             mostrarDialogo = false
@@ -270,6 +429,10 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                     val res = SupabaseClient.api.eliminarEvento("eq.${eventoAEditar!!.id}")
                                     withContext(Dispatchers.Main) {
                                         if (res.isSuccessful) {
+                                            // Cancelar alarma del evento eliminado
+                                            eventoAEditar?.id?.let { id ->
+                                                EventoNotificationManager.cancelEventoAlarm(context, id)
+                                            }
                                             Toast.makeText(context, context.getString(R.string.calendar_event_deleted), Toast.LENGTH_SHORT).show()
                                             eventoAEditar = null
                                             // Recargar eventos

@@ -3,7 +3,10 @@ package com.example.rest.data.models
 import com.google.gson.annotations.SerializedName
 
 /**
- * Modelo de entrada para crear un evento (sin ID)
+ * Modelo para CREAR o ACTUALIZAR un evento (POST/PATCH a Supabase).
+ * NO incluye campos opcionales nulos (latitud, longitud, ubicacion_nombre)
+ * cuando no tienen valor, para evitar el error 23502 (NOT NULL violation)
+ * causado por serializeNulls() en el cliente Gson.
  */
 data class EventoInput(
     @SerializedName("id_usuario") val idUsuario: Int,

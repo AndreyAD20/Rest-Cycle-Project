@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Toast NotificationPROM: ícono + título + subtítulo -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:maxWidth="240dp"
+    android:orientation="horizontal"
+    android:background="@drawable/tooltip_burbuja_bg"
+    android:paddingStart="12dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:gravity="center_vertical"
+    android:elevation="8dp">
+
+    <!-- Ícono representativo de la categoría -->
+    <ImageView
+        android:id="@+id/tooltip_icon_iv"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@android:drawable/ic_popup_reminder"
+        android:tint="@android:color/white"
+        android:layout_marginEnd="10dp"
+        android:scaleType="fitCenter" />
+
+    <!-- Textos: título (negrita) + subtítulo (mensaje breve) -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/tooltip_title_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Notificación"
+            android:textColor="@android:color/white"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/tooltip_subtitle_tv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#DDFFFFFF"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:layout_marginTop="1dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</LinearLayout>
