@@ -95,8 +95,6 @@
 | Personalización de notificaciones | 🟡 Media  | RF.32               |
 | Alerta de auriculares             | 🟢 Baja   | RF.34               |
 
-**Tecnologías sugeridas**: Firebase Cloud Messaging, WorkManager
-
 ---
 
 ### 6. Control Parental Avanzado
@@ -125,8 +123,6 @@
 | Historial de navegación | 🟡 Media  | RF.25      |
 | Lista negra de sitios   | 🟡 Media  | RF.26      |
 
-**Tecnologías sugeridas**: AccessibilityService, VPN API
-
 ---
 
 ### 8. Geolocalización
@@ -151,8 +147,6 @@
 | Selección de plan     | 🟡 Media  | RF.5       |
 | Pagos y suscripciones | 🟡 Media  | RF.5       |
 | Features premium      | 🟡 Media  | RF.5       |
-
-**Tecnologías sugeridas**: Google Play Billing Library
 
 ---
 

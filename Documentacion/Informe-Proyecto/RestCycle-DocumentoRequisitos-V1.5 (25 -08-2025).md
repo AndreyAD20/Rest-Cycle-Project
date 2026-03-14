@@ -55,7 +55,7 @@ Permitir vincular cuentas entre el usuario que gestiona y el usuario gestionado.
 RF.9 [Alta] CREACIÓN DE CONTRASEÑA PARA USUARIO GESTIONADO  
 Permitir la creación de contraseña específica para el usuario gestionado.
 
-RF.10 [Media] CONSULTA DE HISTORIAL DE USO  
+RF.10 [Media] CONSULTA DE HISTORIAL DE USO 
 Permitir la visualización de estadísticas de uso de aplicaciones por parte del usuario.
 
 RF.11 [Media] VISUALIZACIÓN DE TAREAS PENDIENTES  
@@ -143,7 +143,7 @@ RF.38 [Media] INFORME DE TIEMPO EN APLICACIONES
 Permitir solicitar informes del tiempo de uso por aplicación y filtrar por tipo de aplicación.
 
 RF.39 [Media] ESTABLECIMIENTO DE HORARIO DE DESCANSO  
-Permitir definir horas de descanso en las que el dispositivo no se puede usar.
+Permitir definir horas de descanso en el dispositivo para reducir tu actividad digital y descansar mejor.
 
 RF.40 [Media] DEFINICIÓN DE MEDIDAS DURANTE EL DESCANSO  
 Permitir establecer acciones que se aplican durante el horario de descanso.
