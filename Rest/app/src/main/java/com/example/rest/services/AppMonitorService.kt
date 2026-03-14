@@ -163,7 +163,8 @@ class AppMonitorService : Service() {
             startForeground(
                 NOTIFICATION_ID, 
                 createNotification(), 
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or 
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
             )
         } else {
             startForeground(NOTIFICATION_ID, createNotification())

@@ -54,9 +54,19 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
     var idiomaExpandido by remember { mutableStateOf(false) }
     var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
     
-    // Estado para los diálogos de Privacidad y Acerca de
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+
+    // Gradiente idéntico al de Selección de Modos y Registro
+    val brochaGradiente = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
+        start = Offset(0f, 0f),
+        end = Offset(1000f, 2000f)
+    )
 
 
     Scaffold(
@@ -82,7 +92,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.primary)
+                .background(brochaGradiente)
                 .padding(paddingValues)
         ) {
             LazyColumn(
@@ -290,8 +300,9 @@ fun OpcionConfiguracion(
             .height(64.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.15f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier
@@ -308,7 +319,7 @@ fun OpcionConfiguracion(
                 Icon(
                     imageVector = icono,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = Color.White,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -319,14 +330,14 @@ fun OpcionConfiguracion(
                 text = titulo,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color.White,
                 modifier = Modifier.weight(1f)
             )
 
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -345,8 +356,9 @@ fun OpcionConfiguracionToggle(
             .fillMaxWidth()
             .height(64.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.15f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier
@@ -363,7 +375,7 @@ fun OpcionConfiguracionToggle(
                 Icon(
                     imageVector = icono,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = Color.White,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -374,7 +386,7 @@ fun OpcionConfiguracionToggle(
                 text = titulo,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color.White,
                 modifier = Modifier.weight(1f)
             )
             
@@ -382,10 +394,10 @@ fun OpcionConfiguracionToggle(
                 checked = activado,
                 onCheckedChange = onToggle,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                checkedThumbColor = Color.White,
+                checkedTrackColor = Color.White.copy(alpha = 0.5f),
+                uncheckedThumbColor = Color.White.copy(alpha = 0.5f),
+                uncheckedTrackColor = Color.White.copy(alpha = 0.2f)
                 ),
                 modifier = Modifier.scale(0.9f)
             )
@@ -408,8 +420,9 @@ fun OpcionConfiguracionDropdown(
             .fillMaxWidth()
             .clickable { onExpandirCambio(!expandido) },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.15f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
     ) {
         Column {
             Row(
@@ -428,7 +441,7 @@ fun OpcionConfiguracionDropdown(
                     Icon(
                         imageVector = icono,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -439,21 +452,21 @@ fun OpcionConfiguracionDropdown(
                     text = titulo,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = Color.White,
                     modifier = Modifier.weight(1f)
                 )
 
                 Text(
                     text = valorSeleccionado,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color.White.copy(alpha = 0.8f),
                     modifier = Modifier.padding(end = 8.dp)
                 )
                 
                 Icon(
                     imageVector = if (expandido) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = Color.White.copy(alpha = 0.8f)
                 )
             }
             
