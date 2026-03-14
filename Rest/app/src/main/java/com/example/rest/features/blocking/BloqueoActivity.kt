@@ -42,14 +42,24 @@ class BloqueoActivity : BaseComposeActivity() {
             return Intent(context, BloqueoActivity::class.java).apply {
                 putExtra(EXTRA_APP_NAME, appName)
                 putExtra(EXTRA_REASON, reason)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                // singleTask + SINGLE_TOP: si la actividad ya existe, la trae al frente sin duplicarla
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+        renderContent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        renderContent(intent)
+    }
+
+    private fun renderContent(intent: Intent) {
         val appName = intent.getStringExtra(EXTRA_APP_NAME) ?: "Aplicación"
         val reason = intent.getStringExtra(EXTRA_REASON) ?: "Acceso restringido"
 

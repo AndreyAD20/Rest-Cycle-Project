@@ -132,6 +132,12 @@ class RegistroComposeActivity : BaseComposeActivity() {
                     is UsuarioRepository.Result.Loading -> {
                         // Ya está manejado por el estado cargando
                     }
+                    is UsuarioRepository.Result.NotVerified -> {
+                        // Not expected from registrarConVerificacion, but required for exhaustiveness
+                    }
+                    is UsuarioRepository.Result.Requires2FA -> {
+                        // Not expected from registrarConVerificacion, but required for exhaustiveness
+                    }
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -200,14 +206,15 @@ fun PantallaRegistro(
     val pinFocus = remember { FocusRequester() }
     val confirmarPinFocus = remember { FocusRequester() }
 
-    // Gradiente de fondo cyan/turquesa
+    // Gradiente id\u00e9ntico al de Selecci\u00f3n de Modos
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            Primario,
-            Color(0xFF80DEEA)
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
 
     Box(
@@ -233,7 +240,7 @@ fun PantallaRegistro(
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = "Cambiar Idioma",
-                        tint = Negro,
+                        tint = Color.White,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -291,7 +298,7 @@ fun PantallaRegistro(
             Icon(
                 imageVector = Icons.Default.ArrowBack,
                 contentDescription = stringResource(R.string.content_desc_back),
-                tint = Negro,
+                tint = Color.White,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -347,7 +354,7 @@ fun PantallaRegistro(
                     Text(
                         stringResource(R.string.register_name_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     ) 
                 },
                 modifier = Modifier
@@ -355,12 +362,18 @@ fun PantallaRegistro(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                    focusedLeadingIconColor = Color.White,
+                    unfocusedLeadingIconColor = Color.White.copy(alpha = 0.7f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(
@@ -374,7 +387,7 @@ fun PantallaRegistro(
                     Icon(
                         imageVector = Icons.Filled.Person,
                         contentDescription = null,
-                        tint = Color(0xFF757575)
+                        tint = Color.White.copy(alpha = 0.8f)
                     )
                 }
             )
@@ -389,7 +402,7 @@ fun PantallaRegistro(
                     Text(
                         stringResource(R.string.register_lastname_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     ) 
                 },
                 modifier = Modifier
@@ -398,12 +411,18 @@ fun PantallaRegistro(
                     .focusRequester(apellidoFocus),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                    focusedLeadingIconColor = Color.White,
+                    unfocusedLeadingIconColor = Color.White.copy(alpha = 0.7f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(onNext = { correoFocus.requestFocus() }),
@@ -413,7 +432,7 @@ fun PantallaRegistro(
                     Icon(
                         imageVector = Icons.Filled.Person,
                         contentDescription = null,
-                        tint = Color(0xFF757575)
+                        tint = Color.White.copy(alpha = 0.8f)
                     )
                 }
             )
@@ -428,7 +447,7 @@ fun PantallaRegistro(
                     Text(
                         stringResource(R.string.register_email_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     ) 
                 },
                 modifier = Modifier
@@ -437,12 +456,18 @@ fun PantallaRegistro(
                     .focusRequester(correoFocus),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                    focusedLeadingIconColor = Color.White,
+                    unfocusedLeadingIconColor = Color.White.copy(alpha = 0.7f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
@@ -455,7 +480,7 @@ fun PantallaRegistro(
                     Icon(
                         imageVector = Icons.Filled.Email,
                         contentDescription = null,
-                        tint = Color(0xFF757575)
+                        tint = Color.White.copy(alpha = 0.8f)
                     )
                 }
             )
@@ -472,13 +497,13 @@ fun PantallaRegistro(
                     .height(56.dp)
                     .focusRequester(fechaFocus),
                 shape = RoundedCornerShape(30.dp),
-                focusedContainerColor = Blanco,
-                unfocusedContainerColor = Blanco,
-                focusedBorderColor = Color(0xFF6B4EFF),
-                unfocusedBorderColor = Color(0xFFB0BEC5),
-                focusedTextColor = Negro,
-                unfocusedTextColor = Negro,
-                placeholderColor = Color(0xFF757575),
+                focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                focusedBorderColor = Color.White,
+                unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                placeholderColor = Color.White.copy(alpha = 0.6f),
                 textStyle = MaterialTheme.typography.bodyLarge,
                 keyboardActions = KeyboardActions(onNext = { pinFocus.requestFocus() })
             )
@@ -493,7 +518,7 @@ fun PantallaRegistro(
                     Text(
                         stringResource(R.string.register_password_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     ) 
                 },
                 modifier = Modifier
@@ -502,12 +527,18 @@ fun PantallaRegistro(
                     .focusRequester(pinFocus),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                    focusedLeadingIconColor = Color.White,
+                    unfocusedLeadingIconColor = Color.White.copy(alpha = 0.7f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 visualTransformation = if (mostrarPin) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
@@ -521,7 +552,7 @@ fun PantallaRegistro(
                     Icon(
                         imageVector = Icons.Filled.Lock,
                         contentDescription = null,
-                        tint = Color(0xFF757575)
+                        tint = Color.White.copy(alpha = 0.8f)
                     )
                 },
                 trailingIcon = {
@@ -529,7 +560,7 @@ fun PantallaRegistro(
                         Icon(
                             imageVector = if (mostrarPin) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                             contentDescription = if (mostrarPin) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password),
-                            tint = Color(0xFF757575)
+                            tint = Color.White.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -545,7 +576,7 @@ fun PantallaRegistro(
                     Text(
                         stringResource(R.string.register_confirm_password_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     ) 
                 },
                 modifier = Modifier
@@ -554,12 +585,18 @@ fun PantallaRegistro(
                     .focusRequester(confirmarPinFocus),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                    focusedLeadingIconColor = Color.White,
+                    unfocusedLeadingIconColor = Color.White.copy(alpha = 0.7f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 visualTransformation = if (mostrarConfirmarPin) VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(
@@ -572,7 +609,7 @@ fun PantallaRegistro(
                     Icon(
                         imageVector = Icons.Filled.LockOpen,
                         contentDescription = null,
-                        tint = Color(0xFF757575)
+                        tint = Color.White.copy(alpha = 0.8f)
                     )
                 },
                 trailingIcon = {
@@ -580,7 +617,7 @@ fun PantallaRegistro(
                         Icon(
                             imageVector = if (mostrarConfirmarPin) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                             contentDescription = if (mostrarConfirmarPin) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password),
-                            tint = Color(0xFF757575)
+                            tint = Color.White.copy(alpha = 0.8f)
                         )
                     }
                 }
@@ -600,16 +637,16 @@ fun PantallaRegistro(
                     checked = aceptaTerminos,
                     onCheckedChange = { aceptaTerminos = it },
                     colors = CheckboxDefaults.colors(
-                        checkedColor = Color(0xFF6B4EFF),
-                        uncheckedColor = Color(0xFF424242),
-                        checkmarkColor = Blanco
+                        checkedColor = Color.White,
+                        uncheckedColor = Color.White.copy(alpha = 0.7f),
+                        checkmarkColor = Color(0xFF0D47A1)
                     ),
                     modifier = Modifier.size(32.dp)
                 )
                 Text(
                     text = stringResource(R.string.register_accept_terms),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF004D40),
+                    color = Color.White.copy(alpha = 0.9f),
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -674,46 +711,46 @@ fun PantallaRegistro(
                                 return@Button
                             }
 
-                            // Asignación automática de rol según edad
-                            val rolAutomatico = if (mayorEdad) "padre" else "hijo"
-
+                            // Asignación: true si es mayor de edad (>= 18)
                             val request = RegistroRequest(
                                 nombre = nombre,
                                 apellido = apellido.ifBlank { null },
                                 correo = correo,
                                 fechaNacimiento = fechaFormateada,
                                 contraseña = com.example.rest.utils.SecurityUtils.hashPassword(pin),
-                                rol = rolAutomatico
+                                mayorEdad = mayorEdad
                             )
                             alClickRegistrar(request, pin)
                         }
                     }
                 },
                 modifier = Modifier
-                    .width(158.dp)
-                    .height(48.dp)
+                    .width(220.dp)
+                    .height(52.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(8.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primario
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
                 ),
                 enabled = !cargando
             ) {
                 if (cargando) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Negro,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         text = stringResource(R.string.register_button_text),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Negro
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = Color.White
                     )
                 }
             }

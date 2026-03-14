@@ -44,9 +44,13 @@ class TareasComposeActivity : BaseComposeActivity() {
 @Composable
 fun PantallaTareas(onBackClick: () -> Unit) {
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Color(0xFF80DEEA), Primario),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     var eventosPendientes by remember { mutableStateOf<List<Evento>>(emptyList()) }
@@ -94,12 +98,12 @@ fun PantallaTareas(onBackClick: () -> Unit) {
                 title = {
                     Text(
                         "Actividades Pendientes",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Color.White)
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, "Regresar", tint = Negro)
+                        Icon(Icons.Default.ArrowBack, "Regresar", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)

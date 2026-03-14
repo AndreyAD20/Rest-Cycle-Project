@@ -382,10 +382,15 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
         )
     }
 
+    // Gradiente idéntico al de Selección de Modos
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Primario, Color(0xFF80DEEA)),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     ModalNavigationDrawer(
@@ -400,7 +405,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                         .fillMaxSize()
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(Primario, Color(0xFF80DEEA)),
+                                colors = listOf(Color(0xFFECE9E6), Color(0xFFFFFFFF)),
                                 start = Offset(0f, 0f),
                                 end = Offset(0f, 2000f)
                             )
@@ -551,15 +556,15 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
         Scaffold(
             topBar = {
                CenterAlignedTopAppBar(
-                    title = { },
+                    title = { Text(stringResource(R.string.home_healthy_habits), color = Color.White, fontWeight = FontWeight.SemiBold) },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, "Menu", tint = Negro)
+                            Icon(Icons.Default.Menu, "Menu", tint = Color.White)
                         }
                     },
                     actions = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.Default.ArrowBack, "Regresar", tint = Negro)
+                            Icon(Icons.Default.ArrowBack, "Regresar", tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -577,61 +582,86 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
-                        .padding(24.dp),
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(240.dp)
-                            .clip(CircleShape)
-                            .background(Blanco)
-                            .border(4.dp, Color(0xFF004D40), CircleShape)
-                            .clickable { showImageSourceDialog = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (profileImageBitmap != null) {
-                            androidx.compose.foundation.Image(
-                                bitmap = profileImageBitmap!!.asImageBitmap(),
-                                contentDescription = stringResource(R.string.profile_photo_title),
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = stringResource(R.string.settings_profile),
-                                modifier = Modifier.size(120.dp),
-                                tint = Negro
-                            )
-                        }
-                        
-                        // Indicador de carga (Overlay)
-                        if (isCheckingUpdate) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(32.dp),
-                                color = Primario, 
-                                strokeWidth = 3.dp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
+                    
                     // Obtener nombre de usuario
                     val context = androidx.compose.ui.platform.LocalContext.current
                     val nombreUsuario = remember {
                         val prefs = com.example.rest.utils.PreferencesManager(context)
                         val rawName = prefs.getUserName() ?: context.getString(R.string.fallback_user_name)
-                        rawName.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                        rawName.substringBefore(" ").replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
                     }
 
-                    Text(
-                        text = nombreUsuario,
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = Negro
-                    )
+                    // Glassmorphic Profile Header
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 32.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Avatar
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.5f))
+                                    .border(2.dp, Color.White, CircleShape)
+                                    .clickable { showImageSourceDialog = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (profileImageBitmap != null) {
+                                    androidx.compose.foundation.Image(
+                                        bitmap = profileImageBitmap!!.asImageBitmap(),
+                                        contentDescription = stringResource(R.string.profile_photo_title),
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = stringResource(R.string.settings_profile),
+                                        modifier = Modifier.size(40.dp),
+                                        tint = Negro
+                                    )
+                                }
+                                
+                                if (isCheckingUpdate) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Color(0xFF00BFA5), 
+                                        strokeWidth = 2.5.dp
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.width(20.dp))
+                            
+                            Column {
+                                Text(
+                                    text = "¡Hola,",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Negro.copy(alpha = 0.8f)
+                                )
+                                Text(
+                                    text = "$nombreUsuario!",
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold
+                                    ),
+                                    color = Negro
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(32.dp))
 
@@ -656,17 +686,23 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                                 Pair(evento.fechaInicio.take(10), "")
                             }
 
-                            Text(
-                                text = stringResource(R.string.widget_next_event),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Negro,
-                                modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, bottom = 8.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                            ) {
+                                Text(
+                                    text = "PRÓXIMO EVENTO",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
+                                    color = Negro.copy(alpha = 0.7f),
+                                    modifier = Modifier.align(Alignment.CenterStart)
+                                )
+                            }
 
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f)),
-                                shape = RoundedCornerShape(16.dp),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                shape = RoundedCornerShape(20.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
@@ -674,25 +710,26 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                                     }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                    modifier = Modifier.padding(20.dp).fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Box(
                                         modifier = Modifier
-                                            .size(48.dp)
-                                            .background(Primario.copy(alpha = 0.2f), CircleShape),
+                                            .size(56.dp)
+                                            .background(Color(0xFF00BFA5).copy(alpha = 0.15f), RoundedCornerShape(16.dp)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(Icons.Default.DateRange, contentDescription = null, tint = Primario)
+                                        Icon(Icons.Default.Event, contentDescription = null, tint = Color(0xFF00BFA5), modifier = Modifier.size(32.dp))
                                     }
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column {
-                                        Text(text = evento.titulo, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Negro)
-                                        Text(text = "$fechaTexto, $horaTexto", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                                        Text(text = evento.titulo, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = Color(0xFF263238), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(text = "$fechaTexto • $horaTexto", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = Color(0xFF78909C))
                                     }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(32.dp))
                         }
 
                         // Widget: Última Nota
@@ -704,36 +741,57 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                                 Blanco.copy(alpha = 0.9f)
                             }
                             
-                            Text(
-                                text = stringResource(R.string.widget_last_note),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Negro,
-                                modifier = Modifier.align(Alignment.Start).padding(start = 8.dp, bottom = 8.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp)
+                            ) {
+                                Text(
+                                    text = "ÚLTIMA NOTA",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
+                                    color = Negro.copy(alpha = 0.7f),
+                                    modifier = Modifier.align(Alignment.CenterStart)
+                                )
+                            }
 
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = colorFondoNota),
-                                shape = RoundedCornerShape(16.dp),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
                                         context.startActivity(android.content.Intent(context, com.example.rest.features.tools.NotasComposeActivity::class.java))
                                     }
                             ) {
-                                Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
-                                    nota.titulo?.let {
-                                        Text(text = it, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.Black)
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.padding(20.dp).fillMaxWidth(),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .background(Color.White.copy(alpha = 0.3f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Default.StickyNote2, contentDescription = null, tint = Color(0xFF263238).copy(alpha = 0.8f))
                                     }
-                                    nota.contenido?.let {
-                                        Text(
-                                            text = it,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = Color.Black,
-                                            maxLines = 3,
-                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                        )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
+                                        nota.titulo?.let {
+                                            Text(text = it, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color(0xFF263238), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                        }
+                                        nota.contenido?.let {
+                                            Text(
+                                                text = it,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = Color(0xFF455A64),
+                                                maxLines = 3,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                                lineHeight = 20.sp
+                                            )
+                                        }
                                     }
                                 }
                             }

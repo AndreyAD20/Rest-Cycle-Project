@@ -171,7 +171,7 @@ fun PantallaCrearHijo(
                 value = contrasenaSegura, onValueChange = { contrasenaSegura = it },
                 label = { Text("Contraseña de Seguridad") }, modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -190,6 +190,10 @@ fun PantallaCrearHijo(
                         android.widget.Toast.makeText(context, "Ingresa un correo válido (ej: usuario@gmail.com)", android.widget.Toast.LENGTH_SHORT).show()
                         return@Button
                     }
+                    if (!com.example.rest.utils.SecurityUtils.isValidPassword(contrasenaSegura)) {
+                        android.widget.Toast.makeText(context, "La contraseña segura debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial", android.widget.Toast.LENGTH_LONG).show()
+                        return@Button
+                    }
                     // Convertir fecha de dígitos (YYYYMMDD) a formato YYYY-MM-DD
                     val fechaFormateada = if (fechaNacimiento.length == 8) {
                         "${fechaNacimiento.substring(0, 4)}-${fechaNacimiento.substring(4, 6)}-${fechaNacimiento.substring(6, 8)}"
@@ -203,7 +207,7 @@ fun PantallaCrearHijo(
                         correo = correo,
                         fechaNacimiento = fechaFormateada,
                         contraseña = contrasena,
-                        rol = "hijo"
+                        mayorEdad = false
                     )
                     onCrear(request, contrasenaSegura)
                 },

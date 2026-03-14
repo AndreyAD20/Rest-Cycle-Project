@@ -33,6 +33,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import com.example.rest.data.repository.UsuarioRepository
+import com.example.rest.data.models.Usuario
 import com.example.rest.features.home.InicioComposeActivity
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.launch
@@ -47,6 +48,19 @@ class LoginComposeActivity : BaseComposeActivity() {
         setContent {
             TemaRest {
                 var cargando by remember { mutableStateOf(false) }
+                var showVerificationDialog by remember { mutableStateOf(false) }
+                var show2FADialog by remember { mutableStateOf(false) }
+                var code2FA by remember { mutableStateOf("") }
+                var unverifiedEmail by remember { mutableStateOf("") }
+                var tiempoRestante by remember { mutableStateOf(0) }
+
+                LaunchedEffect(tiempoRestante) {
+                    if (tiempoRestante > 0) {
+                        kotlinx.coroutines.delay(1000L)
+                        tiempoRestante -= 1
+                    }
+                }
+                var unverifiedPassword by remember { mutableStateOf("") }
                 
                 PantallaLogin(
                     alClickIniciarSesion = { correo, contraseña ->
@@ -61,8 +75,17 @@ class LoginComposeActivity : BaseComposeActivity() {
                             else -> {
                                 // Realizar login
                                 cargando = true
-                                realizarLogin(correo, contraseña) {
+                                realizarLogin(correo, contraseña) { result ->
                                     cargando = false
+                                    if (result is UsuarioRepository.Result.Requires2FA) {
+                                        unverifiedEmail = result.correo
+                                        unverifiedPassword = result.contrasena
+                                        show2FADialog = true
+                                    } else if (result is UsuarioRepository.Result.NotVerified) {
+                                        unverifiedEmail = result.correo
+                                        unverifiedPassword = contraseña
+                                        showVerificationDialog = true
+                                    }
                                 }
                             }
                         }
@@ -79,6 +102,133 @@ class LoginComposeActivity : BaseComposeActivity() {
                     },
                     cargando = cargando
                 )
+
+                if (showVerificationDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showVerificationDialog = false },
+                        title = { Text(stringResource(R.string.verify_email_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                        text = { Text("Tu cuenta aún no ha sido verificada. Debes ingresar el código que enviamos a tu correo para poder iniciar sesión.") },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    showVerificationDialog = false
+                                    val intent = Intent(this@LoginComposeActivity, VerificacionCodigoActivity::class.java).apply {
+                                        putExtra("correo", unverifiedEmail)
+                                        putExtra("contraseña", unverifiedPassword)
+                                    }
+                                    startActivity(intent)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Primario)
+                            ) {
+                                Text("Verificar ahora")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showVerificationDialog = false }) {
+                                Text(stringResource(R.string.btn_cancel))
+                            }
+                        }
+                    )
+                }
+
+                if (show2FADialog) {
+                    AlertDialog(
+                        onDismissRequest = { 
+                            show2FADialog = false 
+                            code2FA = ""
+                        },
+                        title = { Text("Verificación en dos pasos", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                        text = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Hemos enviado un código a tu correo para confirmar tu identidad. Por favor, ingrésalo a continuación:")
+                                Spacer(modifier = Modifier.height(16.dp))
+                                OtpInputField(
+                                    otpValue = code2FA,
+                                    onOtpChange = { code2FA = it }
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                
+                                val resendText = if (tiempoRestante > 0) {
+                                    "Reenviar código en $tiempoRestante s"
+                                } else {
+                                    "¿No recibiste el código? Reenviar"
+                                }
+
+                                Text(
+                                    text = resendText,
+                                    color = if (tiempoRestante > 0) Color.Gray else Primario,
+                                    style = androidx.compose.ui.text.TextStyle(
+                                        textDecoration = if (tiempoRestante > 0) androidx.compose.ui.text.style.TextDecoration.None else androidx.compose.ui.text.style.TextDecoration.Underline,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    ),
+                                    modifier = Modifier.clickable(enabled = tiempoRestante == 0) {
+                                        cargando = true
+                                        tiempoRestante = 30
+                                        lifecycleScope.launch {
+                                            when (val resendResult = usuarioRepository.reenviarCodigo2FA(unverifiedEmail)) {
+                                                is UsuarioRepository.Result.Success -> {
+                                                    Toast.makeText(this@LoginComposeActivity, resendResult.data, Toast.LENGTH_SHORT).show()
+                                                }
+                                                is UsuarioRepository.Result.Error -> {
+                                                    Toast.makeText(this@LoginComposeActivity, resendResult.message, Toast.LENGTH_SHORT).show()
+                                                }
+                                                else -> {}
+                                            }
+                                            cargando = false
+                                        }
+                                    }
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    if (code2FA.length == 6) {
+                                        cargando = true
+                                        lifecycleScope.launch {
+                                            val verifyResult = usuarioRepository.verificarCodigo2FA(this@LoginComposeActivity, unverifiedEmail, code2FA)
+                                            cargando = false
+                                            if (verifyResult is UsuarioRepository.Result.Success) {
+                                                show2FADialog = false
+                                                val usuario = verifyResult.data
+                                                Toast.makeText(
+                                                    this@LoginComposeActivity,
+                                                    getString(R.string.toast_welcome, usuario.nombre),
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+
+                                                val preferencesManager = com.example.rest.utils.PreferencesManager(this@LoginComposeActivity)
+                                                preferencesManager.saveUserName(usuario.nombre)
+                                                preferencesManager.saveUserId(usuario.id ?: -1)
+                                                preferencesManager.saveUserEmail(unverifiedEmail)
+                                                preferencesManager.saveMayorEdad(usuario.mayorEdad)
+
+                                                val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
+                                                startActivity(intencion)
+                                                finish()
+                                            } else if (verifyResult is UsuarioRepository.Result.Error) {
+                                                Toast.makeText(this@LoginComposeActivity, verifyResult.message, Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    } else {
+                                        Toast.makeText(this@LoginComposeActivity, "Ingresa los 6 dígitos", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Primario)
+                            ) {
+                                Text("Verificar")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { 
+                                show2FADialog = false 
+                                code2FA = ""
+                            }) {
+                                Text(stringResource(R.string.btn_cancel))
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -86,7 +236,7 @@ class LoginComposeActivity : BaseComposeActivity() {
     private fun realizarLogin(
         correo: String,
         contraseña: String,
-        onComplete: () -> Unit
+        onComplete: (UsuarioRepository.Result<Usuario>?) -> Unit
     ) {
         // Verificar conectividad antes de intentar el login
         if (!isNetworkAvailable()) {
@@ -95,13 +245,16 @@ class LoginComposeActivity : BaseComposeActivity() {
                 getString(R.string.toast_no_internet),
                 Toast.LENGTH_LONG
             ).show()
-            onComplete()
+            onComplete(null)
             return
         }
         
+        var finalResult: UsuarioRepository.Result<Usuario>? = null
+
         lifecycleScope.launch {
             try {
-                when (val resultado = usuarioRepository.login(this@LoginComposeActivity, correo, contraseña)) {
+                val resultado = usuarioRepository.login(this@LoginComposeActivity, correo, contraseña)
+                when (resultado) {
                     is UsuarioRepository.Result.Success -> {
                         val usuario = resultado.data
                         runOnUiThread {
@@ -116,14 +269,10 @@ class LoginComposeActivity : BaseComposeActivity() {
                             preferencesManager.saveUserName(usuario.nombre)
                             preferencesManager.saveUserId(usuario.id ?: -1)
                             preferencesManager.saveUserEmail(correo)
-                            preferencesManager.saveUserRol(usuario.rol)
+                            preferencesManager.saveMayorEdad(usuario.mayorEdad)
 
-                            // Navegar según el rol del usuario
-                            val intencion = if (usuario.rol.lowercase() == "hijo") {
-                                Intent(this@LoginComposeActivity, com.example.rest.features.hijo.EnlaceHijoComposeActivity::class.java)
-                            } else {
-                                Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
-                            }
+                            // Navegar al inicio principal
+                            val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
                             startActivity(intencion)
                             finish()
                         }
@@ -148,7 +297,14 @@ class LoginComposeActivity : BaseComposeActivity() {
                     is UsuarioRepository.Result.Loading -> {
                         // Ya está manejado por el estado cargando
                     }
+                    is UsuarioRepository.Result.NotVerified -> {
+                        // Se maneja a través del callback onComplete
+                    }
+                    is UsuarioRepository.Result.Requires2FA -> {
+                        // Se maneja a través del callback onComplete
+                    }
                 }
+                finalResult = resultado
             } catch (e: Exception) {
                 runOnUiThread {
                     val mensajeError = when {
@@ -166,7 +322,7 @@ class LoginComposeActivity : BaseComposeActivity() {
                     ).show()
                 }
             } finally {
-                onComplete()
+                onComplete(finalResult)
             }
         }
     }
@@ -194,14 +350,15 @@ fun PantallaLogin(
     var contraseña by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // Gradiente de fondo cyan/turquesa como en la imagen
+    // Gradiente idéntico al de Selección de Modos
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            Primario,
-            Color(0xFF80DEEA)
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
 
     Box(
@@ -228,7 +385,7 @@ fun PantallaLogin(
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = "Cambiar Idioma",
-                        tint = Negro,
+                        tint = Color.White,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -300,7 +457,7 @@ fun PantallaLogin(
                     Text(
                         stringResource(R.string.login_email_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     ) 
                 },
                 modifier = Modifier
@@ -308,12 +465,16 @@ fun PantallaLogin(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                    focusedLeadingIconColor = Color.White,
+                    unfocusedLeadingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
@@ -322,7 +483,7 @@ fun PantallaLogin(
                     Icon(
                         imageVector = Icons.Filled.Email,
                         contentDescription = null,
-                        tint = Color(0xFF757575)
+                        tint = Color.White.copy(alpha = 0.8f)
                     )
                 }
             )
@@ -337,7 +498,7 @@ fun PantallaLogin(
                     Text(
                         stringResource(R.string.login_password_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     ) 
                 },
                 modifier = Modifier
@@ -345,12 +506,18 @@ fun PantallaLogin(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                    focusedLeadingIconColor = Color.White,
+                    unfocusedLeadingIconColor = Color.White.copy(alpha = 0.7f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -375,7 +542,7 @@ fun PantallaLogin(
                     Icon(
                         imageVector = Icons.Filled.Lock,
                         contentDescription = null,
-                        tint = Color(0xFF757575)
+                        tint = Color.White.copy(alpha = 0.8f)
                     )
                 }
             )
@@ -386,45 +553,43 @@ fun PantallaLogin(
             Text(
                 text = stringResource(R.string.login_forgot_password),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF004D40),
+                color = Color.White.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.clickable {
-                    alClickOlvidoContraseña()
-                }
+                modifier = Modifier.clickable { alClickOlvidoContraseña() }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // Botón Iniciar Sesión
             Button(
-                onClick = {
-                    alClickIniciarSesion(correo, contraseña)
-                },
+                onClick = { alClickIniciarSesion(correo, contraseña) },
                 modifier = Modifier
-                    .width(158.dp)
-                    .height(48.dp)
+                    .width(220.dp)
+                    .height(52.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(8.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primario
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
                 ),
                 enabled = !cargando
             ) {
                 if (cargando) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Negro,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         text = stringResource(R.string.login_sign_in_button),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Negro
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = Color.White
                     )
                 }
             }
@@ -435,7 +600,7 @@ fun PantallaLogin(
             Text(
                 text = stringResource(R.string.login_no_account_prompt),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF004D40),
+                color = Color.White.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center
             )
 
@@ -445,22 +610,24 @@ fun PantallaLogin(
             Button(
                 onClick = alClickRegistro,
                 modifier = Modifier
-                    .width(158.dp)
-                    .height(48.dp)
+                    .width(220.dp)
+                    .height(52.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(8.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primario
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
                 )
             ) {
                 Text(
                     text = stringResource(R.string.login_register_button),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Negro
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    color = Color.White
                 )
             }
 
@@ -470,7 +637,7 @@ fun PantallaLogin(
             Text(
                 text = stringResource(R.string.login_or_enter_via),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF004D40),
+                color = Color.White.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center
             )
 

@@ -164,9 +164,13 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
     }
     
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Color(0xFF80DEEA), Primario),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     // Repositorio para sincronizar
@@ -619,18 +623,25 @@ fun getUsageStats(context: Context, period: Int, offset: Int = 0): List<AppUsage
     try {
         val usageMap = mutableMapOf<String, Long>()
 
-        Log.d("EstadisticasDebug", "Usando queryAndAggregateUsageStats para periodo: $period")
-        // Lógica UNIFICADA para TODOS los periodos (Diario/Semanal/Mensual)
-        // Esto simplifica y es más robusto en diferentes dispositivos
-        val aggregatedStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+        Log.d("EstadisticasDebug", "Usando consulta exacta para periodo: $period")
         
-        if (aggregatedStats != null) {
-            aggregatedStats.forEach { (packageName, usageStats) ->
-                val totalTime = usageStats.totalTimeInForeground
-                if (totalTime > 0) {
-                     // Solo sumar si este periodo tiene tiempo relevante
-                     // (Para diario, startTime filtra correctamente)
-                     usageMap[packageName] = totalTime
+        if (period == 0) {
+            // Usa el cálculo exacto por eventos para el dia de hoy
+            val statsMap = com.example.rest.utils.UsageStatsHelper.getExactDailyUsageMap(usageStatsManager, startTime, endTime)
+            statsMap.forEach { (packageName, usageTime) ->
+                if (usageTime > 0) {
+                    usageMap[packageName] = usageTime
+                }
+            }
+        } else {
+            // Lógica para periodos Semanal/Mensual para evitar pérdida de datos (queryEvents expira a los 7 días)
+            val aggregatedStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+            if (aggregatedStats != null) {
+                aggregatedStats.forEach { (packageName, usageStats) ->
+                    val totalTime = usageStats.totalTimeInForeground
+                    if (totalTime > 0) {
+                         usageMap[packageName] = totalTime
+                    }
                 }
             }
         }

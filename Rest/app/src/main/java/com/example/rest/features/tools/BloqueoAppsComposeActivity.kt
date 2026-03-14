@@ -99,9 +99,13 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
 
     // Gradiente de fondo
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Color(0xFF80DEEA), Primario),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     // Datos reales desde repositorio local
@@ -140,7 +144,10 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             confirmButton = {
                 TextButton(onClick = {
                     showOverlayDialog = false
-                    val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                    val intent = Intent(
+                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:${context.packageName}")
+                    )
                     context.startActivity(intent)
                 }) {
                     Text(stringResource(R.string.btn_grant_permission))
@@ -449,7 +456,11 @@ fun AppSelectionDialog(
                         .height(100.dp)
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(Primario, Color(0xFF80DEEA))
+                                colors = listOf(
+                                    Color(0xFF0D47A1),
+                                    Color(0xFF00838F),
+                                    Color(0xFF00BFA5)
+                                )
                             )
                         )
                 ) {

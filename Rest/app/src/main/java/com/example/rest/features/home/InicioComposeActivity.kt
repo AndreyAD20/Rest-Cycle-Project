@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -64,8 +65,14 @@ class InicioComposeActivity : BaseComposeActivity() {
                         startActivity(intent)
                     },
                     alClickControlParental = {
-                        // Navegar a Control Parental
-                        val intent = Intent(this, com.example.rest.features.parental.GestionHijosComposeActivity::class.java)
+                        // Redirigir segun si es mayor de edad
+                        val prefs = com.example.rest.utils.PreferencesManager(this)
+                        val esMayor = prefs.getMayorEdad()
+                        val intent = if (!esMayor) {
+                            Intent(this, com.example.rest.features.hijo.EnlaceHijoComposeActivity::class.java)
+                        } else {
+                            Intent(this, com.example.rest.features.parental.GestionHijosComposeActivity::class.java)
+                        }
                         startActivity(intent)
                     },
                     alClickHabitosSaludables = {
@@ -309,14 +316,15 @@ fun PantallaModosDeUso(
         )
     }
 
-    // Gradiente de fondo cyan/turquesa
+    // Gradiente de fondo estilo Hijo (Azul profundo -> Teal -> Verde menta)
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.primaryContainer
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
 
     Box(
@@ -332,9 +340,9 @@ fun PantallaModosDeUso(
                 .align(Alignment.TopStart)
         ) {
             Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = stringResource(R.string.content_desc_back),
-                tint = MaterialTheme.colorScheme.onBackground,
+                imageVector = Icons.AutoMirrored.Filled.Logout,
+                contentDescription = stringResource(R.string.btn_logout),
+                tint = Color.White,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -349,7 +357,7 @@ fun PantallaModosDeUso(
             Icon(
                 imageVector = Icons.Default.Settings,
                 contentDescription = stringResource(R.string.content_desc_settings),
-                tint = MaterialTheme.colorScheme.onBackground,
+                tint = Color.White,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -367,7 +375,7 @@ fun PantallaModosDeUso(
                 style = MaterialTheme.typography.headlineLarge,
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
-                color = Negro,
+                color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 40.dp)
             )
@@ -379,13 +387,13 @@ fun PantallaModosDeUso(
                     .width(260.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(12.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00ACC1)
+                    containerColor = Color.White.copy(alpha = 0.15f)
                 )
             ) {
                 Text(
@@ -393,7 +401,7 @@ fun PantallaModosDeUso(
                     style = MaterialTheme.typography.titleMedium,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Negro
+                    color = Color.White
                 )
             }
 
@@ -417,13 +425,13 @@ fun PantallaModosDeUso(
                     .width(260.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(12.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00ACC1)
+                    containerColor = Color.White.copy(alpha = 0.15f)
                 )
             ) {
                 Text(
@@ -431,7 +439,7 @@ fun PantallaModosDeUso(
                     style = MaterialTheme.typography.titleMedium,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Negro
+                    color = Color.White
                 )
             }
         }

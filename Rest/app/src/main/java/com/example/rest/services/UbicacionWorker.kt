@@ -15,8 +15,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 /**
- * Worker que obtiene el GPS del dispositivo hijo y lo envía a Supabase.
- * Se ejecuta cada 60 minutos a través de UbicacionScheduler.
+ * Worker que obtiene el GPS del dispositivo hijo y lo guarda en el HISTORIAL.
+ * Se ejecuta cada 15 minutos solo para dejar una marca en la línea de tiempo.
  */
 class UbicacionWorker(
     private val appContext: Context,
@@ -36,53 +36,33 @@ class UbicacionWorker(
             return Result.failure()
         }
 
-        val tipoTarea = inputData.getString("tipo_tarea") ?: "actualizar"
-
         return try {
-            // Obtener ubicación actual con FusedLocationProviderClient
             val ubicacion = obtenerUbicacionActual() ?: run {
-                Log.w(TAG, "No se pudo obtener la ubicación.")
+                Log.w(TAG, "No se pudo obtener la ubicación para el historial.")
                 return Result.retry()
             }
 
-            if (tipoTarea == "historial") {
-                // Enviar a historial_ubicacion (Cada hora)
-                val sdfFecha = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-                val sdfHora = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-                val ahora = java.util.Date()
+            // Registro en historial_ubicacion (Instantánea de cada 15 min)
+            val sdfFecha = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            val sdfHora = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            val ahora = java.util.Date()
 
-                val response = SupabaseClient.api.guardarHistorialUbicacion(
-                    com.example.rest.data.models.HistorialUbicacionInput(
-                        idUsuario = idUsuario,
-                        latitud = ubicacion.first,
-                        longitud = ubicacion.second,
-                        fecha = sdfFecha.format(ahora),
-                        hora = sdfHora.format(ahora)
-                    )
+            val response = SupabaseClient.api.guardarHistorialUbicacion(
+                com.example.rest.data.models.HistorialUbicacionInput(
+                    idUsuario = idUsuario,
+                    latitud = ubicacion.first,
+                    longitud = ubicacion.second,
+                    fecha = sdfFecha.format(ahora),
+                    hora = sdfHora.format(ahora)
                 )
-                if (response.isSuccessful) {
-                    Log.i(TAG, "Historial guardado: ${ubicacion.first}, ${ubicacion.second}")
-                    Result.success()
-                } else {
-                    Log.e(TAG, "Error historial: ${response.code()}")
-                    Result.retry()
-                }
+            )
+            
+            if (response.isSuccessful) {
+                Log.i(TAG, "Instantánea de historial guardada (15 min).")
+                Result.success()
             } else {
-                // Enviar a ubicaciones (Actualizar cada 10-15 min)
-                val response = SupabaseClient.api.guardarUbicacion(
-                    UbicacionInput(
-                        idUsuario = idUsuario,
-                        latitud = ubicacion.first,
-                        longitud = ubicacion.second
-                    )
-                )
-                if (response.isSuccessful) {
-                    Log.i(TAG, "Ubicación actualizada: ${ubicacion.first}, ${ubicacion.second}")
-                    Result.success()
-                } else {
-                    Log.e(TAG, "Error actualizar: ${response.code()}")
-                    Result.retry()
-                }
+                Log.e(TAG, "Error al guardar instantánea: ${response.code()}")
+                Result.retry()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Excepción en UbicacionWorker: ${e.message}")

@@ -13,6 +13,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.rest.R
 import com.example.rest.data.models.HistorialApp
+import com.example.rest.data.models.UbicacionInput
+import com.google.android.gms.location.*
 
 import com.example.rest.network.SupabaseClient
 import com.example.rest.features.blocking.BloqueoActivity
@@ -78,7 +80,15 @@ class AppMonitorService : Service() {
     private var lastRestrictionCheckTime: Long = 0
     // Cooldown: evita relanzar BloqueoActivity para la misma app dentro de 60 segundos
     private val lastBlockedTimeMap: MutableMap<String, Long> = mutableMapOf()
-    private val BLOCK_COOLDOWN_MS = 60_000L // 60 segundos
+    private val BLOCK_COOLDOWN_MS = 3_000L // 3 segundos - igual al intervalo de check
+    // Paquete que actualmente tiene el BloqueoActivity activo
+    private var currentlyBlockedPackage: String? = null
+
+    // Rastreo de ubicación
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var locationCallback: LocationCallback? = null
+    private val LOCATION_UPDATE_INTERVAL = 120_000L // 2 minutos
+    private val LOCATION_FASTEST_INTERVAL = 60_000L // 1 minuto
 
     override fun onCreate() {
         super.onCreate()
@@ -158,6 +168,10 @@ class AppMonitorService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, createNotification())
         }
+
+        // Iniciar rastreo de ubicación de alta frecuencia
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        startLocationUpdates()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -183,6 +197,7 @@ class AppMonitorService : Service() {
         
         isMonitoring = false
         handler.removeCallbacksAndMessages(null)
+        stopLocationUpdates()
         
         // Guardar última sesión pendiente si es válida
         currentPackageName?.let { packageName ->
@@ -241,9 +256,8 @@ class AppMonitorService : Service() {
         
         serviceScope.launch {
             try {
-                // Primero, subir apps locales que no estén en la nube
-                // DESACTIVADO: El usuario quiere seleccionar manualmente qué apps vincular
-                // subirAppsInstaladas()
+                // Subir inventario completo de apps instaladas para que el padre pueda verlas
+                subirAppsInstaladas()
                 
                 val response = api.obtenerAppsVinculadas("eq.$dispositivoId")
                 if (response.isSuccessful) {
@@ -383,24 +397,23 @@ class AppMonitorService : Service() {
             val startTime = calendar.timeInMillis
             val endTime = System.currentTimeMillis()
 
-            // Usar queryAndAggregateUsageStats para evitar duplicados y tener el total correcto por paquete
-            val statsMap = usageStatsManager.queryAndAggregateUsageStats(
+            // Usar cálculo exacto por eventos para evitar el bug de buckets UTC a las 7PM/8PM
+            val statsMap = com.example.rest.utils.UsageStatsHelper.getExactDailyUsageMap(
+                usageStatsManager,
                 startTime,
                 endTime
             )
 
-            if (statsMap != null) {
-                dailyUsageMap.clear()
-                for ((packageName, usageStat) in statsMap) {
-                    if (usageStat.totalTimeInForeground > 0) {
-                       val totalTimeInMinutes = (usageStat.totalTimeInForeground / 60000).toInt()
-                       if (totalTimeInMinutes > 0) {
-                           dailyUsageMap[packageName] = totalTimeInMinutes
-                       }
+            dailyUsageMap.clear()
+            for ((packageName, usageStat) in statsMap) {
+                if (usageStat > 0) {
+                    val totalTimeInMinutes = (usageStat / 60000).toInt()
+                    if (totalTimeInMinutes > 0) {
+                        dailyUsageMap[packageName] = totalTimeInMinutes
                     }
                 }
-                Log.d(TAG, "Uso diario inicializado (Agregado): ${dailyUsageMap.size} apps con actividad")
             }
+            Log.d(TAG, "Uso diario inicializado (Exacto): ${dailyUsageMap.size} apps con actividad")
         } catch (e: Exception) {
             Log.e(TAG, "Error inicializando uso diario: ${e.message}")
         }
@@ -516,7 +529,8 @@ class AppMonitorService : Service() {
 
     private fun getForegroundByEvents(usm: UsageStatsManager, currentTime: Long): String? {
         return try {
-            val events = usm.queryEvents(currentTime - 10_000, currentTime)
+            // Aumentar ventana a 30s para no perder eventos en Android 13 (que puede retrasarlos)
+            val events = usm.queryEvents(currentTime - 30_000, currentTime)
             val event = android.app.usage.UsageEvents.Event()
             var latestPkg: String? = null
             var latestTime: Long = 0
@@ -538,7 +552,7 @@ class AppMonitorService : Service() {
         return try {
             val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, currentTime - 86_400_000, currentTime)
             stats?.maxByOrNull { it.lastTimeUsed }?.takeIf {
-                currentTime - it.lastTimeUsed < 10_000 // Solo si fue usada en los últimos 10s
+                currentTime - it.lastTimeUsed < 30_000 // Aumentado a 30s para Android 13
             }?.packageName
         } catch (e: Exception) { null }
     }
@@ -824,18 +838,30 @@ class AppMonitorService : Service() {
         if (shouldBlock) {
             val now = System.currentTimeMillis()
             val lastBlocked = lastBlockedTimeMap[packageName] ?: 0L
-            if (now - lastBlocked < BLOCK_COOLDOWN_MS) {
-                Log.d(TAG, "Cooldown activo para $packageName, no se relanza BloqueoActivity")
+
+            // Si ya tenemos el bloqueo activo para ESTA app, no relanzar
+            if (currentlyBlockedPackage == packageName && now - lastBlocked < BLOCK_COOLDOWN_MS) {
+                Log.d(TAG, "Bloqueo ya activo para $packageName, no se relanza")
                 return
             }
+
+            // Si hay otra app bloqueada diferente, limpiar registro anterior
+            if (currentlyBlockedPackage != null && currentlyBlockedPackage != packageName) {
+                lastBlockedTimeMap.remove(currentlyBlockedPackage!!)
+            }
+
             lastBlockedTimeMap[packageName] = now
-            Log.d(TAG, "BLOQUEANDO app: $appName")
-            // Resetear currentPackageName para que la siguiente iteración
-            // no siga detectando la app bloqueada como foreground
+            currentlyBlockedPackage = packageName
+            Log.d(TAG, "BLOQUEANDO app en tiempo real: $appName")
             currentPackageName = null
             val intent = BloqueoActivity.newIntent(this, appName, reason)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(intent)
+        } else {
+            // Si la app ya no necesita ser bloqueada (ej. reset de día), limpiar su estado
+            if (currentlyBlockedPackage == packageName) {
+                currentlyBlockedPackage = null
+            }
         }
     }
 
@@ -853,18 +879,23 @@ class AppMonitorService : Service() {
             val startTime = calendar.timeInMillis
             val endTime = System.currentTimeMillis()
 
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
-                val ms = statsMap[packageName]?.totalTimeInForeground ?: 0L
-                (ms / 60000).toInt()
-            } else {
-                val statsList = usageStatsManager.queryUsageStats(
-                    UsageStatsManager.INTERVAL_DAILY, startTime, endTime
-                )
-                val ms = statsList?.filter { it.packageName == packageName }
-                    ?.sumOf { it.totalTimeInForeground } ?: 0L
-                (ms / 60000).toInt()
+            val statsMap = com.example.rest.utils.UsageStatsHelper.getExactDailyUsageMap(usageStatsManager, startTime, endTime)
+            var baseMs = statsMap[packageName] ?: 0L
+            
+            // Añadir el tiempo de la sesión actual en tiempo real
+            // UsageStats no se actualiza hasta que la app se cierra o el sistema hace un flush
+            if (packageName == currentPackageName && sessionStartTime > 0) {
+                val currentSessionMs = System.currentTimeMillis() - sessionStartTime
+                // Comparamos el baseMs del sistema vs nuestro mapa local + sesión actual
+                // Tomamos el mayor para asegurar que bloquea exacto en el tiempo real
+                val localMapMs = (dailyUsageMap[packageName]?.toLong() ?: 0L) * 60000L
+                val calculatedMs = localMapMs + currentSessionMs
+                if (calculatedMs > baseMs) {
+                    baseMs = calculatedMs
+                }
             }
+            
+            (baseMs / 60000).toInt()
         } catch (e: Exception) {
             Log.e(TAG, "Error leyendo UsageStats para $packageName: ${e.message}")
             // Fallback al mapa en memoria
@@ -904,5 +935,60 @@ class AppMonitorService : Service() {
     private fun updateNotification(contentText: String) {
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID, createNotification(contentText))
+    }
+
+    /**
+     * Inicia las actualizaciones de ubicación
+     */
+    @Suppress("MissingPermission")
+    private fun startLocationUpdates() {
+        val locationRequest = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, LOCATION_UPDATE_INTERVAL)
+            .setMinUpdateIntervalMillis(LOCATION_FASTEST_INTERVAL)
+            .build()
+
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                val location = locationResult.lastLocation ?: return
+                
+                serviceScope.launch {
+                    val userId = com.example.rest.utils.PreferencesManager(this@AppMonitorService).getUserId()
+                    if (userId != -1) {
+                        try {
+                            api.guardarUbicacion(
+                                UbicacionInput(
+                                    idUsuario = userId,
+                                    latitud = location.latitude,
+                                    longitud = location.longitude
+                                )
+                            )
+                            Log.d(TAG, "Ubicación en tiempo real enviada desde el servicio: ${location.latitude}, ${location.longitude}")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error enviando ubicación desde servicio: ${e.message}")
+                        }
+                    }
+                }
+            }
+        }
+
+        try {
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback!!,
+                Looper.getMainLooper()
+            )
+            Log.i(TAG, "Actualizaciones de ubicación iniciadas (cada 2 min)")
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudieron iniciar actualizaciones de ubicación: ${e.message}")
+        }
+    }
+
+    /**
+     * Detiene las actualizaciones de ubicación
+     */
+    private fun stopLocationUpdates() {
+        locationCallback?.let {
+            fusedLocationClient.removeLocationUpdates(it)
+            Log.d(TAG, "Actualizaciones de ubicación detenidas")
+        }
     }
 }

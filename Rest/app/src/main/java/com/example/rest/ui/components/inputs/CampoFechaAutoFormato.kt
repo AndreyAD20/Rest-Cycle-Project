@@ -44,7 +44,7 @@ fun CampoFechaAutoFormato(
     unfocusedBorderColor: Color = Color(0xFFB0BEC5),
     focusedTextColor: Color = Color.Black,
     unfocusedTextColor: Color = Color.Black,
-    placeholderColor: Color = Color(0xFF757575),
+    placeholderColor: Color = Color.White.copy(alpha = 0.6f),
     textStyle: TextStyle = MaterialTheme.typography.bodyLarge,
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
@@ -104,7 +104,7 @@ fun CampoFechaAutoFormato(
             Icon(
                 imageVector = Icons.Filled.DateRange,
                 contentDescription = null,
-                tint = Color(0xFF757575)
+                tint = Color.White.copy(alpha = 0.8f)
             )
         }
     )

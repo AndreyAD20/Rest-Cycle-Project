@@ -7,19 +7,26 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,7 +52,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
         
         // Obtener correo del intent
         correo = intent.getStringExtra("correo") ?: run {
-            Toast.makeText(this, "Error: No se proporcionó el correo", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.error_no_email_provided), Toast.LENGTH_LONG).show()
             finish()
             return
         }
@@ -84,7 +91,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@VerificacionCodigoActivity,
-                                "✅ ¡Email verificado exitosamente!",
+                                getString(R.string.toast_email_verified),
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -94,7 +101,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                             runOnUiThread {
                                 Toast.makeText(
                                     this@VerificacionCodigoActivity,
-                                    "✅ ¡Cuenta de hijo verificada y vinculada!",
+                                    getString(R.string.toast_child_account_verified),
                                     Toast.LENGTH_LONG
                                 ).show()
                                 finish()
@@ -109,6 +116,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                                         preferencesManager.saveUserName(usuario.nombre)
                                         preferencesManager.saveUserId(usuario.id ?: -1)
                                         preferencesManager.saveUserEmail(correo)
+                                        preferencesManager.saveMayorEdad(usuario.mayorEdad)
                                         val intent = Intent(this@VerificacionCodigoActivity, InicioComposeActivity::class.java)
                                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                                         startActivity(intent)
@@ -146,6 +154,12 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                     is UsuarioRepository.Result.Loading -> {
                         // Ya está manejado por el estado cargando
                     }
+                    is UsuarioRepository.Result.NotVerified -> {
+                        // Not expecting this from verificarCodigo, but required to be exhaustive
+                    }
+                    is UsuarioRepository.Result.Requires2FA -> {
+                        // Not expecting this from verificarCodigo, but required to be exhaustive
+                    }
                 }
             } catch (e: Exception) {
                 runOnUiThread {
@@ -169,7 +183,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@VerificacionCodigoActivity,
-                                "✅ ${resultado.data}",
+                                "✅ Código reenviado exitosamente. Revisa tu correo.",
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -185,6 +199,12 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                     }
                     is UsuarioRepository.Result.Loading -> {
                         // Ya está manejado por el estado cargando
+                    }
+                    is UsuarioRepository.Result.NotVerified -> {
+                        // Not expecting this from reenviarCodigo, but required to be exhaustive
+                    }
+                    is UsuarioRepository.Result.Requires2FA -> {
+                        // Not expecting this from reenviarCodigo, but required to be exhaustive
                     }
                 }
             } catch (e: Exception) {
@@ -211,14 +231,15 @@ fun PantallaVerificacionCodigo(
 ) {
     var codigo by remember { mutableStateOf("") }
     
-    // Gradiente de fondo cyan/turquesa
+    // Gradiente id\u00e9ntico al de Selecci\u00f3n de Modos
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            Primario,
-            Color(0xFF80DEEA)
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
     
     Box(
@@ -251,18 +272,13 @@ fun PantallaVerificacionCodigo(
                 // Frase en un "bocadillo"
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = Blanco,
+                    color = Color.White.copy(alpha = 0.2f),
                     modifier = Modifier
-                        .border(
-                            width = 2.dp,
-                            color = Negro,
-                            shape = RoundedCornerShape(16.dp)
-                        )
                 ) {
                     Text(
-                        text = "Verifica tu\ncorreo electrónico",
+                        text = stringResource(R.string.verify_email_bubble_speech),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Negro,
+                        color = Color.White,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(12.dp)
                     )
@@ -271,17 +287,17 @@ fun PantallaVerificacionCodigo(
             
             // Título
             Text(
-                text = "Verificación de Email",
+                text = stringResource(R.string.verify_email_title),
                 style = MaterialTheme.typography.headlineMedium,
-                color = Color(0xFF004D40),
+                color = Color.White,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             
             // Mensaje informativo
             Text(
-                text = "Hemos enviado un código de 6 dígitos a:",
+                text = stringResource(R.string.verify_email_sent_to),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF004D40),
+                color = Color.White.copy(alpha = 0.9f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -289,44 +305,16 @@ fun PantallaVerificacionCodigo(
             Text(
                 text = correo,
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color(0xFF6B4EFF),
+                color = Color.White,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
             
-            // Campo de código
-            OutlinedTextField(
-                value = codigo,
-                onValueChange = { 
-                    if (it.length <= 6 && it.all { char -> char.isDigit() }) {
-                        codigo = it
-                    }
-                },
-                placeholder = { 
-                    Text(
-                        "Código de 6 dígitos",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
-                    ) 
-                },
-                modifier = Modifier
-                    .width(330.dp)
-                    .height(56.dp),
-                shape = RoundedCornerShape(30.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
-                ),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                    textAlign = TextAlign.Center,
-                    letterSpacing = 8.sp
-                )
+            // Campo de código OTP - 6 cajas individuales
+            OtpInputField(
+                otpValue = codigo,
+                onOtpChange = { if (it.length <= 6 && it.all { c -> c.isDigit() }) codigo = it }
             )
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -347,47 +335,119 @@ fun PantallaVerificacionCodigo(
                     }
                 },
                 modifier = Modifier
-                    .width(200.dp)
+                    .width(220.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(30.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(30.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primario
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
                 ),
                 enabled = !cargando
             ) {
                 if (cargando) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Negro,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
-                        text = "Verificar",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Negro
+                        text = stringResource(R.string.btn_verify),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = Color.White
                     )
                 }
             }
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Botón Reenviar código
             TextButton(
                 onClick = alClickReenviar,
                 enabled = !cargando
             ) {
                 Text(
-                    text = "¿No recibiste el código? Reenviar",
+                    text = stringResource(R.string.btn_resend_code),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B4EFF)
+                    color = Color.White.copy(alpha = 0.8f)
                 )
             }
         }
+    }
+}
+
+@Composable
+fun OtpInputField(
+    otpValue: String,
+    onOtpChange: (String) -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+            }
+    ) {
+        // Invisible field that captures keyboard input
+        BasicTextField(
+            value = otpValue,
+            onValueChange = onOtpChange,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            modifier = Modifier
+                .size(1.dp)
+                .focusRequester(focusRequester),
+            decorationBox = {}
+        )
+
+        // 6 visible boxes
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            repeat(6) { index ->
+                val char = otpValue.getOrNull(index)?.toString() ?: ""
+                val isCurrent = otpValue.length == index
+
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Blanco)
+                        .border(
+                            width = if (isCurrent) 2.dp else 1.dp,
+                            color = if (isCurrent) Color(0xFF6B4EFF) else Color(0xFFB0BEC5),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .clickable {
+                            focusRequester.requestFocus()
+                            keyboardController?.show()
+                        }
+                ) {
+                    Text(
+                        text = char,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = Negro,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+        keyboardController?.show()
     }
 }

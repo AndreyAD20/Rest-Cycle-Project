@@ -292,9 +292,13 @@ fun PantallaNotas(
     )
 
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Color(0xFF80DEEA), Primario),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     Scaffold(
@@ -308,12 +312,12 @@ fun PantallaNotas(
                     title = {
                         Text(
                             stringResource(R.string.notes_title),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
                         )
                     },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Negro)
+                            Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -323,17 +327,19 @@ fun PantallaNotas(
                 OutlinedTextField(
                     value = textoBusqueda,
                     onValueChange = { textoBusqueda = it },
-                    placeholder = { Text(stringResource(R.string.notes_search_hint)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.notes_content_desc_search)) },
+                    placeholder = { Text(stringResource(R.string.notes_search_hint), color = Color.White.copy(alpha = 0.7f)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.notes_content_desc_search), tint = Color.White) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Blanco.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Blanco.copy(alpha = 0.7f),
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent
+                        focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                        focusedBorderColor = Color.White.copy(alpha = 0.5f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
                     ),
                     singleLine = true
                 )
@@ -345,10 +351,28 @@ fun PantallaNotas(
                     notaEnEdicion = null // Nueva nota
                     mostrarDialogo = true
                 },
-                containerColor = Color(0xFF00BCD4),
-                contentColor = Negro,
-                icon = { Icon(Icons.Default.Add, stringResource(R.string.notes_content_desc_add)) },
-                text = { Text(stringResource(R.string.dialog_note_title_new), fontWeight = FontWeight.Bold) }
+                modifier = Modifier
+                    .border(
+                        width = 1.dp, 
+                        color = Color.White.copy(alpha = 0.6f), 
+                        shape = RoundedCornerShape(20.dp)
+                    ),
+                shape = RoundedCornerShape(20.dp),
+                containerColor = Color.White.copy(alpha = 0.2f),
+                contentColor = Color.White,
+                icon = { 
+                    Icon(
+                        imageVector = Icons.Default.Add, 
+                        contentDescription = stringResource(R.string.notes_content_desc_add),
+                        modifier = Modifier.size(28.dp)
+                    ) 
+                },
+                text = { 
+                    Text(
+                        text = stringResource(R.string.dialog_note_title_new), 
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    ) 
+                }
             )
         },
         containerColor = Color.Transparent

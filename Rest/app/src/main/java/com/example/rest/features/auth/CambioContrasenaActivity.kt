@@ -177,11 +177,12 @@ fun PantallaCambioContrasena(
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            Primario,
-            Color(0xFF80DEEA)
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
 
     Box(
@@ -203,7 +204,7 @@ fun PantallaCambioContrasena(
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = stringResource(R.string.content_desc_back),
-                    tint = Negro,
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -218,7 +219,7 @@ fun PantallaCambioContrasena(
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = "Cambiar Idioma",
-                        tint = Negro,
+                        tint = Color.White,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -298,7 +299,7 @@ fun PantallaCambioContrasena(
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Blanco,
+                    color = Color.White.copy(alpha = 0.2f),
                     modifier = Modifier
                         .width(200.dp)
                         .height(80.dp)
@@ -310,7 +311,7 @@ fun PantallaCambioContrasena(
                         Text(
                             text = stringResource(R.string.change_password_title_speech),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Negro,
+                            color = Color.White,
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp
                         )
@@ -326,7 +327,7 @@ fun PantallaCambioContrasena(
                     Text(
                         stringResource(R.string.change_password_new_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier
@@ -334,12 +335,16 @@ fun PantallaCambioContrasena(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 visualTransformation = if (mostrarNueva) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -363,7 +368,7 @@ fun PantallaCambioContrasena(
                     Text(
                         stringResource(R.string.register_confirm_password_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier
@@ -371,12 +376,16 @@ fun PantallaCambioContrasena(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 visualTransformation = if (mostrarConfirmar) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -396,30 +405,32 @@ fun PantallaCambioContrasena(
             Button(
                 onClick = { alClickConfirmar(nuevaContrasena, confirmarContrasena) },
                 modifier = Modifier
-                    .width(200.dp)
+                    .width(220.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(30.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(30.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primario
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
                 ),
                 enabled = !cargando
             ) {
                 if (cargando) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Blanco,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         text = stringResource(R.string.btn_confirm),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Negro
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = Color.White
                     )
                 }
             }

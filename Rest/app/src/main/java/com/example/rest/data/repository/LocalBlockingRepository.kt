@@ -126,29 +126,8 @@ class LocalBlockingRepository(private val context: Context) {
         val startTime = calendar.timeInMillis
         val endTime = System.currentTimeMillis()
 
-        // Query usage stats with compatibility check
-        val usageMap = mutableMapOf<String, Long>()
-        
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            // API 28+
-            val statsMap = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
-            for ((pkg, usage) in statsMap) {
-                usageMap[pkg] = usage.totalTimeInForeground
-            }
-        } else {
-            // API < 28 (Manual aggregation)
-            val statsList = usageStatsManager.queryUsageStats(
-                android.app.usage.UsageStatsManager.INTERVAL_DAILY,
-                startTime,
-                endTime
-            )
-            if (statsList != null) {
-                for (usage in statsList) {
-                    val current = usageMap[usage.packageName] ?: 0L
-                    usageMap[usage.packageName] = current + usage.totalTimeInForeground
-                }
-            }
-        }
+        // Consultar uso de la aplicación a partir del momento exacto del día
+        val usageMap = com.example.rest.utils.UsageStatsHelper.getExactDailyUsageMap(usageStatsManager, startTime, endTime)
         
         return apps.map { app ->
             val totalTime = usageMap[app.packageName] ?: 0L

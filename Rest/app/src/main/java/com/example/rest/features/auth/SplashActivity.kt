@@ -103,12 +103,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
             val intent = Intent(context, LoginComposeActivity::class.java)
             context.startActivity(intent)
         } else {
-            val userRol = prefs.getUserRol()
-            val intent = if (userRol?.lowercase() == "hijo") {
-                Intent(context, com.example.rest.features.hijo.EnlaceHijoComposeActivity::class.java)
-            } else {
-                Intent(context, com.example.rest.features.home.InicioComposeActivity::class.java)
-            }
+            val intent = Intent(context, com.example.rest.features.home.InicioComposeActivity::class.java)
             context.startActivity(intent)
         }
         activity?.finish()

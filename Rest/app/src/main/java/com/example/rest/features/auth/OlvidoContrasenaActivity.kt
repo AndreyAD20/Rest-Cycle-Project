@@ -130,11 +130,12 @@ fun PantallaOlvidoContrasena(
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            Primario,
-            Color(0xFF80DEEA)
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
 
     Box(
@@ -151,12 +152,12 @@ fun PantallaOlvidoContrasena(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
         ) {
-            // Botón de regresar
+            // Bot\u00f3n de regresar
             IconButton(onClick = alClickRegresar) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = stringResource(R.string.content_desc_back),
-                    tint = Negro,
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -164,14 +165,14 @@ fun PantallaOlvidoContrasena(
             // Selector de Idioma
             val context = androidx.compose.ui.platform.LocalContext.current
             val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
-            var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
+            var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Espa\u00f1ol") ?: "Espa\u00f1ol") }
 
             Box {
                 IconButton(onClick = { menuIdiomaExpandido = true }) {
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = "Cambiar Idioma",
-                        tint = Negro,
+                        tint = Color.White,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -203,7 +204,7 @@ fun PantallaOlvidoContrasena(
                                 
                                 val code = when (opcion) {
                                     langEn, "English" -> "en"
-                                    langPt, "Português" -> "pt"
+                                    langPt, "Portugu\u00eas" -> "pt"
                                     else -> "es"
                                 }
                                 AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
@@ -231,7 +232,7 @@ fun PantallaOlvidoContrasena(
                 .fillMaxSize()
                 .padding(horizontal = 32.dp)
         ) {
-            // Logo del búho con bocadillo
+            // Logo del b\u00facho con bocadillo
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -249,7 +250,7 @@ fun PantallaOlvidoContrasena(
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Blanco,
+                    color = Color.White.copy(alpha = 0.2f),
                     modifier = Modifier
                         .width(200.dp)
                         .height(80.dp)
@@ -261,7 +262,7 @@ fun PantallaOlvidoContrasena(
                         Text(
                             text = stringResource(R.string.recovery_email_title_speech),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Negro,
+                            color = Color.White,
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp
                         )
@@ -277,7 +278,7 @@ fun PantallaOlvidoContrasena(
                     Text(
                         stringResource(R.string.login_email_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier
@@ -285,12 +286,14 @@ fun PantallaOlvidoContrasena(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f)
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
@@ -299,27 +302,28 @@ fun PantallaOlvidoContrasena(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Botón Enviar Código
+            // Bot\u00f3n Enviar C\u00f3digo
             Button(
                 onClick = { alClickEnviar(correo) },
                 modifier = Modifier
-                    .width(200.dp)
+                    .width(220.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(30.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(30.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primario
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
                 ),
                 enabled = !cargando
             ) {
                 if (cargando) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Blanco,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
@@ -330,14 +334,15 @@ fun PantallaOlvidoContrasena(
                         Icon(
                             painter = painterResource(id = R.drawable.buho_background),
                             contentDescription = stringResource(R.string.recovery_send_button),
-                            tint = Negro,
+                            tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = stringResource(R.string.recovery_send_button),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Negro,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            color = Color.White,
                             fontSize = 14.sp
                         )
                     }

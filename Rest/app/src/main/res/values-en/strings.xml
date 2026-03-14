@@ -110,7 +110,7 @@
     <string name="err_invalid_email_format">❌ Enter a valid email</string>
     <string name="err_empty_birthdate">❌ Please enter your birthdate</string>
     <string name="err_invalid_birthdate_format">❌ Invalid date format. Use YYYY-MM-DD</string>
-    <string name="err_invalid_password_format">❌ Password must be at least 8 characters, 1 uppercase, 1 number</string>
+    <string name="err_invalid_password_format">❌ Password must be at least 8 characters, 1 uppercase, 1 number and 1 special character</string>
     <string name="err_empty_confirm_password">❌ Please confirm your password</string>
     <string name="err_password_mismatch">❌ Passwords do not match</string>
     <string name="err_accept_terms">❌ You must accept the Terms and Conditions</string>
@@ -357,7 +357,7 @@
     <string name="toast_fill_all_fields">Please fill in all fields</string>
     <string name="toast_passwords_no_match">The new passwords do not match</string>
     <string name="toast_password_incorrect">Incorrect current password</string>
-    <string name="toast_password_complexity">Password must be at least 8 characters, 1 uppercase letter and 1 number.</string>
+    <string name="toast_password_complexity">Password must be at least 8 characters, 1 uppercase letter, 1 number and 1 special character.</string>
     <string name="toast_password_updated">Password updated successfully</string>
     <string name="toast_password_update_error">Error: %1$s</string>
 
@@ -372,5 +372,16 @@
     <string name="toast_code_sent_to">Code sent to %1$s</string>
     <string name="toast_code_send_error">Error sending code: %1$s</string>
     <string name="dialog_verify_resend">Resend code</string>
+
+    <!-- Verificación de Correo (Registro) -->
+    <string name="toast_email_verified">✅ Email verified successfully!</string>
+    <string name="toast_child_account_verified">✅ Child account verified and linked!</string>
+    <string name="error_no_email_provided">Error: No email was provided</string>
+    <string name="verify_email_bubble_speech">Verify your\nemail address</string>
+    <string name="verify_email_title">Email Verification</string>
+    <string name="verify_email_sent_to">We have sent a 6-digit code to:</string>
+    <string name="verify_email_code_placeholder">6-digit Code</string>
+    <string name="btn_verify">Verify</string>
+    <string name="btn_resend_code">Didn\'t receive the code? Resend</string>
 
 </resources>

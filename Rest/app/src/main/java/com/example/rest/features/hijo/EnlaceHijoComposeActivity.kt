@@ -4,6 +4,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import com.example.rest.services.AppMonitorService
+import com.example.rest.services.UbicacionScheduler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -41,26 +44,75 @@ import kotlinx.coroutines.launch
 class EnlaceHijoComposeActivity : BaseComposeActivity() {
 
     private val repository = UsuarioRepository()
+    private lateinit var prefs: PreferencesManager
+
+    // Launcher para permiso de ubicación en segundo plano (Android 10+)
+    private val backgroundLocationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            prefs.saveTrackingHijoActivo(true)
+            UbicacionScheduler.iniciar(this)
+            AppMonitorService.startService(this)
+            Toast.makeText(this, "✅ Rastreo permanente activado.", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "⚠️ Sin permiso permanente: el rastreo se detendrá al cerrar la app.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Launcher para solicitar permiso de ubicación (Primer plano)
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                // En Android 10+ necesitamos pedir el de segundo plano por separado
+                mostrarDialogoPermisoBackground()
+            } else {
+                prefs.saveTrackingHijoActivo(true)
+                UbicacionScheduler.iniciar(this)
+                AppMonitorService.startService(this)
+            }
+        } else {
+            Toast.makeText(this, "Sin permiso de ubicación: tu padre no podrá ver dónde estás.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun mostrarDialogoPermisoBackground() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Rastreo Permanente")
+            .setMessage("Para que tu padre pueda ver tu ubicación incluso cuando la aplicación está cerrada o el teléfono bloqueado, debes seleccionar la opción \"Permitir todo el tiempo\" en la siguiente pantalla.")
+            .setPositiveButton("Entendido") { _, _ ->
+                backgroundLocationPermissionLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+            .setNegativeButton("Ahora no") { _, _ ->
+                prefs.saveTrackingHijoActivo(true)
+                UbicacionScheduler.iniciar(this)
+                AppMonitorService.startService(this)
+            }
+            .show()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val prefs = PreferencesManager(this)
+        prefs = PreferencesManager(this)
         val idHijo = prefs.getUserId()
+
+        // Solicitar permiso de ubicación al iniciar
+        locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
 
         setContent {
             TemaRest {
                 PantallaEnlaceHijo(
                     idHijo = idHijo,
-                    onCerrarSesion = {
-                        prefs.clearPreferences()
-                        val intent = Intent(this, LoginComposeActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        startActivity(intent)
+                    onVolver = {
                         finish()
                     },
                     onVerificarVinculacion = { vinculado ->
                         if (vinculado) {
+                            // Al confirmar vinculación, iniciar flujo de permisos
+                            locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
                             Toast.makeText(this, "✅ ¡Ya estás vinculado con tu padre!", Toast.LENGTH_LONG).show()
                         } else {
                             Toast.makeText(this, "⏳ Aún no estás vinculado. Muéstrale el código a tu padre.", Toast.LENGTH_LONG).show()
@@ -76,7 +128,7 @@ class EnlaceHijoComposeActivity : BaseComposeActivity() {
 @Composable
 fun PantallaEnlaceHijo(
     idHijo: Int,
-    onCerrarSesion: () -> Unit,
+    onVolver: () -> Unit,
     onVerificarVinculacion: (Boolean) -> Unit,
     repository: UsuarioRepository
 ) {
@@ -135,16 +187,16 @@ fun PantallaEnlaceHijo(
             .fillMaxSize()
             .background(brush = gradiente)
     ) {
-        // Botón de cerrar sesión (esquina superior derecha)
+        // Botón de Volver (esquina superior izquierda)
         TextButton(
-            onClick = onCerrarSesion,
+            onClick = onVolver,
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 48.dp, end = 16.dp)
+                .align(Alignment.TopStart)
+                .padding(top = 48.dp, start = 8.dp)
         ) {
-            Icon(Icons.Default.Logout, contentDescription = "Cerrar Sesión", tint = Color.White.copy(alpha = 0.8f))
+            Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White.copy(alpha = 0.8f))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("Salir", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+            Text("Volver", color = Color.White.copy(alpha = 0.8f), fontSize = 16.sp)
         }
 
         Column(

@@ -103,6 +103,15 @@ fun PantallaBloqueoRemoto(
         }
     }
 
+    var searchText by remember { mutableStateOf("") }
+    val filteredApps = remember(apps, searchText) {
+        if (searchText.isEmpty()) apps.toList()
+        else apps.filter { it.nombre.contains(searchText, ignoreCase = true) || (it.nombrePaquete ?: "").contains(searchText, ignoreCase = true) }
+    }
+
+    val appsRestringidas = filteredApps.filter { it.bloqueada || it.tiempoLimite > 0 }.sortedBy { it.nombre }
+    val appsOtras = filteredApps.filter { !it.bloqueada && it.tiempoLimite == 0 }.sortedBy { it.nombre }
+
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(Color(0xFF0D47A1), Color(0xFF00838F), Color(0xFF00BFA5)),
         start = Offset(0f, 0f),
@@ -143,15 +152,43 @@ fun PantallaBloqueoRemoto(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Bloqueo - $nombreHijo", style = MaterialTheme.typography.titleLarge, color = Blanco) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, "Volver", tint = Blanco)
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
-            )
+            Column(modifier = Modifier.background(Color.Transparent)) {
+                CenterAlignedTopAppBar(
+                    title = { Text("Bloqueo - $nombreHijo", style = MaterialTheme.typography.titleLarge, color = Blanco) },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.Default.ArrowBack, "Volver", tint = Blanco)
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
+                )
+                
+                // Buscador
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    placeholder = { Text("Buscar aplicación...", color = Blanco.copy(alpha = 0.6f)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Blanco) },
+                    trailingIcon = {
+                        if (searchText.isNotEmpty()) {
+                            IconButton(onClick = { searchText = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Limpiar", tint = Blanco)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Blanco,
+                        unfocusedBorderColor = Blanco.copy(alpha = 0.5f),
+                        focusedTextColor = Blanco,
+                        unfocusedTextColor = Blanco
+                    )
+                )
+            }
         },
         containerColor = Color.Transparent
     ) { paddingValues ->
@@ -176,29 +213,62 @@ fun PantallaBloqueoRemoto(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
                 ) {
-                    items(apps) { app ->
-                        ItemAppRemoto(
-                            app = app,
-                            onToggleBlock = { isChecked ->
-                                val updated = app.copy(bloqueada = isChecked)
-                                apps[apps.indexOf(app)] = updated
-                                scope.launch(Dispatchers.IO) {
-                                    try {
-                                        val updates = mapOf(
-                                            "bloqueada" to isChecked,
-                                            "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
-                                        )
-                                        SupabaseClient.api.actualizarAppVinculada(app.id.toString(), updates)
-                                    } catch (e: Exception) {
-                                        Log.e("BloqueoRemoto", "Error al bloquear: ${e.message}")
+                    if (appsRestringidas.isNotEmpty()) {
+                        item {
+                            Text(
+                                "RESTRINGIDAS (${appsRestringidas.size})",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Blanco,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                        }
+                        items(appsRestringidas) { app ->
+                            ItemAppRemoto(
+                                app = app,
+                                onToggleBlock = { isChecked ->
+                                    val idx = apps.indexOfFirst { it.id == app.id }
+                                    if (idx != -1) {
+                                        val updated = app.copy(bloqueada = isChecked)
+                                        apps[idx] = updated
+                                        actualizarAppEnBD(scope, updated)
                                     }
+                                },
+                                onEditLimit = {
+                                    selectedApp = app
+                                    showTimeDialog = true
                                 }
-                            },
-                            onEditLimit = {
-                                selectedApp = app
-                                showTimeDialog = true
-                            }
-                        )
+                            )
+                        }
+                    }
+
+                    if (appsOtras.isNotEmpty()) {
+                        item {
+                            Text(
+                                "OTRAS APLICACIONES (${appsOtras.size})",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Blanco.copy(alpha = 0.8f),
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                            )
+                        }
+                        items(appsOtras) { app ->
+                            ItemAppRemoto(
+                                app = app,
+                                onToggleBlock = { isChecked ->
+                                    val idx = apps.indexOfFirst { it.id == app.id }
+                                    if (idx != -1) {
+                                        val updated = app.copy(bloqueada = isChecked)
+                                        apps[idx] = updated
+                                        actualizarAppEnBD(scope, updated)
+                                    }
+                                },
+                                onEditLimit = {
+                                    selectedApp = app
+                                    showTimeDialog = true
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -348,5 +418,21 @@ fun WheelPickerRemoto(items: List<Int>, initialValue: Int, onValueChange: (Int) 
         }
         HorizontalDivider(modifier = Modifier.align(Alignment.Center).offset(y = (-20).dp), color = Primario, thickness = 1.dp)
         HorizontalDivider(modifier = Modifier.align(Alignment.Center).offset(y = (20).dp), color = Primario, thickness = 1.dp)
+    }
+}
+
+private fun actualizarAppEnBD(scope: kotlinx.coroutines.CoroutineScope, app: AppVinculada) {
+    scope.launch(Dispatchers.IO) {
+        try {
+            val updates = mapOf(
+                "bloqueada" to app.bloqueada,
+                "tiempolimite" to app.tiempoLimite,
+                "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
+            )
+            SupabaseClient.api.actualizarAppVinculada(app.id.toString(), updates)
+            Log.d("BloqueoRemoto", "BD actualizada para ${app.nombre}: bloqueada=${app.bloqueada}, limite=${app.tiempoLimite}")
+        } catch (e: Exception) {
+            Log.e("BloqueoRemoto", "Error actualizando BD: ${e.message}")
+        }
     }
 }

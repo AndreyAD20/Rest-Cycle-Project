@@ -11,6 +11,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -205,6 +208,8 @@ fun PantallaCodigoRecuperacion(
     cargando: Boolean = false
 ) {
     var codigo by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     var tiempoRestante by remember { mutableStateOf(60) } // Iniciar con 60 segundos
     var puedeReenviar by remember { mutableStateOf(false) } // Iniciar deshabilitado
     var menuIdiomaExpandido by remember { mutableStateOf(false) }
@@ -226,11 +231,12 @@ fun PantallaCodigoRecuperacion(
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            Primario,
-            Color(0xFF80DEEA)
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
 
     Box(
@@ -247,12 +253,12 @@ fun PantallaCodigoRecuperacion(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
         ) {
-            // Botón de regresar
+            // Bot\u00f3n de regresar
             IconButton(onClick = alClickRegresar) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = stringResource(R.string.content_desc_back),
-                    tint = Negro,
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -260,14 +266,14 @@ fun PantallaCodigoRecuperacion(
             // Selector de Idioma
             val context = androidx.compose.ui.platform.LocalContext.current
             val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
-            var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
+            var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Espa\u00f1ol") ?: "Espa\u00f1ol") }
 
             Box {
                 IconButton(onClick = { menuIdiomaExpandido = true }) {
                     Icon(
                         imageVector = Icons.Default.Language,
                         contentDescription = "Cambiar Idioma",
-                        tint = Negro,
+                        tint = Color.White,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -299,7 +305,7 @@ fun PantallaCodigoRecuperacion(
                                 
                                 val code = when (opcion) {
                                     langEn, "English" -> "en"
-                                    langPt, "Português" -> "pt"
+                                    langPt, "Portugu\u00eas" -> "pt"
                                     else -> "es"
                                 }
                                 AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
@@ -328,7 +334,7 @@ fun PantallaCodigoRecuperacion(
                 .fillMaxSize()
                 .padding(horizontal = 32.dp)
         ) {
-            // Logo del bÃºho con bocadillo
+            // Logo del b\u00facho con bocadillo
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -346,7 +352,7 @@ fun PantallaCodigoRecuperacion(
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Blanco,
+                    color = Color.White.copy(alpha = 0.2f),
                     modifier = Modifier
                         .width(200.dp)
                         .height(80.dp)
@@ -358,7 +364,7 @@ fun PantallaCodigoRecuperacion(
                         Text(
                             text = stringResource(R.string.recovery_code_title_speech),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Negro,
+                            color = Color.White,
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp
                         )
@@ -366,7 +372,7 @@ fun PantallaCodigoRecuperacion(
                 }
             }
 
-            // Campo de CÃ³digo de VerificaciÃ³n
+            // Campo de C\u00f3digo de Verificaci\u00f3n
             OutlinedTextField(
                 value = codigo,
                 onValueChange = { if (it.length <= 6) codigo = it },
@@ -374,63 +380,77 @@ fun PantallaCodigoRecuperacion(
                     Text(
                         stringResource(R.string.recovery_code_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier
                     .width(330.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .focusRequester(focusRequester)
+                    .clickable {
+                        focusRequester.requestFocus()
+                        keyboardController?.show()
+                    },
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f)
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
-            // BotÃ³n Confirmar
+            // Bot\u00f3n Confirmar
             Button(
                 onClick = { alClickConfirmar(codigo) },
                 modifier = Modifier
-                    .width(200.dp)
+                    .width(220.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(30.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(30.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primario
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
                 ),
                 enabled = !cargando
             ) {
                 if (cargando) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Blanco,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
                         text = stringResource(R.string.btn_confirm),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Negro
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = Color.White
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Link para reenviar código
+            // Link para reenviar c\u00f3digo
             Text(
                 text = if (puedeReenviar) {
                     stringResource(R.string.recovery_resend_code)
@@ -438,7 +458,7 @@ fun PantallaCodigoRecuperacion(
                     stringResource(R.string.recovery_resend_in_seconds, tiempoRestante)
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (puedeReenviar) Color(0xFF004D40) else Color(0xFF999999),
+                color = if (puedeReenviar) Color.White else Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.clickable(enabled = puedeReenviar) {
                     if (puedeReenviar) {
                         puedeReenviar = false
@@ -450,6 +470,3 @@ fun PantallaCodigoRecuperacion(
         }
     }
 }
-
-
-

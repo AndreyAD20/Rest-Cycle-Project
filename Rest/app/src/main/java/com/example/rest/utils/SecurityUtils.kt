@@ -32,19 +32,22 @@ object SecurityUtils {
      * - Mínimo 8 caracteres
      * - Al menos 1 letra mayúscula
      * - Al menos 1 número
+     * - Al menos 1 carácter especial
      */
     fun isValidPassword(password: String): Boolean {
         if (password.length < 8) return false
         
         var hasUppercase = false
         var hasNumber = false
+        var hasSpecial = false
         
         for (char in password) {
             if (char.isUpperCase()) hasUppercase = true
             if (char.isDigit()) hasNumber = true
+            if (!char.isLetterOrDigit()) hasSpecial = true
         }
         
-        return hasUppercase && hasNumber
+        return hasUppercase && hasNumber && hasSpecial
     }
 
     /**

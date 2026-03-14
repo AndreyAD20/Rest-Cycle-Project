@@ -110,7 +110,7 @@
     <string name="err_invalid_email_format">❌ Ingresa un correo válido</string>
     <string name="err_empty_birthdate">❌ Por favor, ingresa tu fecha de nacimiento</string>
     <string name="err_invalid_birthdate_format">❌ Formato de fecha inválido. Usa AAAA-MM-DD</string>
-    <string name="err_invalid_password_format">❌ La contraseña debe tener al menos 8 caracteres, 1 mayúscula y 1 número</string>
+    <string name="err_invalid_password_format">❌ La contraseña debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial</string>
     <string name="err_empty_confirm_password">❌ Por favor, confirma tu contraseña</string>
     <string name="err_password_mismatch">❌ Las contraseñas no coinciden</string>
     <string name="err_accept_terms">❌ Debes aceptar los Términos y Condiciones</string>
@@ -357,7 +357,7 @@
     <string name="toast_fill_all_fields">Complete todos los campos</string>
     <string name="toast_passwords_no_match">Las nuevas contraseñas no coinciden</string>
     <string name="toast_password_incorrect">Contraseña actual incorrecta</string>
-    <string name="toast_password_complexity">La clave debe tener al menos 8 caracteres, 1 mayúscula y 1 número.</string>
+    <string name="toast_password_complexity">La clave debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial.</string>
     <string name="toast_password_updated">Contraseña actualizada</string>
     <string name="toast_password_update_error">Error: %1$s</string>
 
@@ -372,5 +372,16 @@
     <string name="toast_code_sent_to">Código enviado a %1$s</string>
     <string name="toast_code_send_error">Error enviando código: %1$s</string>
     <string name="dialog_verify_resend">Reenviar código</string>
+
+    <!-- Verificación de Correo (Registro) -->
+    <string name="toast_email_verified">✅ ¡Email verificado exitosamente!</string>
+    <string name="toast_child_account_verified">✅ ¡Cuenta de hijo verificada y vinculada!</string>
+    <string name="error_no_email_provided">Error: No se proporcionó el correo</string>
+    <string name="verify_email_bubble_speech">Verifica tu\ncorreo electrónico</string>
+    <string name="verify_email_title">Verificación de Email</string>
+    <string name="verify_email_sent_to">Hemos enviado un código de 6 dígitos a:</string>
+    <string name="verify_email_code_placeholder">Código de 6 dígitos</string>
+    <string name="btn_verify">Verificar</string>
+    <string name="btn_resend_code">¿No recibiste el código? Reenviar</string>
 
 </resources>

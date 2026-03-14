@@ -92,17 +92,17 @@ class PreferencesManager(context: Context) {
     }
 
     /**
-     * Guarda el Rol del usuario de forma encriptada
+     * Guarda si el usuario es mayor de edad (true = mayor/padre, false = menor/hijo)
      */
-    fun saveUserRol(rol: String) {
-        sharedPreferences.edit().putString("ROL_USUARIO", rol).apply()
+    fun saveMayorEdad(mayorEdad: Boolean) {
+        sharedPreferences.edit().putBoolean("MAYOR_EDAD", mayorEdad).apply()
     }
 
     /**
-     * Recupera el Rol del usuario encriptado
+     * Recupera si el usuario es mayor de edad
      */
-    fun getUserRol(): String? {
-        return sharedPreferences.getString("ROL_USUARIO", null)
+    fun getMayorEdad(): Boolean {
+        return sharedPreferences.getBoolean("MAYOR_EDAD", false)
     }
 
     /**
@@ -117,6 +117,20 @@ class PreferencesManager(context: Context) {
      */
     fun getSessionToken(): String? {
         return sharedPreferences.getString("SESSION_TOKEN", null)
+    }
+
+    /**
+     * Guarda si el rastreo de ubicación del hijo debe estar activo
+     */
+    fun saveTrackingHijoActivo(activo: Boolean) {
+        sharedPreferences.edit().putBoolean("TRACKING_HIJO_ACTIVO", activo).apply()
+    }
+
+    /**
+     * Recupera si el rastreo de ubicación del hijo debe estar activo
+     */
+    fun isTrackingHijoActivo(): Boolean {
+        return sharedPreferences.getBoolean("TRACKING_HIJO_ACTIVO", false)
     }
 
     /**

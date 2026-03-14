@@ -12,148 +12,100 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * Servicio para enviar emails de verificación
- * Usa Supabase Edge Functions + Resend API
+ * Servicio para enviar emails transaccionales.
+ * Cada método apunta a su propia Supabase Edge Function.
  */
 object EmailService {
-    
+
     private const val TAG = "EmailService"
-    private val EDGE_FUNCTION_URL = "${SupabaseConfig.SUPABASE_URL}/functions/v1/enviar-codigo-verificacion"
-    
+
+    // ── URLs de las 3 Edge Functions ──────────────────────────────────────────
+    private val URL_VERIFICACION_EMAIL     = "${SupabaseConfig.SUPABASE_URL}/functions/v1/enviar-verificacion-email"
+    private val URL_VERIFICACION_IDENTIDAD = "${SupabaseConfig.SUPABASE_URL}/functions/v1/enviar-verificacion-identidad"
+    private val URL_RECUPERACION           = "${SupabaseConfig.SUPABASE_URL}/functions/v1/enviar-recuperacion-contrasena"
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
-    
+
+    // ── Utilidad interna ──────────────────────────────────────────────────────
+    private suspend fun postJson(url: String, json: JSONObject): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val body = json.toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url(url)
+                    .addHeader("Authorization", "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
+                    .addHeader("Content-Type", "application/json")
+                    .post(body)
+                    .build()
+                val response = client.newCall(request).execute()
+                Log.d(TAG, "POST $url → ${response.code} | ${response.body?.string()}")
+                response.isSuccessful
+            } catch (e: Exception) {
+                Log.e(TAG, "Error en $url: ${e.message}", e)
+                false
+            }
+        }
+    }
+
+    // ── 1. Verificación de cuenta (registro) ──────────────────────────────────
     /**
-     * Envía un código de verificación por email usando Edge Function
-     * @param correo Email del destinatario
-     * @param codigo Código de verificación de 6 dígitos
-     * @param nombre Nombre del usuario
-     * @return true si se envió correctamente, false en caso contrario
+     * Envía el código de verificación de cuenta tras el registro.
+     * Edge Function: enviar-verificacion-email
      */
     suspend fun enviarCodigoVerificacion(
         correo: String,
         codigo: String,
         nombre: String = "Usuario"
     ): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                Log.d(TAG, "🚀 Iniciando envío de código a: $correo")
-                Log.d(TAG, "URL: $EDGE_FUNCTION_URL")
-                
-                // Crear JSON body
-                val json = JSONObject().apply {
-                    put("email", correo)
-                    put("code", codigo)
-                    put("nombre", nombre)
-                }
-                
-                val body = json.toString().toRequestBody("application/json".toMediaType())
-                
-                // Crear request
-                val request = Request.Builder()
-                    .url(EDGE_FUNCTION_URL)
-                    .addHeader("Authorization", "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
-                    .addHeader("Content-Type", "application/json")
-                    .post(body)
-                    .build()
-                
-                // Ejecutar request
-                Log.d(TAG, "⏳ Ejecutando petición HTTP...")
-                val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: "Sin respuesta"
-                
-                Log.d(TAG, "📩 Response Code: ${response.code}")
-                Log.d(TAG, "📩 Response Body: $responseBody")
-                
-                if (response.isSuccessful) {
-                    Log.d(TAG, "✅ Email enviado exitosamente")
-                    true
-                } else {
-                    Log.e(TAG, "❌ Falló el envío del email. Código: ${response.code}")
-                    false
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Excepción al enviar email: ${e.message}", e)
-                false
-            }
-        }
+        Log.d(TAG, "📧 Verificación de email → $correo")
+        return postJson(URL_VERIFICACION_EMAIL, JSONObject().apply {
+            put("email", correo)
+            put("code", codigo)
+            put("nombre", nombre)
+        })
     }
-    
+
+    // ── 2. Verificación de identidad (2FA al iniciar sesión) ──────────────────
     /**
-     * Envía un email de bienvenida después de verificar la cuenta
-     * @param correo Email del destinatario
-     * @param nombre Nombre del usuario
-     * @return true si se envió correctamente, false en caso contrario
+     * Envía el código de segundo factor cuando el usuario inicia sesión.
+     * Edge Function: enviar-verificacion-identidad
      */
-    suspend fun enviarEmailBienvenida(correo: String, nombre: String): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                Log.d(TAG, "📧 (TODO) Email de bienvenida para $nombre -> $correo")
-                // TODO: Implementar llamada a Edge Function si es necesario
-                true
-            } catch (e: Exception) {
-                Log.e(TAG, "Error: ${e.message}", e)
-                false
-            }
-        }
+    suspend fun enviarCodigo2FA(
+        correo: String,
+        codigo: String,
+        nombre: String = "Usuario"
+    ): Boolean {
+        Log.d(TAG, "🔐 Verificación de identidad → $correo")
+        return postJson(URL_VERIFICACION_IDENTIDAD, JSONObject().apply {
+            put("email", correo)
+            put("code", codigo)
+            put("nombre", nombre)
+        })
     }
-    
+
+    // ── 3. Recuperación de contraseña ─────────────────────────────────────────
     /**
-     * Envía un código de recuperación de contraseña por email usando Edge Function
-     * @param correo Email del destinatario
-     * @param codigo Código de recuperación de 6 dígitos
-     * @return true si se envió correctamente, false en caso contrario
+     * Envía el código para restablecer la contraseña.
+     * Edge Function: enviar-recuperacion-contrasena
      */
     suspend fun enviarCodigoRecuperacion(
         correo: String,
         codigo: String
     ): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                Log.d(TAG, "🔐 Iniciando envío de código de recuperación a: $correo")
-                
-                // Usar la misma Edge Function pero con un parámetro diferente
-                val edgeFunctionUrl = "${SupabaseConfig.SUPABASE_URL}/functions/v1/enviar-codigo-verificacion"
-                
-                // Crear JSON body
-                val json = JSONObject().apply {
-                    put("email", correo)
-                    put("code", codigo)
-                    put("tipo", "recuperacion") // Indicar que es recuperación
-                }
-                
-                val body = json.toString().toRequestBody("application/json".toMediaType())
-                
-                // Crear request
-                val request = Request.Builder()
-                    .url(edgeFunctionUrl)
-                    .addHeader("Authorization", "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
-                    .addHeader("Content-Type", "application/json")
-                    .post(body)
-                    .build()
-                
-                // Ejecutar request
-                Log.d(TAG, "⏳ Ejecutando petición HTTP...")
-                val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: "Sin respuesta"
-                
-                Log.d(TAG, "📩 Response Code: ${response.code}")
-                Log.d(TAG, "📩 Response Body: $responseBody")
-                
-                if (response.isSuccessful) {
-                    Log.d(TAG, "✅ Email de recuperación enviado exitosamente")
-                    true
-                } else {
-                    Log.e(TAG, "❌ Falló el envío del email. Código: ${response.code}")
-                    false
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Excepción al enviar email de recuperación: ${e.message}", e)
-                false
-            }
-        }
+        Log.d(TAG, "🔑 Recuperación de contraseña → $correo")
+        return postJson(URL_RECUPERACION, JSONObject().apply {
+            put("email", correo)
+            put("code", codigo)
+        })
+    }
+
+    // ── Bienvenida (pendiente de Edge Function dedicada) ──────────────────────
+    suspend fun enviarEmailBienvenida(correo: String, nombre: String): Boolean {
+        Log.d(TAG, "📧 (TODO) Bienvenida para $nombre → $correo")
+        return true
     }
 }

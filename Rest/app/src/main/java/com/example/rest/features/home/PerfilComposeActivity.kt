@@ -497,35 +497,34 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
-                        Text(stringResource(R.string.settings_edit_profile), color = Negro, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.settings_edit_profile), color = Color.White, fontWeight = FontWeight.Bold)
                     },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Negro)
+                            Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Color.White)
                         }
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Transparente)
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
                 )
             },
-            containerColor = FondoSecundario // Usar fondo claro secundario
+            containerColor = Color.Transparent
         ) { paddingValues ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF0D47A1),
+                                Color(0xFF00838F),
+                                Color(0xFF00BFA5)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(1000f, 2000f)
+                        )
+                    )
                     .padding(paddingValues)
             ) {
-                // Fondo decorativo en la parte superior
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(Primario, Color(0xFF80DEEA))
-                            ),
-                            shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
-                        )
-                )
 
                 Column(
                     modifier = Modifier
