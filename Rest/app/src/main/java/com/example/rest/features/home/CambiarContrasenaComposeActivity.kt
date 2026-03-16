@@ -222,7 +222,7 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                         scope.launch {
                             try {
                                 // Verificar contraseña actual
-                                val userRes = usuarioRepository.obtenerUsuarioPorId(userId)
+                                val userRes = usuarioRepository.obtenerUsuarioPorId(context, userId)
                                 if (userRes is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
                                     val user = userRes.data
                                     val hashedActual = SecurityUtils.hashPassword(actualPwd)
@@ -243,7 +243,7 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                                     // Actualizar con nueva contraseña
                                     val nuevaHash = SecurityUtils.hashPassword(nuevaPwd)
                                     val updated = user.copy(contraseña = nuevaHash)
-                                    when (val updRes = usuarioRepository.actualizarUsuario(userId, updated)) {
+                                    when (val updRes = usuarioRepository.actualizarUsuario(context, userId, updated)) {
                                         is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
                                             Toast.makeText(context, context.getString(R.string.toast_password_updated), Toast.LENGTH_SHORT).show()
                                             onBackClick() // finaliza

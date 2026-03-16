@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
@@ -54,9 +55,9 @@ class EnlaceHijoComposeActivity : BaseComposeActivity() {
             prefs.saveTrackingHijoActivo(true)
             UbicacionScheduler.iniciar(this)
             AppMonitorService.startService(this)
-            Toast.makeText(this, "✅ Rastreo permanente activado.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.tracking_permanent_active), Toast.LENGTH_SHORT).show()
         } else {
-            Toast.makeText(this, "⚠️ Sin permiso permanente: el rastreo se detendrá al cerrar la app.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.tracking_permission_missing), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -74,18 +75,18 @@ class EnlaceHijoComposeActivity : BaseComposeActivity() {
                 AppMonitorService.startService(this)
             }
         } else {
-            Toast.makeText(this, "Sin permiso de ubicación: tu padre no podrá ver dónde estás.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.location_permission_missing_msg), Toast.LENGTH_LONG).show()
         }
     }
 
     private fun mostrarDialogoPermisoBackground() {
         android.app.AlertDialog.Builder(this)
-            .setTitle("Rastreo Permanente")
-            .setMessage("Para que tu padre pueda ver tu ubicación incluso cuando la aplicación está cerrada o el teléfono bloqueado, debes seleccionar la opción \"Permitir todo el tiempo\" en la siguiente pantalla.")
-            .setPositiveButton("Entendido") { _, _ ->
+            .setTitle(getString(R.string.dialog_permanent_tracking_title))
+            .setMessage(getString(R.string.dialog_permanent_tracking_msg))
+            .setPositiveButton(getString(R.string.btn_understood)) { _, _ ->
                 backgroundLocationPermissionLauncher.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
             }
-            .setNegativeButton("Ahora no") { _, _ ->
+            .setNegativeButton(getString(R.string.btn_not_now)) { _, _ ->
                 prefs.saveTrackingHijoActivo(true)
                 UbicacionScheduler.iniciar(this)
                 AppMonitorService.startService(this)
@@ -113,9 +114,9 @@ class EnlaceHijoComposeActivity : BaseComposeActivity() {
                         if (vinculado) {
                             // Al confirmar vinculación, iniciar flujo de permisos
                             locationPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
-                            Toast.makeText(this, "✅ ¡Ya estás vinculado con tu padre!", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this, getString(R.string.toast_already_linked_hijo), Toast.LENGTH_LONG).show()
                         } else {
-                            Toast.makeText(this, "⏳ Aún no estás vinculado. Muéstrale el código a tu padre.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this, getString(R.string.toast_not_yet_linked), Toast.LENGTH_LONG).show()
                         }
                     },
                     repository = repository
@@ -140,17 +141,18 @@ fun PantallaEnlaceHijo(
     val scope = rememberCoroutineScope()
 
     // Cargar/generar código al iniciar
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(idHijo) {
         if (idHijo != -1) {
             // Verificar si ya está vinculado
-            val vinculadoResult = repository.estaVinculado(idHijo)
+            val vinculadoResult = repository.estaVinculado(context, idHijo)
             if (vinculadoResult is UsuarioRepository.Result.Success && vinculadoResult.data) {
                 vinculado = true
                 cargando = false
                 return@LaunchedEffect
             }
             // Obtener o generar código de vinculación
-            when (val result = repository.obtenerYGenerarCodigoVinculacion(idHijo)) {
+            when (val result = repository.obtenerYGenerarCodigoVinculacion(context, idHijo)) {
                 is UsuarioRepository.Result.Success -> codigoVinculacion = result.data
                 is UsuarioRepository.Result.Error -> codigoVinculacion = "ERROR"
                 else -> {}
@@ -194,9 +196,9 @@ fun PantallaEnlaceHijo(
                 .align(Alignment.TopStart)
                 .padding(top = 48.dp, start = 8.dp)
         ) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White.copy(alpha = 0.8f))
+            Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.content_desc_back), tint = Color.White.copy(alpha = 0.8f))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("Volver", color = Color.White.copy(alpha = 0.8f), fontSize = 16.sp)
+            Text(stringResource(R.string.btn_back), color = Color.White.copy(alpha = 0.8f), fontSize = 16.sp)
         }
 
         Column(
@@ -209,7 +211,7 @@ fun PantallaEnlaceHijo(
             if (cargando) {
                 CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Cargando tu información...", color = Color.White.copy(alpha = 0.8f))
+                Text(stringResource(R.string.loading_info), color = Color.White.copy(alpha = 0.8f))
             } else if (vinculado) {
                 // ---- ESTADO: VINCULADO ----
                 VinculadoPanel()
@@ -234,7 +236,7 @@ fun PantallaEnlaceHijo(
                 Spacer(modifier = Modifier.height(28.dp))
 
                 Text(
-                    text = "¡Hola! Aún no estás\nconectado con tu familia",
+                    text = stringResource(R.string.link_status_not_connected),
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -245,7 +247,7 @@ fun PantallaEnlaceHijo(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Muéstrale este código a tu padre o tutor para que te agregue desde su aplicación:",
+                    text = stringResource(R.string.link_instruction_hijo),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.85f),
                     textAlign = TextAlign.Center
@@ -268,7 +270,7 @@ fun PantallaEnlaceHijo(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Tu código de vinculación",
+                            text = stringResource(R.string.your_link_code),
                             style = MaterialTheme.typography.labelLarge,
                             color = Color(0xFF546E7A),
                             letterSpacing = 1.sp
@@ -278,7 +280,7 @@ fun PantallaEnlaceHijo(
 
                         if (codigoVinculacion == null || codigoVinculacion == "ERROR") {
                             Text(
-                                text = "⚠ Sin conexión",
+                                text = stringResource(R.string.no_connection),
                                 color = Color(0xFFE53935),
                                 style = MaterialTheme.typography.titleLarge
                             )
@@ -310,7 +312,7 @@ fun PantallaEnlaceHijo(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
-                            text = "Este código expira una vez que te vinculen",
+                            text = stringResource(R.string.code_expires_msg),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF90A4AE),
                             textAlign = TextAlign.Center
@@ -325,7 +327,7 @@ fun PantallaEnlaceHijo(
                     onClick = {
                         verificando = true
                         scope.launch {
-                            val result = repository.estaVinculado(idHijo)
+                            val result = repository.estaVinculado(context, idHijo)
                             delay(600)
                             verificando = false
                             if (result is UsuarioRepository.Result.Success) {
@@ -357,7 +359,7 @@ fun PantallaEnlaceHijo(
                         Icon(Icons.Default.Refresh, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "¿Ya te vincularon? Verificar",
+                            stringResource(R.string.btn_check_link_status),
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -396,9 +398,8 @@ fun VinculadoPanel() {
                 modifier = Modifier.size(64.dp)
             )
         }
-
         Text(
-            text = "¡Estás vinculado!",
+            text = stringResource(R.string.panel_linked_title),
             style = MaterialTheme.typography.headlineMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -407,7 +408,7 @@ fun VinculadoPanel() {
         )
 
         Text(
-            text = "Tu familia puede ver y gestionar tus actividades desde su aplicación.",
+            text = stringResource(R.string.panel_linked_msg),
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White.copy(alpha = 0.85f),
             textAlign = TextAlign.Center,
@@ -428,7 +429,7 @@ fun VinculadoPanel() {
                 Icon(Icons.Default.Info, tint = Color.White, contentDescription = null)
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    "Tu dispositivo está siendo supervisado. Actúa con responsabilidad.",
+                    stringResource(R.string.panel_linked_supervision_msg),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.9f)
                 )

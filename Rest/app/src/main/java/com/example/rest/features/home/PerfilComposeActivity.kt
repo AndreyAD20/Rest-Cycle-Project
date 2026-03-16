@@ -311,9 +311,9 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
         isSavingUser = true
         scope.launch {
             try {
-                val getRes = usuarioRepository.obtenerUsuarioPorId(userId)
-                if (getRes is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
-                    val currentUsuario = getRes.data
+                val getRes = usuarioRepository.obtenerUsuarioPorId(context, userId)
+                if (getRes is com.example.rest.data.repository.UsuarioRepository.Result.Success<*>) {
+                    val currentUsuario = getRes.data as com.example.rest.data.models.Usuario
 
                     if (!com.example.rest.utils.SecurityUtils.verifyPassword(confirmarContraseña, currentUsuario.contraseña)) {
                         Toast.makeText(context, context.getString(R.string.err_password_mismatch), Toast.LENGTH_SHORT).show()
@@ -334,8 +334,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                         fechaNacimiento = fechaFormateada
                     )
 
-                    when (val updateRes = usuarioRepository.actualizarUsuario(userId, updatedUsuario)) {
-                        is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                    when (val updateRes = usuarioRepository.actualizarUsuario(context, userId, updatedUsuario)) {
+                        is com.example.rest.data.repository.UsuarioRepository.Result.Success<*> -> {
                             Toast.makeText(context, context.getString(R.string.toast_profile_updated), Toast.LENGTH_SHORT).show()
                             val prefs = com.example.rest.utils.PreferencesManager(context)
                             prefs.saveUserName(nombreText)
@@ -363,7 +363,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
         val prefs = com.example.rest.utils.PreferencesManager(context)
         userId = prefs.getUserId()
         if (userId != -1) {
-            when (val res = usuarioRepository.obtenerUsuarioPorId(userId)) {
+            when (val res = usuarioRepository.obtenerUsuarioPorId(context, userId)) {
                 is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
                     val usuario = res.data
                     nombreText = usuario.nombre
@@ -866,11 +866,11 @@ suspend fun subirFotoASupabase(context: Context, bitmap: Bitmap) {
             
             // Subir a Supabase
             val repository = com.example.rest.data.repository.UsuarioRepository()
-            val result = repository.actualizarFotoPerfil(userId, "data:image/jpeg;base64,$base64String")
+            val result = repository.actualizarFotoPerfil(context, userId, "data:image/jpeg;base64,$base64String")
             
             withContext(Dispatchers.Main) {
                 when (result) {
-                    is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                    is com.example.rest.data.repository.UsuarioRepository.Result.Success<*> -> {
                         Toast.makeText(context, context.getString(R.string.toast_photo_updated), Toast.LENGTH_SHORT).show()
                     }
                     is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
@@ -894,7 +894,7 @@ suspend fun descargarFotoDeSupabase(context: Context, userId: Int): Bitmap? {
     return withContext(Dispatchers.IO) {
         try {
             val repository = com.example.rest.data.repository.UsuarioRepository()
-            val result = repository.obtenerUsuarioPorId(userId)
+            val result = repository.obtenerUsuarioPorId(context, userId)
             
             when (result) {
                 is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
@@ -970,11 +970,11 @@ suspend fun eliminarFotoDeSupabase(context: Context) {
             
             // Actualizar con null en Supabase
             val repository = com.example.rest.data.repository.UsuarioRepository()
-            val result = repository.actualizarFotoPerfil(userId, null)
+            val result = repository.actualizarFotoPerfil(context, userId, null)
             
             withContext(Dispatchers.Main) {
                 when (result) {
-                    is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                    is com.example.rest.data.repository.UsuarioRepository.Result.Success<*> -> {
                         Log.d("PerfilDebug", "Foto eliminada de Supabase")
                     }
                     is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {

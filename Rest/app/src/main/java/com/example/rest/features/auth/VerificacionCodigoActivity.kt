@@ -86,7 +86,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
     private fun verificarCodigo(codigo: String, contraseña: String?, onComplete: () -> Unit) {
         lifecycleScope.launch {
             try {
-                when (val resultado = usuarioRepository.verificarCodigo(correo, codigo)) {
+                when (val resultado = usuarioRepository.verificarCodigo(this@VerificacionCodigoActivity, correo, codigo)) {
                     is UsuarioRepository.Result.Success -> {
                         runOnUiThread {
                             Toast.makeText(
@@ -146,7 +146,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@VerificacionCodigoActivity,
-                                "❌ ${resultado.message}",
+                                getString(R.string.toast_error_generic, resultado.message),
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -165,7 +165,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@VerificacionCodigoActivity,
-                        "❌ Error: ${e.message}",
+                        getString(R.string.toast_error_generic, e.message ?: ""),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -178,12 +178,12 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
     private fun reenviarCodigo(onComplete: () -> Unit) {
         lifecycleScope.launch {
             try {
-                when (val resultado = usuarioRepository.reenviarCodigo(correo)) {
+                when (val resultado = usuarioRepository.reenviarCodigo(this@VerificacionCodigoActivity, correo)) {
                     is UsuarioRepository.Result.Success -> {
                         runOnUiThread {
                             Toast.makeText(
                                 this@VerificacionCodigoActivity,
-                                "✅ Código reenviado exitosamente. Revisa tu correo.",
+                                getString(R.string.toast_code_resent_success),
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -192,7 +192,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@VerificacionCodigoActivity,
-                                "❌ ${resultado.message}",
+                                getString(R.string.toast_error_generic, resultado.message),
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -211,7 +211,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@VerificacionCodigoActivity,
-                        "❌ Error: ${e.message}",
+                        getString(R.string.toast_error_generic, e.message ?: ""),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -263,7 +263,7 @@ fun PantallaVerificacionCodigo(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
-                    contentDescription = "Búho",
+                    contentDescription = stringResource(R.string.content_desc_owl_logo),
                     modifier = Modifier.size(80.dp)
                 )
                 

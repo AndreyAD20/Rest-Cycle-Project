@@ -64,7 +64,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 // Hay sesión local, vamos a verificar el token en Supabase
                 // Podríamos usar el repositorio, pero hacemos directo para evitar dependencias circulares si es complejo
                 val repository = com.example.rest.data.repository.UsuarioRepository()
-                val response = repository.obtenerUsuarioPorId(idUsuario)
+                val response = repository.obtenerUsuarioPorId(context, idUsuario)
                 
                 if (response is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
                     val tokenServidor = response.data.ultimoTokenSesion

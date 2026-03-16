@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,7 +57,7 @@ class VincularHijoActivity : BaseComposeActivity() {
                     onVinculacionExitosa = {
                         Toast.makeText(
                             this,
-                            "✅ ¡Hijo vinculado correctamente!",
+                            getString(R.string.toast_child_linked_success),
                             Toast.LENGTH_LONG
                         ).show()
                         finish()
@@ -87,6 +88,7 @@ fun PantallaVincularHijo(
     var verContrasena by remember { mutableStateOf(false) }
     var verConfirmar by remember { mutableStateOf(false) }
     var cargando by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     // Validaciones en tiempo real
@@ -106,14 +108,14 @@ fun PantallaVincularHijo(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "Vincular Hijo",
+                        stringResource(R.string.link_child_title),
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.content_desc_back), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -156,7 +158,7 @@ fun PantallaVincularHijo(
                 }
 
                 Text(
-                    text = "Ingresa el código que aparece\nen la app de tu hijo/a",
+                    text = stringResource(R.string.link_child_code_instruction),
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = Color.White.copy(alpha = 0.9f),
                         textAlign = TextAlign.Center
@@ -176,7 +178,7 @@ fun PantallaVincularHijo(
                     ) {
                         // Código de vinculación del hijo
                         Text(
-                            text = "Código de vinculación",
+                            text = stringResource(R.string.link_child_code_label),
                             style = MaterialTheme.typography.labelLarge,
                             color = Color(0xFF37474F)
                         )
@@ -186,7 +188,7 @@ fun PantallaVincularHijo(
                             onValueChange = {
                                 if (it.length <= 5) codigoVinculacion = it.uppercase()
                             },
-                            placeholder = { Text("Ej: AB4XC") },
+                            placeholder = { Text(stringResource(R.string.link_child_code_placeholder)) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
@@ -219,7 +221,7 @@ fun PantallaVincularHijo(
 
                         // Contraseña parental
                         Text(
-                            text = "Contraseña de control parental",
+                            text = stringResource(R.string.parental_password_label),
                             style = MaterialTheme.typography.labelLarge,
                             color = Color(0xFF37474F)
                         )
@@ -227,7 +229,7 @@ fun PantallaVincularHijo(
                         OutlinedTextField(
                             value = contrasenaParental,
                             onValueChange = { contrasenaParental = it },
-                            label = { Text("Nueva contraseña segura") },
+                            label = { Text(stringResource(R.string.parental_password_placeholder)) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
@@ -265,7 +267,7 @@ fun PantallaVincularHijo(
                                 ) {
                                     Icon(Icons.Default.Info, tint = Color(0xFFF57F17), contentDescription = null, modifier = Modifier.size(18.dp))
                                     Text(
-                                        "La contraseña debe tener: 8+ caracteres, 1 mayúscula, 1 número y 1 carácter especial (ej: @#\$)",
+                                        stringResource(R.string.err_parental_password_format),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color(0xFF5D4037)
                                     )
@@ -276,7 +278,7 @@ fun PantallaVincularHijo(
                         OutlinedTextField(
                             value = confirmarContrasena,
                             onValueChange = { confirmarContrasena = it },
-                            label = { Text("Confirmar contraseña") },
+                            label = { Text(stringResource(R.string.parental_password_confirm_label)) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
@@ -296,7 +298,7 @@ fun PantallaVincularHijo(
                             isError = confirmarContrasena.isNotBlank() && !contrasenasCoinciden,
                             supportingText = {
                                 if (confirmarContrasena.isNotBlank() && !contrasenasCoinciden) {
-                                    Text("Las contraseñas no coinciden", color = MaterialTheme.colorScheme.error)
+                                    Text(stringResource(R.string.err_password_mismatch), color = MaterialTheme.colorScheme.error)
                                 }
                             },
                             colors = OutlinedTextFieldDefaults.colors(
@@ -320,7 +322,7 @@ fun PantallaVincularHijo(
                     ) {
                         Icon(Icons.Default.Info, tint = Color(0xFF80DEEA), contentDescription = null, modifier = Modifier.size(20.dp))
                         Text(
-                            text = "El código de vinculación solo puede usarse una vez. Pídele a tu hijo que abra la app Rest Cycle para obtener su código.",
+                            text = stringResource(R.string.link_child_info_banner),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.White.copy(alpha = 0.85f)
                         )
@@ -332,15 +334,16 @@ fun PantallaVincularHijo(
                     onClick = {
                         when {
                             !codigoValido ->
-                                onError("El código debe tener exactamente 5 caracteres")
+                                onError(context.getString(R.string.err_code_length))
                             !contrasenaFuerte ->
-                                onError("La contraseña parental debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial")
+                                onError(context.getString(R.string.err_parental_password_format))
                             !contrasenasCoinciden ->
-                                onError("Las contraseñas no coinciden")
+                                onError(context.getString(R.string.err_password_mismatch))
                             else -> {
                                 cargando = true
                                 scope.launch {
                                     val result = repository.vincularHijo(
+                                        context = context,
                                         idPadre = idPadre,
                                         codigoVinculacion = codigoVinculacion,
                                         contrasenaParental = contrasenaParental
@@ -377,7 +380,7 @@ fun PantallaVincularHijo(
                         Icon(Icons.Default.Link, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Vincular Hijo",
+                            stringResource(R.string.link_child_title),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )

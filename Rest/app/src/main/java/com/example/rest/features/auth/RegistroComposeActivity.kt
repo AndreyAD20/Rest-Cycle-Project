@@ -93,13 +93,13 @@ class RegistroComposeActivity : BaseComposeActivity() {
         
         lifecycleScope.launch {
             try {
-                when (val resultado = usuarioRepository.registrarConVerificacion(request)) {
+                when (val resultado = usuarioRepository.registrarConVerificacion(this@RegistroComposeActivity, request)) {
                     is UsuarioRepository.Result.Success -> {
                         val mensaje = resultado.data
                         runOnUiThread {
                             Toast.makeText(
                                 this@RegistroComposeActivity,
-                                "✅ $mensaje",
+                                mensaje,
                                 Toast.LENGTH_LONG
                             ).show()
                             

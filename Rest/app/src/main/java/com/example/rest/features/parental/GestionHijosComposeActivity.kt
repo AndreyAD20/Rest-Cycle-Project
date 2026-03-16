@@ -26,6 +26,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rest.BaseComposeActivity
@@ -84,11 +86,12 @@ fun PantallaGestionHijos(
 ) {
     var hijos by remember { mutableStateOf<List<Usuario>>(emptyList()) }
     var cargando by remember { mutableStateOf(true) }
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     suspend fun cargarHijos() {
         cargando = true
-        when (val result = repository.obtenerHijosVinculados(idPadre)) {
+        when (val result = repository.obtenerHijosVinculados(context, idPadre)) {
             is UsuarioRepository.Result.Success -> hijos = result.data
             is UsuarioRepository.Result.Error -> onError(result.message)
             else -> {}
@@ -117,7 +120,7 @@ fun PantallaGestionHijos(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Control Parental",
+                        text = stringResource(R.string.parental_control_title),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -126,14 +129,14 @@ fun PantallaGestionHijos(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.content_desc_back), tint = Color.White)
                     }
                 },
                 actions = {
                     IconButton(onClick = {
                         scope.launch { cargarHijos() }
                     }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refrescar", tint = Color.White)
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.content_desc_refresh), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -154,7 +157,7 @@ fun PantallaGestionHijos(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Gestiona los Dispositivos\nde tus Hijos",
+                    text = stringResource(R.string.parental_control_subtitle),
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
@@ -196,7 +199,7 @@ fun PantallaGestionHijos(
                                     strokeWidth = 3.dp
                                 )
                                 Text(
-                                    "Cargando hijos vinculados...",
+                                    stringResource(R.string.loading_linked_children),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -223,14 +226,14 @@ fun PantallaGestionHijos(
                                     )
                                 }
                                 Text(
-                                    "No tienes hijos vinculados todavía",
+                                    stringResource(R.string.no_children_linked),
                                     style = MaterialTheme.typography.bodyLarge.copy(
                                         fontWeight = FontWeight.SemiBold,
                                         textAlign = TextAlign.Center
                                     )
                                 )
                                 Text(
-                                    "Toca \"Enlazar Nuevo Usuario\" para agregar a tu hijo",
+                                    stringResource(R.string.link_child_instruction),
                                     style = MaterialTheme.typography.bodySmall,
                                     textAlign = TextAlign.Center
                                 )
@@ -263,7 +266,7 @@ fun PantallaGestionHijos(
                     )
                 ) {
                     Text(
-                        text = "Enlazar Nuevo Usuario",
+                        text = stringResource(R.string.btn_link_new_user),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color.White
                     )

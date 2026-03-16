@@ -369,7 +369,7 @@
     <string name="profile_verify_email_error">❌ Incorrect code, please try again</string>
     <string name="toast_invalid_email_format">Email does not look valid (e.g.: name@domain.com)</string>
     <string name="toast_sending_code">Sending code...</string>
-    <string name="toast_code_sent_to">Code sent to %1$s</string>
+    <string name="toast_code_sent_to">✅ Code sent to %1$s</string>
     <string name="toast_code_send_error">Error sending code: %1$s</string>
     <string name="dialog_verify_resend">Resend code</string>
 
@@ -381,7 +381,100 @@
     <string name="verify_email_title">Email Verification</string>
     <string name="verify_email_sent_to">We have sent a 6-digit code to:</string>
     <string name="verify_email_code_placeholder">6-digit Code</string>
-    <string name="btn_verify">Verify</string>
-    <string name="btn_resend_code">Didn\'t receive the code? Resend</string>
+    <string name="err_enter_6_digits">Enter the 6 digits</string>
 
+    <!-- Authentication and Repository Errors -->
+    <string name="err_invalid_credentials">Incorrect email or password</string>
+    <string name="err_user_not_found">User not found</string>
+    <string name="err_server_error_code">Server error: %1$d</string>
+    <string name="err_server_error_msg">Server error: %1$s</string>
+    <string name="err_network_error_msg">Connection error: %1$s</string>
+    <string name="err_email_already_registered">Email is already registered</string>
+    <string name="err_code_incorrect">Incorrect code</string>
+    <string name="err_code_expired">The code has expired. Please request a new one.</string>
+    <string name="err_no_pending_code">No pending verification code</string>
+    <string name="err_user_already_verified">User is already verified</string>
+    <string name="err_email_send_failure">Error sending email</string>
+    <string name="err_code_generation_failure">Error generating verification code</string>
+    <string name="err_vinculacion_invalid">Link code is incorrect or has already been used</string>
+    <string name="err_already_linked">This child is already linked to a parent</string>
+    <string name="err_save_conexion_failure">Error saving parental connection</string>
+    <string name="err_create_user_failure">Error creating user</string>
+    <string name="err_update_user_failure">Error updating user</string>
+    <string name="err_email_send_detailed">Could not send verification email. Please verify if the email is valid or try again later.</string>
+    <string name="toast_register_success">Successful registration. We have sent a verification code to your email.</string>
+    <string name="toast_2fa_sent">2FA code sent.</string>
+    <string name="toast_2fa_resent">2FA code resent to email.</string>
+    <string name="login_unverified_account_msg">Your account has not been verified yet. Do you want to verify it now?</string>
+    <string name="login_verify_now">Verify Now</string>
+    <string name="two_factor_title">Two-Step Verification</string>
+    <string name="two_factor_msg">A security code has been sent to your email. Please enter it to continue.</string>
+    <string name="two_factor_resend_countdown">Resend in %1$ds</string>
+    <string name="btn_resend_code">Resend Code</string>
+    <string name="btn_verify">Verify</string>
+    <string name="btn_back">Back</string>
+    <string name="content_desc_refresh">Refresh</string>
+
+    <!-- Generic Server Messages / Errors -->
+    <string name="toast_error_generic">❌ Error: %1$s</string>
+    <string name="toast_code_resent_success">✅ Code resent successfully. Check your email.</string>
+
+    <!-- Parental Control / Child Management -->
+    <string name="parental_control_title">Parental Control</string>
+    <string name="parental_control_subtitle">Manage Your Children\'s\nDevices</string>
+    <string name="btn_link_new_user">Link New User</string>
+    <string name="loading_linked_children">Loading linked children...</string>
+    <string name="no_children_linked">No children linked yet</string>
+    <string name="link_child_instruction">Tap \"Link New User\" to add your child</string>
+    
+    <!-- Link Child -->
+    <string name="link_child_title">Link Child</string>
+    <string name="link_child_code_instruction">Enter the code shown\non your child\'s app</string>
+    <string name="link_child_code_label">Linkage code</string>
+    <string name="link_child_code_placeholder">Ex: AB4XC</string>
+    <string name="parental_password_label">Parental control password</string>
+    <string name="parental_password_placeholder">New secure password</string>
+    <string name="parental_password_confirm_label">Confirm password</string>
+    <string name="link_child_info_banner">The linkage code can only be used once. Ask your child to open the Rest Cycle app to get their code.</string>
+    <string name="err_code_length">The code must have exactly 5 characters</string>
+    <string name="err_parental_password_format">Parental password must have at least 8 characters, 1 uppercase, 1 number, and 1 special character</string>
+    <string name="toast_child_linked_success">✅ Child linked successfully!</string>
+
+    <!-- Create Child (Parent) -->
+    <string name="create_child_title">Create Child Account</string>
+    <string name="label_name">First Name</string>
+    <string name="label_lastname">Last Name</string>
+    <string name="label_email">Email Address</string>
+    <string name="label_birthdate_format">Birthdate (YYYY-MM-DD)</string>
+    <string name="label_login_password_child">Login Password (Child)</string>
+    <string name="security_parental_title">Parental Security</string>
+    <string name="security_parental_subtitle">This password will be used to authorize changes.</string>
+    <string name="label_security_password">Security Password</string>
+    <string name="btn_create_and_link">Create and Link Account</string>
+
+    <string name="err_name_letters_only">Name should only contain letters</string>
+    <string name="err_lastname_letters_only">Last name should only contain letters</string>
+    <string name="err_invalid_email_format_v2">Enter a valid email (ex: user@gmail.com)</string>
+    <string name="err_parental_session_invalid">Error: Could not identify parent (invalid session)</string>
+
+    <!-- Link Child (Child Side) -->
+    <string name="tracking_permanent_active">✅ Permanent tracking active.</string>
+    <string name="tracking_permission_missing">⚠️ No permanent permission: tracking will stop when app is closed.</string>
+    <string name="location_permission_missing_msg">No location permission: your parent won\'t be able to see your location.</string>
+    <string name="dialog_permanent_tracking_title">Permanent Tracking</string>
+    <string name="dialog_permanent_tracking_msg">To allow your parent to see your location even when the app is closed or the phone is locked, you must select \"Allow all the time\" on the next screen.</string>
+    <string name="btn_understood">Understood</string>
+
+    <string name="toast_already_linked_hijo">✅ You are already linked with your parent!</string>
+    <string name="toast_not_yet_linked">⏳ You are not linked yet. Show the code to your parent.</string>
+    <string name="loading_info">Loading your information...</string>
+    <string name="link_status_not_connected">Hello! You are not\nconnected with your family yet</string>
+    <string name="link_instruction_hijo">Show this code to your parent or guardian to add you from their application:</string>
+    <string name="your_link_code">Your linkage code</string>
+    <string name="no_connection">⚠ No connection</string>
+    <string name="code_expires_msg">This code expires once you are linked</string>
+    <string name="btn_check_link_status">Already linked? Verify</string>
+    <string name="panel_linked_title">You are linked!</string>
+    <string name="panel_linked_msg">Your family can see and manage your activities from their application.</string>
+    <string name="panel_linked_supervision_msg">Your device is being supervised. Act responsibly.</string>
 </resources>
