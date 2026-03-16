@@ -20,6 +20,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
 
     <!-- ===== NOTIFICACIONES ===== -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -35,22 +36,12 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
-    <!-- ===== CHAT HEADS (OVERLAY API 17-29+) ===== -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
- cristian-alvarado
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
-
-    <!-- ===== CÁMARA / FOTOS DE PERFIL ===== -->
-
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    
     <!-- Permisos de Ubicación -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
     <!-- Permisos para Foto de Perfil -->
- main
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -104,7 +95,6 @@
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
- cristian-alvarado
         <!-- ===== HOME ===== -->
         <activity android:name=".features.home.InicioComposeActivity"
             android:exported="true"
@@ -113,6 +103,12 @@
             android:resizeableActivity="true"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.home.PerfilComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.home.HabitosInicioComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.home.CambiarContrasenaComposeActivity"
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
@@ -149,6 +145,8 @@
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.blocking.BloqueoActivity"
             android:exported="false"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <!-- ===== PARENTAL ===== -->
@@ -156,6 +154,26 @@
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.parental.CrearHijoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.parental.VincularHijoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.parental.DetalleHijoComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.parental.UbicacionComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.parental.HistorialUbicacionComposeActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.parental.BloqueoRemotoHijoActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+
+        <!-- ===== HIJO ===== -->
+        <activity android:name=".features.hijo.EnlaceHijoComposeActivity"
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
@@ -166,44 +184,6 @@
             android:documentLaunchMode="always"
             android:resizeableActivity="true"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-=======
-        <!-- Auth Activities -->
-        <activity android:name=".features.auth.RegistroComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.auth.VerificacionCodigoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.auth.OlvidoContrasenaActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.auth.CodigoRecuperacionActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.auth.CambioContrasenaActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.home.CambiarContrasenaComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-        <!-- Home Activities -->
-        <activity android:name=".features.home.InicioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.home.PerfilComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.home.HabitosInicioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-        <!-- Tools Activities -->
-        <activity android:name=".features.tools.NotasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.BloqueoAppsComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.HoraDescansoComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.TareasComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.CalendarioComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.blocking.BloqueoActivity"
-            android:exported="false"
-            android:launchMode="singleTask"
-            android:excludeFromRecents="true"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-        <!-- Parental Activities -->
-        <activity android:name=".features.parental.GestionHijosComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.parental.CrearHijoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.parental.VincularHijoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.parental.DetalleHijoComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.parental.UbicacionComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.parental.HistorialUbicacionComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.parental.BloqueoRemotoHijoActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-
-        <!-- Hijo Activities -->
-        <activity android:name=".features.hijo.EnlaceHijoComposeActivity" android:exported="false" android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
- main
 
         <!-- ===== SETTINGS ===== -->
         <activity android:name=".features.settings.ConfiguracionComposeActivity"
@@ -244,8 +224,7 @@
             android:exported="false"
             android:foregroundServiceType="dataSync|location" />
 
- cristian-alvarado
-        <!-- Hora de Descanso: DND + Grayscale (una sola declaración) -->
+        <!-- Hora de Descanso: DND + Grayscale -->
         <service
             android:name=".UsageMonitorService"
             android:enabled="true"
@@ -292,6 +271,8 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
 
         <!-- Receiver para persistencia tras reinicio -->
         <receiver
@@ -300,7 +281,6 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
- main
             </intent-filter>
         </receiver>
 
