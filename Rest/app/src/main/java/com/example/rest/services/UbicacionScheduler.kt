@@ -26,6 +26,7 @@ object UbicacionScheduler {
             repeatIntervalTimeUnit = TimeUnit.MINUTES
         )
             .setConstraints(constraints)
+            .setInitialDelay(15, TimeUnit.MINUTES)
             .build()
 
         workManager.enqueueUniquePeriodicWork(

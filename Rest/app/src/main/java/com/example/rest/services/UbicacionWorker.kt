@@ -87,14 +87,14 @@ class UbicacionWorker(
             
             if (response.isSuccessful) {
                 Log.i(TAG, "Instantánea de historial guardada (15 min).")
-                Result.success()
+                return Result.success()
             } else {
                 Log.e(TAG, "Error al guardar instantánea: ${response.code()}")
-                Result.retry()
+                return Result.retry()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Excepción en UbicacionWorker: ${e.message}")
-            Result.retry()
+            return Result.retry()
         }
     }
 

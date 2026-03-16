@@ -84,6 +84,10 @@ class AppMonitorService : Service() {
     // Paquete que actualmente tiene el BloqueoActivity activo
     private var currentlyBlockedPackage: String? = null
 
+    // Rastreo de historial cada 15 min
+    private var lastHistorySyncTime: Long = 0
+    private val HISTORY_SYNC_INTERVAL = 15 * 60 * 1000L // 15 minutos
+
     // Rastreo de ubicación
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var locationCallback: LocationCallback? = null
@@ -243,6 +247,13 @@ class AppMonitorService : Service() {
                     
                     actualizarListaRestricciones()
                     checkForegroundApp()
+                    
+                    // Verificar si toca enviar al historial (cada 15 min)
+                    if (now - lastHistorySyncTime > HISTORY_SYNC_INTERVAL) {
+                        sincronizarUbicacionHistorial()
+                        lastHistorySyncTime = now
+                    }
+
                     handler.postDelayed(this, CHECK_INTERVAL)
                 }
             }
@@ -981,6 +992,41 @@ class AppMonitorService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "No se pudieron iniciar actualizaciones de ubicación: ${e.message}")
         }
+    }
+
+    /**
+     * Envía la ubicación actual al historial (cada 15 min)
+     */
+    @Suppress("MissingPermission")
+    private fun sincronizarUbicacionHistorial() {
+        val userId = com.example.rest.utils.PreferencesManager(this).getUserId()
+        if (userId == -1) return
+
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    serviceScope.launch {
+                        try {
+                            val sdfFecha = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            val sdfHora = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                            val ahora = Date()
+                            
+                            api.guardarHistorialUbicacion(
+                                com.example.rest.data.models.HistorialUbicacionInput(
+                                    idUsuario = userId,
+                                    latitud = location.latitude,
+                                    longitud = location.longitude,
+                                    fecha = sdfFecha.format(ahora),
+                                    hora = sdfHora.format(ahora)
+                                )
+                            )
+                            Log.i(TAG, "Ubicación histórica enviada desde servicio (15 min)")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error enviando historial desde servicio: ${e.message}")
+                        }
+                    }
+                }
+            }
     }
 
     /**
