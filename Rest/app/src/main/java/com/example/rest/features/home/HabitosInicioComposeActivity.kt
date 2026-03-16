@@ -648,7 +648,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                             
                             Column {
                                 Text(
-                                    text = "¡Hola,",
+                                    text = stringResource(R.string.greeting_hello),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = Negro.copy(alpha = 0.8f)
                                 )
@@ -692,7 +692,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                                     .padding(bottom = 12.dp)
                             ) {
                                 Text(
-                                    text = "PRÓXIMO EVENTO",
+                                    text = stringResource(R.string.home_next_event_label),
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
                                     color = Negro.copy(alpha = 0.7f),
                                     modifier = Modifier.align(Alignment.CenterStart)
@@ -747,7 +747,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                                     .padding(bottom = 12.dp)
                             ) {
                                 Text(
-                                    text = "ÚLTIMA NOTA",
+                                    text = stringResource(R.string.home_last_note_label),
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
                                     color = Negro.copy(alpha = 0.7f),
                                     modifier = Modifier.align(Alignment.CenterStart)

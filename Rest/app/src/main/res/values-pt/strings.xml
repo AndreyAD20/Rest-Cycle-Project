@@ -161,6 +161,9 @@
     <string name="menu_logout">Sair</string>
     <string name="widget_next_event">Próximo Evento</string>
     <string name="widget_last_note">Minhas Notas</string>
+    <string name="greeting_hello">Olá,</string>
+    <string name="home_next_event_label">PRÓXIMO EVENTO</string>
+    <string name="home_last_note_label">ÚLTIMA NOTA</string>
 
     <!-- Opções de Configuração Extras -->
     <string name="settings_privacy">Privacidade e Termos</string>
@@ -403,12 +406,12 @@
     <string name="err_update_user_failure">Erro ao atualizar o usuário</string>
     <string name="err_email_send_detailed">Não foi possível enviar o e-mail de verificação. Por favor, verifique se o e-mail é válido ou tente novamente mais tarde.</string>
     <string name="toast_register_success">Registro bem-sucedido. Enviamos um código de verificação para o seu e-mail.</string>
-    <string name="toast_2fa_sent">Código 2FA enviado.</string>
-    <string name="toast_2fa_resent">Código 2FA reenviado para o e-mail.</string>
+    <string name="toast_2fa_sent">Código de segurança enviado.</string>
+    <string name="toast_2fa_resent">Código de segurança reenviado para o e-mail.</string>
     <string name="login_unverified_account_msg">Sua conta ainda não foi verificada. Deseja verificá-la agora?</string>
     <string name="login_verify_now">Verificar Agora</string>
-    <string name="two_factor_title">Verificação em duas etapas</string>
-    <string name="two_factor_msg">Um código de segurança foi enviado para o seu e-mail. Por favor, insira-o para continuar.</string>
+    <string name="two_factor_title">Verificação de Segurança</string>
+    <string name="two_factor_msg">Enviamos um código de acesso para o seu e-mail. Por favor, insira-o para continuar.</string>
     <string name="two_factor_resend_countdown">Reenviar em %1$ds</string>
     <string name="btn_resend_code">Reenviar Código</string>
     <string name="btn_verify">Verificar</string>

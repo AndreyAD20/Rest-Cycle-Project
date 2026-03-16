@@ -161,6 +161,9 @@
     <string name="menu_logout">Sign Out</string>
     <string name="widget_next_event">Upcoming Event</string>
     <string name="widget_last_note">My Notes</string>
+    <string name="greeting_hello">Hello,</string>
+    <string name="home_next_event_label">UPCOMING EVENT</string>
+    <string name="home_last_note_label">LAST NOTE</string>
 
     <!-- Extra Settings Options -->
     <string name="settings_privacy">Privacy and Terms</string>
@@ -403,12 +406,12 @@
     <string name="err_update_user_failure">Error updating user</string>
     <string name="err_email_send_detailed">Could not send verification email. Please verify if the email is valid or try again later.</string>
     <string name="toast_register_success">Successful registration. We have sent a verification code to your email.</string>
-    <string name="toast_2fa_sent">2FA code sent.</string>
-    <string name="toast_2fa_resent">2FA code resent to email.</string>
+    <string name="toast_2fa_sent">Security code sent.</string>
+    <string name="toast_2fa_resent">Security code resent to email.</string>
     <string name="login_unverified_account_msg">Your account has not been verified yet. Do you want to verify it now?</string>
     <string name="login_verify_now">Verify Now</string>
-    <string name="two_factor_title">Two-Step Verification</string>
-    <string name="two_factor_msg">A security code has been sent to your email. Please enter it to continue.</string>
+    <string name="two_factor_title">Security Verification</string>
+    <string name="two_factor_msg">We have sent an access code to your email address. Please enter it to continue.</string>
     <string name="two_factor_resend_countdown">Resend in %1$ds</string>
     <string name="btn_resend_code">Resend Code</string>
     <string name="btn_verify">Verify</string>
