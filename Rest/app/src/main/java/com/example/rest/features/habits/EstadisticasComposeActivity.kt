@@ -68,6 +68,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import androidx.compose.ui.res.stringResource
+import com.example.rest.R
+
 // Constantes para notificaciones
 const val CHANNEL_ID = "REPORTE_CHANNEL"
 const val CHANNEL_NAME = "Informes"
@@ -76,8 +79,8 @@ const val NOTIFICATION_ID = 1001
 fun createNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         val importance = NotificationManager.IMPORTANCE_DEFAULT
-        val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
-            description = "Notificaciones de descarga de reportes"
+        val channel = NotificationChannel(CHANNEL_ID, context.getString(R.string.notif_report_channel_desc), importance).apply {
+            description = context.getString(R.string.notif_report_channel_desc)
         }
         val notificationManager: NotificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -102,8 +105,8 @@ fun showDownloadNotification(context: Context, uri: android.net.Uri) {
 
     val builder = NotificationCompat.Builder(context, CHANNEL_ID)
         .setSmallIcon(android.R.drawable.stat_sys_download_done) // Icono genérico por ahora
-        .setContentTitle("Informe Descargado")
-        .setContentText("Toca para abrir el reporte PDF")
+        .setContentTitle(context.getString(R.string.notif_report_downloaded_title))
+        .setContentText(context.getString(R.string.notif_report_downloaded_text))
         .setPriority(NotificationCompat.PRIORITY_DEFAULT)
         .setCategory(NotificationCompat.CATEGORY_MESSAGE)
         .setContentIntent(pendingIntent)
@@ -139,7 +142,7 @@ fun showDownloadNotification(context: Context, uri: android.net.Uri) {
         ) {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
         } else {
-             Toast.makeText(context, "Informe guardado (Permiso de notificación no otorgado)", Toast.LENGTH_SHORT).show()
+             Toast.makeText(context, context.getString(R.string.toast_report_saved_no_notif), Toast.LENGTH_SHORT).show()
         }
     } catch (e: SecurityException) {
         Log.e("Notification", "Error mostrando notificación: ${e.message}")
@@ -168,21 +171,29 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
     var periodoSeleccionado by remember { mutableStateOf(0) }
     var semanaOffset by remember { mutableStateOf(0) } // 0 = Actual, -1 = Anterior
     var showDownloadDialog by remember { mutableStateOf(false) }
-    val periodos = listOf("Diario", "Semanal", "Mensual")
+    val periodos = listOf(
+        stringResource(R.string.stats_tab_daily), 
+        stringResource(R.string.stats_tab_weekly), 
+        stringResource(R.string.stats_tab_monthly)
+    )
     
     // Launcher para notificación (Android 13+)
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (!isGranted) {
-            Toast.makeText(context, "Sin permiso, no recibirás notificaciones de descarga.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_no_notification_permission), Toast.LENGTH_SHORT).show()
         }
     }
     
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Color(0xFF80DEEA), Primario),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     // Repositorio para sincronizar
@@ -214,27 +225,27 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
 
     // Obtener nombre de usuario
     val nombreUsuario = remember {
-        val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-        sharedPref.getString("NOMBRE_USUARIO", "Usuario") ?: "Usuario"
+        val prefs = com.example.rest.utils.PreferencesManager(context)
+        prefs.getUserName() ?: context.getString(R.string.fallback_user_name)
     }
 
     if (showDownloadDialog) {
         AlertDialog(
             onDismissRequest = { showDownloadDialog = false },
-            title = { Text("Descargar Informe", fontWeight = FontWeight.Bold) },
-            text = { Text("¿Deseas descargar el reporte de uso en PDF?") },
+            title = { Text(stringResource(R.string.dialog_download_report_title), fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.dialog_download_report_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDownloadDialog = false
                     val stats = getUsageStats(context, periodoSeleccionado, semanaOffset)
-                    generarReportePDF(context, stats, getPeriodoFecha(periodoSeleccionado, semanaOffset), nombreUsuario)
+                    generarReportePDF(context, stats, getPeriodoFecha(context, periodoSeleccionado, semanaOffset), nombreUsuario)
                 }) {
-                    Text("Descargar")
+                    Text(stringResource(R.string.btn_download))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDownloadDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -245,14 +256,14 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
             CenterAlignedTopAppBar(
                 title = { 
                     Text(
-                        "Estadísticas de Uso", 
+                        stringResource(R.string.stats_title), 
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = Blanco
                     ) 
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, "Regresar", tint = Blanco)
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Blanco)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -282,7 +293,22 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                 var datosDiarios by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
                 var cargandoDiario by remember { mutableStateOf(false) }
 
-                LaunchedEffect(semanaOffset, periodoSeleccionado) {
+                // Trigger para refrescar al volver (ON_RESUME)
+                var refreshTrigger by remember { mutableStateOf(0) }
+                val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                DisposableEffect(lifecycleOwner) {
+                    val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                        if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                            refreshTrigger++
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose {
+                        lifecycleOwner.lifecycle.removeObserver(observer)
+                    }
+                }
+
+                LaunchedEffect(semanaOffset, periodoSeleccionado, refreshTrigger) {
                     if (periodoSeleccionado == 1) { // Solo si es semanal
                         cargandoDiario = true
                         datosDiarios = withContext(Dispatchers.IO) { getUsageStatsDiario(context, semanaOffset) }
@@ -294,7 +320,7 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                 var usageStats by remember { mutableStateOf<List<AppUsageInfo>>(emptyList()) }
                 var cargandoGeneral by remember { mutableStateOf(false) }
                 
-                LaunchedEffect(periodoSeleccionado, semanaOffset) {
+                LaunchedEffect(periodoSeleccionado, semanaOffset, refreshTrigger) {
                      cargandoGeneral = true
                      usageStats = withContext(Dispatchers.IO) { getUsageStats(context, periodoSeleccionado, semanaOffset) }
                      cargandoGeneral = false
@@ -354,7 +380,7 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                             }
                             
                             Text(
-                                text = getPeriodoFecha(periodoSeleccionado, semanaOffset),
+                                text = getPeriodoFecha(context, periodoSeleccionado, semanaOffset),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = Negro,
@@ -382,8 +408,8 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                         Spacer(modifier = Modifier.height(16.dp))
                         ExtendedFloatingActionButton(
                             onClick = { showDownloadDialog = true },
-                            icon = { Icon(Icons.Default.Download, "Descargar") },
-                            text = { Text("DESCARGAR REPORTE", fontWeight = FontWeight.Bold) },
+                            icon = { Icon(Icons.Default.Download, stringResource(R.string.btn_download)) },
+                            text = { Text(stringResource(R.string.stats_download_report), fontWeight = FontWeight.Bold) },
                             containerColor = Primario,
                             contentColor = Blanco,
                             modifier = Modifier
@@ -398,7 +424,7 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                         if (periodoSeleccionado == 1) {
                             // Vista semanal: Mostrar gráfico de barras diario
                             // Calcular fechas para el gráfico
-                             val fechaTexto = getPeriodoFecha(1, semanaOffset)
+                             val fechaTexto = getPeriodoFecha(context, 1, semanaOffset)
                              val splitted = fechaTexto.split(" - ")
                              val inicio = splitted.getOrElse(0) { "" }
                              val fin = splitted.getOrElse(1) { "" }
@@ -434,7 +460,7 @@ fun PantallaEstadisticas(onBackClick: () -> Unit) {
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text(
-                                    "El uso excesivo de aplicaciones puede ser perjudicial para tu salud.",
+                                    stringResource(R.string.stats_health_warning),
                                     color = Blanco,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -470,7 +496,7 @@ fun PermissionRequestScreen(
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            "Permiso Requerido",
+            stringResource(R.string.dialog_permission_required),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = Blanco
@@ -479,7 +505,7 @@ fun PermissionRequestScreen(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            "Para mostrar estadísticas de uso de aplicaciones, necesitamos acceso a los datos de uso del sistema.",
+            stringResource(R.string.permission_stats_desc),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = Blanco.copy(alpha = 0.9f)
@@ -495,7 +521,7 @@ fun PermissionRequestScreen(
             colors = ButtonDefaults.buttonColors(containerColor = Blanco)
         ) {
             Text(
-                "Otorgar Permiso",
+                stringResource(R.string.btn_grant_permission),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Primario
@@ -506,7 +532,7 @@ fun PermissionRequestScreen(
         
         TextButton(onClick = onCheckPermission) {
             Text(
-                "Ya otorgué el permiso",
+                stringResource(R.string.btn_already_granted),
                 color = Blanco
             )
         }
@@ -519,16 +545,13 @@ fun PermissionRequestScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "Instrucciones:",
+                    stringResource(R.string.instructions_title),
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleSmall
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "1. Toca 'Otorgar Permiso'\n" +
-                    "2. Busca esta aplicación en la lista\n" +
-                    "3. Activa el interruptor de permiso\n" +
-                    "4. Regresa a la app y toca 'Ya otorgué el permiso'",
+                    stringResource(R.string.instructions_stats_steps),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -623,18 +646,25 @@ fun getUsageStats(context: Context, period: Int, offset: Int = 0): List<AppUsage
     try {
         val usageMap = mutableMapOf<String, Long>()
 
-        Log.d("EstadisticasDebug", "Usando queryAndAggregateUsageStats para periodo: $period")
-        // Lógica UNIFICADA para TODOS los periodos (Diario/Semanal/Mensual)
-        // Esto simplifica y es más robusto en diferentes dispositivos
-        val aggregatedStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+        Log.d("EstadisticasDebug", "Usando consulta exacta para periodo: $period")
         
-        if (aggregatedStats != null) {
-            aggregatedStats.forEach { (packageName, usageStats) ->
-                val totalTime = usageStats.totalTimeInForeground
-                if (totalTime > 0) {
-                     // Solo sumar si este periodo tiene tiempo relevante
-                     // (Para diario, startTime filtra correctamente)
-                     usageMap[packageName] = totalTime
+        if (period == 0) {
+            // Usa el cálculo exacto por eventos para el dia de hoy
+            val statsMap = com.example.rest.utils.UsageStatsHelper.getExactDailyUsageMap(usageStatsManager, startTime, endTime)
+            statsMap.forEach { (packageName, usageTime) ->
+                if (usageTime > 0) {
+                    usageMap[packageName] = usageTime
+                }
+            }
+        } else {
+            // Lógica para periodos Semanal/Mensual para evitar pérdida de datos (queryEvents expira a los 7 días)
+            val aggregatedStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+            if (aggregatedStats != null) {
+                aggregatedStats.forEach { (packageName, usageStats) ->
+                    val totalTime = usageStats.totalTimeInForeground
+                    if (totalTime > 0) {
+                         usageMap[packageName] = totalTime
+                    }
                 }
             }
         }
@@ -717,29 +747,34 @@ fun getUsageStats(context: Context, period: Int, offset: Int = 0): List<AppUsage
     }
 }
 
-fun formatUsageTime(timeInMillis: Long): String {
+fun formatUsageTime(context: Context, timeInMillis: Long): String {
     val hours = TimeUnit.MILLISECONDS.toHours(timeInMillis)
     val minutes = TimeUnit.MILLISECONDS.toMinutes(timeInMillis) % 60
     
     return when {
-        hours > 0 && minutes > 0 -> "${hours} hrs ${minutes} min"
-        hours > 0 -> "${hours} hrs"
-        minutes > 0 -> "${minutes} min"
-        else -> "< 1 min"
+        hours > 0 && minutes > 0 -> context.getString(R.string.time_hrs_min, hours, minutes)
+        hours > 0 -> context.getString(R.string.time_hrs, hours)
+        minutes > 0 -> context.getString(R.string.time_min, minutes)
+        else -> context.getString(R.string.time_less_than_min)
     }
 }
 
 // Helper para obtener el texto de la fecha según el periodo (CON AÑO)
-fun getPeriodoFecha(periodo: Int, offset: Int = 0): String {
+fun getPeriodoFecha(context: Context, periodo: Int, offset: Int = 0): String {
     val calendar = Calendar.getInstance()
-    // Locale español para nombres de meses
-    val formatoDia = SimpleDateFormat("dd MMM", Locale("es", "ES"))
-    val formatoDiaFull = SimpleDateFormat("dd MMM yyyy", Locale("es", "ES"))
+    // Identificar locale actual para el SimpleDateFormat
+    val localeActual = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        context.resources.configuration.locales.get(0)
+    } else {
+        context.resources.configuration.locale
+    }
+    val formatoDia = SimpleDateFormat("dd MMM", localeActual)
+    val formatoDiaFull = SimpleDateFormat("dd MMM yyyy", localeActual)
 
     return when (periodo) {
         0 -> {
             calendar.add(Calendar.DAY_OF_YEAR, offset)
-            if (offset == 0) "Hoy, ${formatoDiaFull.format(calendar.time)}"
+            if (offset == 0) context.getString(R.string.date_today_prefix, formatoDiaFull.format(calendar.time))
             else formatoDiaFull.format(calendar.time)
         }
         1 -> {
@@ -782,7 +817,15 @@ fun getUsageStatsDiario(context: Context, offset: Int = 0): Map<String, Long> {
     calendar.set(Calendar.MILLISECOND, 0)
     calendar.add(Calendar.WEEK_OF_YEAR, offset)
     
-    val diasSemana = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+    val diasSemana = listOf(
+        context.getString(R.string.day_mon), 
+        context.getString(R.string.day_tue), 
+        context.getString(R.string.day_wed), 
+        context.getString(R.string.day_thu), 
+        context.getString(R.string.day_fri), 
+        context.getString(R.string.day_sat), 
+        context.getString(R.string.day_sun)
+    )
     val resultado = mutableMapOf<String, Long>()
     
     // Iterar por los 7 días
@@ -920,14 +963,14 @@ fun generarReportePDF(context: Context, stats: List<AppUsageInfo>, periodoStr: S
 
     // 3. ENCABEZADO (Derecha del logo)
     val textStartX = 130f
-    canvas.drawText("Reporte de Uso - Rest Cycle", textStartX, y + 25f, titlePaint)
+    canvas.drawText(context.getString(R.string.pdf_report_title), textStartX, y + 25f, titlePaint)
     y += 80f
     
     // Información del Usuario y Fecha
     paint.isFakeBoldText = true
-    canvas.drawText("Usuario: $nombreUsuario", startX, y, paint)
+    canvas.drawText(context.getString(R.string.pdf_user_prefix, nombreUsuario), startX, y, paint)
     y += 20f
-    canvas.drawText("Periodo: $periodoStr", startX, y, paint)
+    canvas.drawText(context.getString(R.string.pdf_period_prefix, periodoStr), startX, y, paint)
     y += 30f
     paint.isFakeBoldText = false
     
@@ -945,7 +988,7 @@ fun generarReportePDF(context: Context, stats: List<AppUsageInfo>, periodoStr: S
             return@forEachIndexed
         }
         val nombre = if (app.appName.length > 30) app.appName.take(30) + "..." else app.appName
-        val tiempo = formatUsageTime(app.totalTimeInMillis)
+        val tiempo = formatUsageTime(context, app.totalTimeInMillis)
         val texto = "${index + 1}. $nombre"
         
         // Dibujar nombre a la izquierda
@@ -977,7 +1020,7 @@ fun generarReportePDF(context: Context, stats: List<AppUsageInfo>, periodoStr: S
                 context.contentResolver.openOutputStream(it)?.use { outputStream ->
                     pdfDocument.writeTo(outputStream)
                 }
-                Toast.makeText(context, "PDF guardado en Descargas", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.toast_pdf_saved_downloads), Toast.LENGTH_LONG).show()
                 // Intentar abrir el archivo
                 // val openIntent = Intent(Intent.ACTION_VIEW).apply {
                 //     setDataAndType(it, "application/pdf")
@@ -990,21 +1033,21 @@ fun generarReportePDF(context: Context, stats: List<AppUsageInfo>, periodoStr: S
                 
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "Error al guardar PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.toast_error_saving_pdf, e.message ?: ""), Toast.LENGTH_SHORT).show()
             }
         }
     } else {
         val file = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), fileName)
         try {
             pdfDocument.writeTo(FileOutputStream(file))
-            Toast.makeText(context, "PDF guardado: ${file.absolutePath}", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.toast_pdf_saved_path, file.absolutePath), Toast.LENGTH_LONG).show()
             
             // Notificación para legacy (cuidado con FileUriExposedException en >= N)
             // Por seguridad en este entorno rápido, solo mostramos Toast en legacy
             // o podríamos usar FileProvider si estuviera configurado.
         } catch (e: Exception) {
              e.printStackTrace()
-             Toast.makeText(context, "Error legacy: ${e.message}", Toast.LENGTH_SHORT).show()
+             Toast.makeText(context, context.getString(R.string.toast_legacy_error, e.message ?: ""), Toast.LENGTH_SHORT).show()
         }
     }
     pdfDocument.close()
@@ -1107,7 +1150,7 @@ fun GraficoUso(stats: List<AppUsageInfo>, cargando: Boolean = false) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "No hay datos de uso disponibles",
+                    stringResource(R.string.stats_no_data),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Negro.copy(alpha = 0.5f)
                 )
@@ -1226,7 +1269,7 @@ fun ListaUsoApps(stats: List<AppUsageInfo>, cargando: Boolean = false) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "No hay datos de uso disponibles",
+                    stringResource(R.string.stats_no_data),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Negro.copy(alpha = 0.5f)
                 )
@@ -1285,7 +1328,7 @@ fun ListaUsoApps(stats: List<AppUsageInfo>, cargando: Boolean = false) {
                             )
                         }
                         Text(
-                            formatUsageTime(appInfo.totalTimeInMillis),
+                            formatUsageTime(LocalContext.current, appInfo.totalTimeInMillis),
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold
                         )

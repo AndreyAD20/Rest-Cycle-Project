@@ -32,6 +32,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.activity.compose.BackHandler
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.ui.res.stringResource
 import com.example.rest.data.repository.RecuperacionRepository
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.launch
@@ -59,8 +65,8 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                 if (mostrarDialogoSalir) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoSalir = false },
-                        title = { Text("¿Cancelar cambio de contraseña?") },
-                        text = { Text("Si sales ahora, perderás el progreso y tendrás que solicitar un nuevo código.") },
+                        title = { Text(stringResource(R.string.dialog_cancel_password_change_title)) },
+                        text = { Text(stringResource(R.string.dialog_cancel_password_change_text)) },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -68,12 +74,12 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                                     finish()
                                 }
                             ) {
-                                Text("Sí, salir")
+                                Text(stringResource(R.string.btn_yes_exit))
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { mostrarDialogoSalir = false }) {
-                                Text("Cancelar")
+                                Text(stringResource(R.string.btn_cancel))
                             }
                         }
                     )
@@ -85,11 +91,11 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                     },
                     alClickConfirmar = { nuevaContrasena, confirmarContrasena ->
                         when {
-                            nuevaContrasena.isBlank() || nuevaContrasena.length < 6 -> {
-                                Toast.makeText(this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show()
+                            !com.example.rest.utils.SecurityUtils.isValidPassword(nuevaContrasena) -> {
+                                Toast.makeText(this, getString(R.string.err_invalid_password_format), Toast.LENGTH_SHORT).show()
                             }
                             nuevaContrasena != confirmarContrasena -> {
-                                Toast.makeText(this, "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, getString(R.string.err_password_mismatch), Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 cargando = true
@@ -113,7 +119,7 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 this@CambioContrasenaActivity,
-                                "¡Contraseña cambiada exitosamente!",
+                                getString(R.string.toast_password_changed),
                                 Toast.LENGTH_LONG
                             ).show()
                             
@@ -141,7 +147,7 @@ class CambioContrasenaActivity : BaseComposeActivity() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(
                         this@CambioContrasenaActivity,
-                        "Error inesperado: ${e.message}",
+                        getString(R.string.toast_unexpected_error, e.message),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -162,6 +168,7 @@ fun PantallaCambioContrasena(
     var confirmarContrasena by remember { mutableStateOf("") }
     var mostrarNueva by remember { mutableStateOf(false) }
     var mostrarConfirmar by remember { mutableStateOf(false) }
+    var menuIdiomaExpandido by remember { mutableStateOf(false) }
     
     // Interceptar botón atrás del sistema
     BackHandler {
@@ -170,11 +177,12 @@ fun PantallaCambioContrasena(
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            Primario,
-            Color(0xFF80DEEA)
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
 
     Box(
@@ -182,19 +190,88 @@ fun PantallaCambioContrasena(
             .fillMaxSize()
             .background(brochaGradiente)
     ) {
-        // Botón de regresar
-        IconButton(
-            onClick = alClickRegresar,
+        // Barra Superior
+        Row(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(16.dp)
-                .align(Alignment.TopStart)
+                .align(Alignment.TopCenter),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Regresar",
-                tint = Color(0xFF004D40),
-                modifier = Modifier.size(32.dp)
-            )
+            // Botón de regresar
+            IconButton(onClick = alClickRegresar) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = stringResource(R.string.content_desc_back),
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            // Selector de Idioma
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+            var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
+
+            Box {
+                IconButton(onClick = { menuIdiomaExpandido = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = "Cambiar Idioma",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuIdiomaExpandido,
+                    onDismissRequest = { menuIdiomaExpandido = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                ) {
+                    val opciones = listOf(
+                        stringResource(R.string.lang_spanish),
+                        stringResource(R.string.lang_english),
+                        stringResource(R.string.lang_portuguese)
+                    )
+                    
+                    val langEn = stringResource(R.string.lang_english)
+                    val langPt = stringResource(R.string.lang_portuguese)
+                    
+                    opciones.forEach { opcion ->
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    text = opcion,
+                                    color = if (opcion == idiomaSeleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                ) 
+                            },
+                            onClick = {
+                                idiomaSeleccionado = opcion
+                                sharedPrefs.edit().putString("IDIOMA", opcion).apply()
+                                
+                                val code = when (opcion) {
+                                    langEn, "English" -> "en"
+                                    langPt, "Português" -> "pt"
+                                    else -> "es"
+                                }
+                                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_language_saved, opcion), android.widget.Toast.LENGTH_SHORT).show()
+                                
+                                val activity = context as? android.app.Activity
+                                if (activity is CambioContrasenaActivity) {
+                                    val intent = android.content.Intent(activity, CambioContrasenaActivity::class.java)
+                                    intent.putExtra("correo", activity.intent.getStringExtra("correo") ?: "")
+                                    intent.putExtra("codigoId", activity.intent.getIntExtra("codigoId", 0))
+                                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    activity.startActivity(intent)
+                                    activity.finish()
+                                }
+                                menuIdiomaExpandido = false
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         Column(
@@ -214,7 +291,7 @@ fun PantallaCambioContrasena(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
-                    contentDescription = "Logo Búho",
+                    contentDescription = stringResource(R.string.content_desc_owl_logo),
                     modifier = Modifier.size(100.dp)
                 )
 
@@ -222,7 +299,7 @@ fun PantallaCambioContrasena(
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Blanco,
+                    color = Color.White.copy(alpha = 0.2f),
                     modifier = Modifier
                         .width(200.dp)
                         .height(80.dp)
@@ -232,9 +309,9 @@ fun PantallaCambioContrasena(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "Cambia tu contraseña\nque no se te olvide",
+                            text = stringResource(R.string.change_password_title_speech),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Negro,
+                            color = Color.White,
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp
                         )
@@ -248,9 +325,9 @@ fun PantallaCambioContrasena(
                 onValueChange = { nuevaContrasena = it },
                 placeholder = {
                     Text(
-                        "Nueva Contraseña",
+                        stringResource(R.string.change_password_new_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier
@@ -258,18 +335,22 @@ fun PantallaCambioContrasena(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 visualTransformation = if (mostrarNueva) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
                     val image = if (mostrarNueva) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                     IconButton(onClick = { mostrarNueva = !mostrarNueva }) {
-                        Icon(imageVector = image, contentDescription = if (mostrarNueva) "Ocultar contraseña" else "Mostrar contraseña")
+                        Icon(imageVector = image, contentDescription = if (mostrarNueva) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password))
                     }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -285,9 +366,9 @@ fun PantallaCambioContrasena(
                 onValueChange = { confirmarContrasena = it },
                 placeholder = {
                     Text(
-                        "Confirmar Contraseña",
+                        stringResource(R.string.register_confirm_password_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier
@@ -295,18 +376,22 @@ fun PantallaCambioContrasena(
                     .height(56.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTrailingIconColor = Color.White,
+                    unfocusedTrailingIconColor = Color.White.copy(alpha = 0.7f)
                 ),
                 visualTransformation = if (mostrarConfirmar) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
                     val image = if (mostrarConfirmar) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                     IconButton(onClick = { mostrarConfirmar = !mostrarConfirmar }) {
-                        Icon(imageVector = image, contentDescription = if (mostrarConfirmar) "Ocultar contraseña" else "Mostrar contraseña")
+                        Icon(imageVector = image, contentDescription = if (mostrarConfirmar) stringResource(R.string.content_desc_hide_password) else stringResource(R.string.content_desc_show_password))
                     }
                 },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -320,30 +405,32 @@ fun PantallaCambioContrasena(
             Button(
                 onClick = { alClickConfirmar(nuevaContrasena, confirmarContrasena) },
                 modifier = Modifier
-                    .width(200.dp)
+                    .width(220.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(30.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(30.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primario
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
                 ),
                 enabled = !cargando
             ) {
                 if (cargando) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Blanco,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
-                        text = "Confirmar",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Negro
+                        text = stringResource(R.string.btn_confirm),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = Color.White
                     )
                 }
             }

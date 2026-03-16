@@ -91,8 +91,8 @@ class CrearHijoActivity : BaseComposeActivity() {
     }
 
     private fun obtenerIdUsuarioLogueado(): Int {
-        val prefs = getSharedPreferences("sesion_usuario", MODE_PRIVATE)
-        return prefs.getInt("id_usuario", -1)
+        val prefs = com.example.rest.utils.PreferencesManager(this)
+        return prefs.getUserId()
     }
 }
 
@@ -109,6 +109,7 @@ fun PantallaCrearHijo(
     var fechaNacimiento by remember { mutableStateOf("") }
     var contrasena by remember { mutableStateOf("") }
     var contrasenaSegura by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         topBar = {
@@ -143,7 +144,7 @@ fun PantallaCrearHijo(
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = correo, onValueChange = { correo = it },
+                value = correo, onValueChange = { correo = it.trim() },
                 label = { Text("Correo Electrónico") }, modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
@@ -170,13 +171,29 @@ fun PantallaCrearHijo(
                 value = contrasenaSegura, onValueChange = { contrasenaSegura = it },
                 label = { Text("Contraseña de Seguridad") }, modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
+                    if (nombre.isNotBlank() && !nombre.matches("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$".toRegex())) {
+                        android.widget.Toast.makeText(context, "El nombre solo debe contener letras", android.widget.Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    if (apellido.isNotBlank() && !apellido.matches("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$".toRegex())) {
+                        android.widget.Toast.makeText(context, "El apellido solo debe contener letras", android.widget.Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    if (!com.example.rest.utils.SecurityUtils.isValidEmailDomain(correo)) {
+                        android.widget.Toast.makeText(context, "Ingresa un correo válido (ej: usuario@gmail.com)", android.widget.Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    if (!com.example.rest.utils.SecurityUtils.isValidPassword(contrasenaSegura)) {
+                        android.widget.Toast.makeText(context, "La contraseña segura debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial", android.widget.Toast.LENGTH_LONG).show()
+                        return@Button
+                    }
                     // Convertir fecha de dígitos (YYYYMMDD) a formato YYYY-MM-DD
                     val fechaFormateada = if (fechaNacimiento.length == 8) {
                         "${fechaNacimiento.substring(0, 4)}-${fechaNacimiento.substring(4, 6)}-${fechaNacimiento.substring(6, 8)}"
@@ -190,7 +207,6 @@ fun PantallaCrearHijo(
                         correo = correo,
                         fechaNacimiento = fechaFormateada,
                         contraseña = contrasena,
-                        rol = "hijo",
                         mayorEdad = false
                     )
                     onCrear(request, contrasenaSegura)

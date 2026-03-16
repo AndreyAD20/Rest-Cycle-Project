@@ -19,37 +19,38 @@ class LocalBlockingRepository(private val context: Context) {
     private val sharedPref = context.getSharedPreferences("RestCycleBloqueo", Context.MODE_PRIVATE)
     private val gson = Gson()
 
-    // Obtener apps instaladas (filtrando algunas de sistema si es necesario)
-    fun getInstalledApps(): List<AppBloqueo> {
+    // Obtener apps instaladas (filtrando apps de sistema y las ya enlazadas)
+    fun getInstalledApps(excludePackages: Set<String> = emptySet()): List<AppBloqueo> {
         val pm = context.packageManager
         val installedApps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
         val appBloqueoList = mutableListOf<AppBloqueo>()
 
         for (appInfo in installedApps) {
-            // Filtrar apps del sistema que no sean actualizables (básicas traseras)
-            if ((appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0 &&
-                (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
-            ) {
-                // Opcional: Permitir algunas apps de sistema útiles, pero por ahora filtramos la mayoría
-                // continue 
-            }
-            
+            // Solo apps con icono en el launcher (descarta servicios/procesos de fondo)
+            if (pm.getLaunchIntentForPackage(appInfo.packageName) == null) continue
+
             // Ignorar nuestra propia app
             if (appInfo.packageName == context.packageName) continue
 
+            // Ignorar apps ya enlazadas
+            if (appInfo.packageName in excludePackages) continue
+
+            // Filtrar apps puramente de sistema (sin actualización del usuario)
+            // FLAG_UPDATED_SYSTEM_APP = usuario instaló una actualización → mostrar
+            val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            val isUpdatedSystemApp = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+            if (isSystemApp && !isUpdatedSystemApp) continue
+
             val name = pm.getApplicationLabel(appInfo).toString()
             val icon = pm.getApplicationIcon(appInfo)
-            
-            // Generar un color basado en el icono (simplificado) o aleatorio
             val color = extractColorFromIcon(icon)
 
-            // Usamos hashcode del paquete como ID temporal para la UI
             appBloqueoList.add(
                 AppBloqueo(
                     id = appInfo.packageName.hashCode(),
                     nombre = name,
                     iconColor = Color(color),
-                    packageName = appInfo.packageName // Necesitamos agregar este campo a AppBloqueo
+                    packageName = appInfo.packageName
                 )
             )
         }
@@ -89,6 +90,11 @@ class LocalBlockingRepository(private val context: Context) {
         sharedPref.edit().putString("blocked_apps_list", json).apply()
     }
 
+    // Actualizar lista completa desde sincronización
+    fun updateBlockedApps(newList: List<AppBloqueo>) {
+        saveList(newList)
+    }
+
     // Helper para extraer color prominente (simplificado)
     private fun extractColorFromIcon(drawable: Drawable): Int {
         // En una implementación real usaríamos Palette API.
@@ -103,6 +109,33 @@ class LocalBlockingRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             android.graphics.Color.GRAY
+        }
+    }
+
+    // Actualizar lista con estadísticas de uso de HOY
+    fun updateAppsWithUsage(apps: List<AppBloqueo>): List<AppBloqueo> {
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager
+        
+        if (usageStatsManager == null) return apps
+
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        val startTime = calendar.timeInMillis
+        val endTime = System.currentTimeMillis()
+
+        // Consultar uso de la aplicación a partir del momento exacto del día
+        val usageMap = com.example.rest.utils.UsageStatsHelper.getExactDailyUsageMap(usageStatsManager, startTime, endTime)
+        
+        return apps.map { app ->
+            val totalTime = usageMap[app.packageName] ?: 0L
+            var minutesUsed = 0
+            if (totalTime > 0) {
+                minutesUsed = (totalTime / 60000).toInt()
+            }
+            app.copy(usageMinutes = minutesUsed)
         }
     }
 }

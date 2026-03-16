@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.res.stringResource
+import com.example.rest.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,7 +49,7 @@ fun DialogoMapa(
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header
                 Text(
-                    "Selecciona una Ubicación",
+                    stringResource(R.string.dialog_map_title),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp)
                 )
@@ -66,7 +68,7 @@ fun DialogoMapa(
                         selectedLocation?.let {
                             Marker(
                                 state = MarkerState(position = it),
-                                title = "Ubicación Seleccionada"
+                                title = stringResource(R.string.dialog_map_marker_title)
                             )
                         }
                     }
@@ -80,7 +82,7 @@ fun DialogoMapa(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                "Toca el mapa para marcar un punto",
+                                stringResource(R.string.dialog_map_hint),
                                 color = Color.White,
                                 modifier = Modifier.padding(8.dp)
                             )
@@ -96,7 +98,7 @@ fun DialogoMapa(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.btn_cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -107,7 +109,7 @@ fun DialogoMapa(
                         },
                         enabled = selectedLocation != null
                     ) {
-                        Text("Confirmar")
+                        Text(stringResource(R.string.btn_confirm))
                     }
                 }
             }

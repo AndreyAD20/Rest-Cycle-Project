@@ -43,7 +43,7 @@ interface SupabaseApi {
     @GET("usuario")
     suspend fun verificarCorreo(
         @Query("correo") correo: String,
-        @Query("select") select: String = "id"
+        @Query("select") select: String = "*"
     ): Response<List<Usuario>>
     
     /**
@@ -106,6 +106,15 @@ interface SupabaseApi {
     suspend fun eliminarUsuario(
         @Query("id") id: String
     ): Response<Void>
+
+    /**
+     * Buscar usuario por código de vinculación (para enlace parental)
+     */
+    @GET("usuario")
+    suspend fun buscarPorCodigoVinculacion(
+        @Query("codigo_vinculacion") codigoVinculacion: String,
+        @Query("select") select: String = "*"
+    ): Response<List<Usuario>>
     
     // ==================== DISPOSITIVOS ====================
     
@@ -123,7 +132,7 @@ interface SupabaseApi {
      */
     @POST("dispositivos")
     suspend fun crearDispositivo(
-        @Body dispositivo: Dispositivo
+        @Body dispositivo: DispositivoInput
     ): Response<List<Dispositivo>>
     
     /**
@@ -189,7 +198,7 @@ interface SupabaseApi {
      */
     @POST("notas")
     suspend fun crearNota(
-        @Body nota: Nota
+        @Body nota: NotaInput
     ): Response<List<Nota>>
     
     /**
@@ -410,6 +419,15 @@ interface SupabaseApi {
         @Query("idpadre") idPadre: String,
         @Query("select") select: String = "*"
     ): Response<List<ConexionParental>>
+
+    /**
+     * Obtener conexiones por hijo
+     */
+    @GET("conexion_parentales")
+    suspend fun obtenerConexionesPorHijo(
+        @Query("idhijo") idHijo: String,
+        @Query("select") select: String = "*"
+    ): Response<List<ConexionParental>>
     // ==================== APPS VINCULADAS (ESTADÍSTICAS) ====================
 
     /**
@@ -426,7 +444,7 @@ interface SupabaseApi {
      */
     @POST("apps_vinculadas")
     suspend fun crearAppVinculada(
-        @Body app: AppVinculada
+        @Body app: AppVinculadaInput
     ): Response<List<AppVinculada>>
 
     /**
@@ -437,6 +455,25 @@ interface SupabaseApi {
         @Query("id") id: String,
         @Body app: Map<String, @JvmSuppressWildcards Any>
     ): Response<List<AppVinculada>>
+
+    /**
+     * Actualizar app vinculada por paquete (para sincronizar desde UI local)
+     */
+    @PATCH("apps_vinculadas")
+    suspend fun actualizarAppVinculadaPorPaquete(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("nombre_paquete") nombrePaquete: String,
+        @Body app: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<AppVinculada>>
+
+    /**
+     * Eliminar app vinculada
+     */
+    @DELETE("apps_vinculadas")
+    suspend fun eliminarAppVinculada(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("nombre_paquete") nombrePaquete: String
+    ): Response<Void>
     
     /**
      * Upsert app vinculada (Insertar o Actualizar si conflicto en ID)
@@ -467,12 +504,30 @@ interface SupabaseApi {
     ): Response<List<HistorialApp>>
     
     /**
+     * Terminar sesión de app
+     */
+     // Eliminar sesiones_app endpoints
+
+    /**
+     * Obtener historial de una app específica hoy
+     */
+    @GET("historial_apps")
+    suspend fun obtenerHistorialApp(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("nombre_paquete") nombrePaquete: String,
+        @Query("fecha") fecha: String,
+        @Query("select") select: String = "*"
+    ): Response<List<HistorialApp>>
+    
+    /**
      * Registrar uso de app en historial
      */
     @POST("historial_apps")
-    suspend fun registrarUsoApp(
-        @Body historial: HistorialApp
+    suspend fun crearHistorialApp(
+        @Body historial: HistorialAppInput
     ): Response<List<HistorialApp>>
+    
+
     
     /**
      * Actualizar registro de historial
@@ -482,52 +537,44 @@ interface SupabaseApi {
         @Query("id") id: String,
         @Body update: Map<String, @JvmSuppressWildcards Any>
     ): Response<List<HistorialApp>>
-    
-    // ==================== SESIONES APP ====================
-    
+
+    // ==================== UBICACIONES ====================
+
     /**
-     * Obtener sesiones activas de un dispositivo
+     * Guardar nueva ubicación del hijo
      */
-    @GET("sesiones_app")
-    suspend fun obtenerSesionesActivas(
-        @Query("iddispositivo") idDispositivo: String,
-        @Query("activa") activa: String = "eq.true",
+    @POST("ubicaciones")
+    suspend fun guardarUbicacion(
+        @Body ubicacion: UbicacionInput,
+        @Query("on_conflict") onConflict: String = "id_usuario"
+    ): Response<List<Ubicacion>>
+
+    /**
+     * Guardar una entrada en el historial de ubicaciones (cada hora)
+     */
+    @POST("historial_ubicacion")
+    suspend fun guardarHistorialUbicacion(
+        @Body historial: HistorialUbicacionInput
+    ): Response<List<Void>>
+
+    /**
+     * Obtener la última ubicación registrada de un usuario (hijo)
+     */
+    @GET("ubicaciones")
+    suspend fun obtenerUltimaUbicacion(
+        @Query("id_usuario") idUsuario: String,
+        @Query("order") order: String = "timestamp.desc",
+        @Query("limit") limit: String = "1",
         @Query("select") select: String = "*"
-    ): Response<List<SesionApp>>
-    
+    ): Response<List<Ubicacion>>
+
     /**
-     * Obtener todas las sesiones de un dispositivo
+     * Obtener el historial completo de ubicaciones de un usuario
      */
-    @GET("sesiones_app")
-    suspend fun obtenerSesiones(
-        @Query("iddispositivo") idDispositivo: String,
+    @GET("historial_ubicacion")
+    suspend fun obtenerHistorialUbicacion(
+        @Query("id_usuario") idUsuario: String,
+        @Query("order") order: String = "fecha.desc,hora.desc",
         @Query("select") select: String = "*"
-    ): Response<List<SesionApp>>
-    
-    /**
-     * Iniciar nueva sesión de app
-     */
-    @POST("sesiones_app")
-    suspend fun iniciarSesion(
-        @Body sesion: SesionAppInput
-    ): Response<List<SesionApp>>
-    
-    /**
-     * Finalizar sesión de app
-     */
-    @PATCH("sesiones_app")
-    suspend fun finalizarSesion(
-        @Query("id") id: String,
-        @Body update: Map<String, @JvmSuppressWildcards Any>
-    ): Response<List<SesionApp>>
-    
-    /**
-     * Obtener sesiones por rango de fechas
-     */
-    @GET("sesiones_app")
-    suspend fun obtenerSesionesPorFecha(
-        @Query("iddispositivo") idDispositivo: String,
-        @Query("inicio") inicio: String,
-        @Query("select") select: String = "*"
-    ): Response<List<SesionApp>>
+    ): Response<List<HistorialUbicacion>>
 }

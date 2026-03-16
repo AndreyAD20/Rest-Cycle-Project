@@ -27,11 +27,8 @@ data class Usuario(
     @SerializedName("contraseña")
     val contraseña: String,
     
-    @SerializedName("rol")
-    val rol: String, // "padre" o "hijo"
-    
     @SerializedName("mayoredad")
-    val mayorEdad: Boolean,
+    val mayorEdad: Boolean = false,
     
     @SerializedName("email_verificado")
     val emailVerificado: Boolean = false,
@@ -43,7 +40,16 @@ data class Usuario(
     val codigoExpiracion: String? = null,
 
     @SerializedName("foto_perfil")
-    val fotoPerfil: String? = null
+    val fotoPerfil: String? = null,
+    
+    @SerializedName("ultimo_token_sesion")
+    val ultimoTokenSesion: String? = null,
+    
+    @SerializedName("codigo_vinculacion")
+    val codigoVinculacion: String? = null,
+    
+    @SerializedName("codigo_vinculacion_expiracion")
+    val codigoVinculacionExpiracion: String? = null
 )
 
 /**
@@ -75,9 +81,6 @@ data class RegistroRequest(
     
     @SerializedName("contraseña")
     val contraseña: String,
-    
-    @SerializedName("rol")
-    val rol: String,
     
     @SerializedName("mayoredad")
     val mayorEdad: Boolean

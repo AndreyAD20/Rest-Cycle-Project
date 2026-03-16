@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Rest Cycle</string>
+
+    <!-- Textos de Pantalla Configuraciones -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Adjust the app to your preferences</string>
+    <string name="settings_monitoring">Usage Monitoring</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="settings_bubble">Floating Bubble</string>
+    <string name="settings_language">Change Language</string>
+    <string name="settings_font_size">Font Size</string>
+    <string name="settings_profile">Profile</string>
+    <string name="settings_security">Security</string>
+
+    <!-- Opciones de desplegables -->
+    <string name="font_small">Small</string>
+    <string name="font_medium">Medium</string>
+    <string name="font_large">Large</string>
+
+    <string name="lang_spanish">Español</string>
+    <string name="lang_english">English</string>
+    <string name="lang_portuguese">Português</string>
+
+    <!-- Alertas Configuraciones -->
+    <string name="toast_monitoring_enabled">Monitoring enabled</string>
+    <string name="toast_monitoring_paused">Monitoring paused</string>
+    <string name="toast_notifications_enabled">Notifications enabled</string>
+    <string name="toast_notifications_disabled">Notifications muted</string>
+    <string name="toast_setting_saved">Setting saved</string>
+    <string name="toast_language_saved">Language saved: %1$s</string>
+    <string name="toast_font_saved">Font changed to %1$s</string>
+    <string name="toast_security_warning">To change passwords, log out and go to Recover Password.</string>
+
+    <!-- Inicio / Modos de Uso -->
+    <string name="home_usage_modes">Usage Modes</string>
+    <string name="home_parental_control">Parental Control</string>
+    <string name="home_healthy_habits">Healthy Habits</string>
+    
+    <!-- Descripciones de Contenido -->
+    <string name="content_desc_back">Go Back</string>
+    <string name="content_desc_settings">Settings</string>
+    <string name="content_desc_owl_logo">Owl Logo</string>
+    
+    <!-- Diálogos de Permisos -->
+    <string name="dialog_permission_required">Permission Required</string>
+    <string name="dialog_overlay_permission_title">Overlay Permission</string>
+    <string name="dialog_overlay_permission_text">To show the lock screen over other apps, Rest Cycle needs permission to display over other apps.</string>
+    <string name="dialog_usage_permission_block_text">For Rest Cycle to work properly and block apps, it needs access to usage statistics.</string>
+    <string name="dialog_usage_permission_stats_text">For the app to work properly and record your statistics in real time, we need access to usage data. Please enable the permission for \'Rest Cycle\'.</string>
+    <string name="dialog_notif_permission_title">Notification Permission</string>
+    <string name="dialog_notif_permission_text">To monitor your apps in real time, we need to show a persistent notification. This is required by Android for background services.</string>
+    
+    <!-- Botones de Permisos -->
+    <string name="btn_grant_permission">Grant Permission</string>
+    <string name="btn_activate_permission">Enable Permission</string>
+    <string name="btn_allow">Allow</string>
+    <string name="btn_not_now">Not Now</string>
+    
+    <!-- Toasts de Permisos -->
+    <string name="toast_monitoring_unavailable">Real-time monitoring will not be available</string>
+    <string name="toast_notif_permission_needed">Notification permission is required for real-time monitoring</string>
+
+    <!-- Diálogo Cerrar Sesión -->
+    <string name="dialog_logout_title">Sign Out</string>
+    <string name="dialog_logout_text">Are you sure you want to log out?</string>
+    <string name="btn_logout">Log Out</string>
+    <string name="btn_cancel">Cancel</string>
+
+
+    <!-- Inicio y Registro / Auth -->
+    <string name="login_email_placeholder">Email Address</string>
+    <string name="login_password_placeholder">Enter your Password</string>
+    <string name="login_forgot_password">Forgot Password?</string>
+    <string name="login_sign_in_button">Sign In</string>
+    <string name="login_no_account_prompt">Do not have an account?</string>
+    <string name="login_register_button">Sign Up</string>
+    <string name="login_or_enter_via">Or sign in with</string>
+    
+    <string name="content_desc_hide_password">Hide password</string>
+    <string name="content_desc_show_password">Show password</string>
+    
+    <string name="toast_invalid_email">Please enter a valid email address</string>
+    <string name="toast_empty_password">Please enter your password</string>
+    <string name="toast_welcome">✅ Welcome %1$s!</string>
+    <string name="toast_no_internet">❌ No Internet connection. Please check your network and try again.</string>
+    <string name="toast_server_error">❌ Unable to connect to server. Check your Internet connection.</string>
+    <string name="toast_timeout_error">❌ Connection timed out. Please try again.</string>
+    <string name="toast_unexpected_error">❌ Unexpected error: %1$s</string>
+
+    <!-- Registro Screen -->
+    <string name="register_title_speech">You can\nRegister here in\nour APP</string>
+    <string name="register_name_placeholder">Name</string>
+    <string name="register_lastname_placeholder">Last Name</string>
+    <string name="register_email_placeholder">Email</string>
+    <string name="register_birthdate_placeholder">Birthdate</string>
+    <string name="register_password_placeholder">Password</string>
+    <string name="register_confirm_password_placeholder">Confirm Password</string>
+    <string name="register_accept_terms">I accept the Terms and Conditions</string>
+    <string name="register_button_text">Register</string>
+    <string name="dialog_detailed_error">Detailed Error</string>
+    <string name="dialog_exception">Exception</string>
+    <string name="dialog_ok">OK</string>
+    
+    <!-- Validaciones de Registro -->
+    <string name="err_empty_name">❌ Please enter your name</string>
+    <string name="err_invalid_name">❌ The name must only contain letters</string>
+    <string name="err_invalid_lastname">❌ The last name must only contain letters</string>
+    <string name="err_empty_email">❌ Please enter your email</string>
+    <string name="err_invalid_email_format">❌ Enter a valid email</string>
+    <string name="err_empty_birthdate">❌ Please enter your birthdate</string>
+    <string name="err_invalid_birthdate_format">❌ Invalid date format. Use YYYY-MM-DD</string>
+    <string name="err_invalid_password_format">❌ Password must be at least 8 characters, 1 uppercase, 1 number and 1 special character</string>
+    <string name="err_empty_confirm_password">❌ Please confirm your password</string>
+    <string name="err_password_mismatch">❌ Passwords do not match</string>
+    <string name="err_accept_terms">❌ You must accept the Terms and Conditions</string>
+
+    <!-- Recuperación de Contraseña -->
+    <string name="recovery_email_title_speech">Enter your email and\nwe will send you a code</string>
+    <string name="recovery_send_button">Send Recovery Code</string>
+    <string name="toast_code_sent">Code sent to %1$s</string>
+    
+    <string name="dialog_cancel_recovery_title">Cancel recovery?</string>
+    <string name="dialog_cancel_recovery_text">If you exit now, you will need to request a new recovery code.</string>
+    <string name="btn_yes_exit">Yes, exit</string>
+    
+    <string name="recovery_code_title_speech">Enter your\nrecovery code</string>
+    <string name="recovery_code_placeholder">Recovery Code</string>
+    <string name="btn_confirm">Confirm</string>
+    <string name="recovery_resend_code">Resend Code</string>
+    <string name="recovery_resend_in_seconds">Resend in %1$ds</string>
+    <string name="toast_invalid_code_length">Please enter a 6-digit code</string>
+    <string name="toast_new_code_sent">New code sent to your email</string>
+    <string name="toast_resend_code_error">Error resending code: %1$s</string>
+    <string name="toast_code_verified">Code verified successfully</string>
+    
+    <string name="dialog_cancel_password_change_title">Cancel password change?</string>
+    <string name="dialog_cancel_password_change_text">If you exit now, you will lose your progress and need to request a new code.</string>
+    <string name="change_password_title_speech">Change your password,\ndon\'t forget it</string>
+    <string name="change_password_new_placeholder">New Password</string>
+    <string name="toast_password_changed">Password changed successfully!</string>
+
+    <!-- Pantalla de Perfil y Menu -->
+    <string name="settings_edit_profile">Edit Profile</string>
+    <string name="err_empty_fields">Please fill in all required fields correctly</string>
+    <string name="toast_profile_updated">Profile updated successfully</string>
+    <string name="change_password_title">Change Password</string>
+    <string name="profile_photo_title">Profile Photo</string>
+    <string name="profile_photo_choose_option">Choose an option:</string>
+    <string name="profile_photo_take">Take Photo</string>
+    <string name="profile_photo_choose_gallery">Choose from Gallery</string>
+    <string name="profile_photo_delete">Delete Photo</string>
+    
+    <string name="menu_title">Menu</string>
+    <string name="menu_statistics">Statistics</string>
+    <string name="menu_notes">Notes</string>
+    <string name="menu_app_block">App Lock</string>
+    <string name="menu_rest_hours">Rest Hours</string>
+    <string name="menu_calendar">Calendar</string>
+    <string name="menu_parental_control">Parental Control</string>
+    <string name="menu_logout">Sign Out</string>
+    <string name="widget_next_event">Upcoming Event</string>
+    <string name="widget_last_note">My Notes</string>
+
+    <!-- Extra Settings Options -->
+    <string name="settings_privacy">Privacy and Terms</string>
+    <string name="settings_about">About</string>
+    <string name="dialog_privacy_title">Privacy and Terms</string>
+    <string name="dialog_privacy_desc">Rest Cycle collects app usage data to provide analytics on your dashboard. This information is stored securely and only you have access to it. By using the app, you accept these terms.</string>
+    <string name="dialog_about_title">About Rest Cycle</string>
+    <string name="dialog_about_version">Version 1.0.0</string>
+    <string name="dialog_about_desc">An application designed to help you manage your time, balance your habits, and disconnect for a better rest.\n\nDeveloped by the Rest Cycle Team.</string>
+
+    <string name="toast_permission_granted">Permission granted</string>
+    <string name="toast_permission_required_photo">Permission required to change photo</string>
+    <string name="toast_camera_error">Error starting camera: %1$s</string>
+    <string name="toast_photo_deleted">Photo deleted</string>
+    <string name="toast_user_not_identified">Error: User not identified</string>
+    <string name="toast_photo_updated">Profile photo updated</string>
+    <string name="toast_error_uploading_photo">Error uploading photo: %1$s</string>
+    <string name="toast_no_crop_app">No app to crop the image</string>
+
+    <string name="fallback_user_name">User</string>
+    <string name="profile_last_note_title">Last Modified Note</string>
+    <string name="profile_no_title">Untitled</string>
+    <string name="profile_healthy_habits">Healthy Habits</string>
+    <string name="profile_manage_habits">Manage your daily habits</string>
+    <string name="toast_note_updated">Note updated</string>
+    <string name="toast_update_error">Error updating</string>
+
+    <!-- Estadísticas e Informes -->
+    <string name="stats_title">Usage Statistics</string>
+    <string name="stats_tab_daily">Daily</string>
+    <string name="stats_tab_weekly">Weekly</string>
+    <string name="stats_tab_monthly">Monthly</string>
+    <string name="stats_download_report">DOWNLOAD REPORT</string>
+    <string name="stats_no_data">No usage data available</string>
+    <string name="stats_health_warning">Excessive app usage can be detrimental to your health.</string>
+
+    <string name="dialog_download_report_title">Download Report</string>
+    <string name="dialog_download_report_text">Do you want to download the usage report as a PDF?</string>
+    <string name="btn_download">Download</string>
+
+    <string name="toast_no_notification_permission">Without permission, you will not receive download notifications.</string>
+    <string name="toast_report_saved_no_notif">Report saved (Notification permission not granted)</string>
+    <string name="toast_pdf_saved_downloads">PDF saved in Downloads</string>
+    <string name="toast_pdf_saved_path">PDF saved: %1$s</string>
+    <string name="toast_error_saving_pdf">Error saving PDF: %1$s</string>
+    <string name="toast_legacy_error">Legacy error: %1$s</string>
+
+    <string name="notif_report_channel_desc">Report download notifications</string>
+    <string name="notif_report_downloaded_title">Report Downloaded</string>
+    <string name="notif_report_downloaded_text">Tap to open the PDF report</string>
+
+    <string name="permission_stats_desc">To show app usage statistics, we need access to the system\'s usage data.</string>
+    <string name="btn_already_granted">I already granted permission</string>
+    <string name="instructions_title">Instructions:</string>
+    <string name="instructions_stats_steps">1. Tap \'Grant Permission\'\n2. Find this app in the list\n3. Turn on the permission switch\n4. Return to the app and tap \'I already granted permission\'</string>
+    
+    <!-- Reporte PDF -->
+    <string name="pdf_report_title">Usage Report - Rest Cycle</string>
+    <string name="pdf_user_prefix">User: %1$s</string>
+    <string name="pdf_period_prefix">Period: %1$s</string>
+    
+    <!-- Días de la Semana Cortos -->
+    <string name="day_mon">Mon</string>
+    <string name="day_tue">Tue</string>
+    <string name="day_wed">Wed</string>
+    <string name="day_thu">Thu</string>
+    <string name="day_fri">Fri</string>
+    <string name="day_sat">Sat</string>
+    <string name="day_sun">Sun</string>
+
+    <string name="date_today_prefix">Today, %1$s</string>
+    
+    <!-- Tiempos -->
+    <string name="time_hrs_min">%1$d hrs %2$d min</string>
+    <string name="time_hrs">%1$d hrs</string>
+    <string name="time_min">%1$d min</string>
+    <string name="time_less_than_min">&lt; 1 min</string>
+
+    <!-- Notas -->
+    <string name="notes_error_session">Session error. Please log in again.</string>
+    <string name="notes_title">My Notes</string>
+    <string name="notes_search_hint">Search notes...</string>
+    <string name="notes_content_desc_search">Search</string>
+    <string name="notes_content_desc_add">Add Note</string>
+    <string name="notes_empty_state">You have no notes yet\nTap + to create one</string>
+    <string name="notes_no_results">No results found</string>
+    <string name="notes_toast_created">Note created successfully</string>
+    <string name="notes_toast_deleted">Note deleted</string>
+    <string name="notes_toast_updated">Note updated</string>
+    <string name="notes_toast_fav_added">★ Added to favorites</string>
+    <string name="notes_toast_fav_removed">Removed from favorites</string>
+
+    <string name="dialog_delete_note_title">Delete note</string>
+    <string name="dialog_delete_note_msg">Are you sure you want to delete this note?</string>
+    <string name="dialog_delete_note_untitled">Untitled</string>
+    
+    <string name="note_card_desc_delete">Delete</string>
+    <string name="note_card_desc_fav_remove">Remove from favorites</string>
+    <string name="note_card_desc_fav_add">Add to favorites</string>
+
+    <string name="dialog_note_title_new">New Note</string>
+    <string name="dialog_note_title_edit">Edit Note</string>
+    <string name="dialog_note_label_title">Title</string>
+    <string name="dialog_note_label_content">Content</string>
+    <string name="dialog_note_label_color">Choose a color:</string>
+    <string name="dialog_note_desc_selected">Selected</string>
+    <string name="btn_create">Create</string>
+    <string name="btn_save">Save</string>
+
+    <!-- App Blocking (Bloqueo de Apps) -->
+    <string name="blocking_title">App Blocking</string>
+    <string name="blocking_desc">Set daily limits for your applications to improve your productivity.</string>
+    <string name="blocking_your_apps">Your Applications</string>
+    <string name="blocking_add_apps">Add Apps</string>
+    <string name="blocking_add_btn">Add</string>
+    <string name="blocking_remove_app_title">Remove App</string>
+    <string name="blocking_remove_app_msg">Do you want to remove %1$s from your tracking list?</string>
+    <string name="blocking_remove_btn">Remove</string>
+    <string name="blocking_no_apps_found">No apps found</string>
+    <string name="blocking_status_blocked">Blocked</string>
+    <string name="blocking_status_nolimit">No limit</string>
+    <string name="blocking_time_allowed">%1$dh %2$dm daily</string>
+    <string name="blocking_time_remaining">Remaining: %1$dh %2$dm</string>
+    <string name="blocking_time_exhausted">Time exhausted</string>
+    <string name="blocking_set_limit_title">Set Daily Limit</string>
+    <string name="blocking_set_limit_desc">Swipe to select time</string>
+    
+    <!-- Active Block Screen -->
+    <string name="blocking_active_title">Pause Time</string>
+    <string name="blocking_active_btn_return">Return to Focus</string>
+    <string name="blocking_active_quote_1">Disconnect to reconnect.</string>
+    <string name="blocking_active_quote_2">Your time is your most valuable resource.</string>
+    <string name="blocking_active_quote_3">Focus on what truly matters.</string>
+    <string name="blocking_active_quote_4">Small steps, big achievements.</string>
+    <string name="blocking_active_quote_5">Rest is also part of productivity.</string>
+    <string name="blocking_active_quote_6">Master your attention, master your life.</string>
+
+    <!-- Calendar -->
+    <string name="calendar_title">Calendar</string>
+    <string name="calendar_view_list">View List</string>
+    <string name="calendar_view_calendar">View Calendar</string>
+    <string name="calendar_new_event">New Event</string>
+    <string name="calendar_error_past_date">You cannot create events in past dates</string>
+    <string name="calendar_event_updated">Event updated</string>
+    <string name="calendar_event_created">Event created</string>
+    <string name="calendar_error_create">Error creating: %1$s</string>
+    <string name="calendar_error_generic">Error: %1$s</string>
+    <string name="calendar_event_deleted">Event deleted</string>
+    <string name="calendar_error_delete">Error deleting</string>
+    <string name="calendar_prev_month">Previous Month</string>
+    <string name="calendar_next_month">Next Month</string>
+    <string name="calendar_agenda_title">Agenda - %1$s</string>
+    <string name="calendar_no_events_day">No events for this day</string>
+    <string name="calendar_upcoming_events">Upcoming Events</string>
+    <string name="calendar_no_upcoming_events">No upcoming events</string>
+    <string name="calendar_with_location">With location</string>
+
+    <!-- Event and Map Dialog -->
+    <string name="dialog_event_edit_title">Edit Event</string>
+    <string name="dialog_event_new_title">New Event</string>
+    <string name="dialog_event_title_hint">Event title</string>
+    <string name="dialog_event_type_label">Event type:</string>
+    <string name="dialog_event_type_meeting">Meeting</string>
+    <string name="dialog_event_type_work">Work</string>
+    <string name="dialog_event_type_appointment">Appointment</string>
+    <string name="dialog_event_type_health">Health</string>
+    <string name="dialog_event_type_leisure">Leisure</string>
+    <string name="dialog_event_type_other">Other</string>
+    <string name="dialog_event_start_label">Start:</string>
+    <string name="dialog_event_end_label">End:</string>
+    <string name="dialog_event_location_selected">Location Selected</string>
+    <string name="dialog_event_location_add">Add Location (Map)</string>
+    <string name="dialog_map_title">Select a Location</string>
+    <string name="dialog_map_marker_title">Location Selected</string>
+    <string name="dialog_map_hint">Tap the map to place a pin</string>
+    <string name="btn_delete">Delete</string>
+
+    <!-- Perfil Compose Activity -->
+    <string name="profile_info_title">Personal Information</string>
+    <string name="profile_confirm_identity">Confirm your identity</string>
+    <string name="toast_error_loading_profile">Error loading profile data</string>
+    <string name="toast_error_unidentified_user">Error: Unidentified user</string>
+    <string name="toast_error_server_delete">Error deleting from server: %1$s</string>
+    <string name="toast_error_photo_delete">Error deleting photo: %1$s</string>
+    <string name="toast_error_saving_changes">Error: %1$s</string>
+    <string name="toast_exception_saving_profile">Exception: %1$s</string>
+
+    <!-- Change Password (In-App) -->
+    <string name="change_password_screen_title">Change Password</string>
+    <string name="change_password_current_label">Current Password</string>
+    <string name="change_password_new_label">New Password</string>
+    <string name="change_password_confirm_new_label">Confirm New Password</string>
+    <string name="change_password_button">Change</string>
+    <string name="toast_fill_all_fields">Please fill in all fields</string>
+    <string name="toast_passwords_no_match">The new passwords do not match</string>
+    <string name="toast_password_incorrect">Incorrect current password</string>
+    <string name="toast_password_complexity">Password must be at least 8 characters, 1 uppercase letter, 1 number and 1 special character.</string>
+    <string name="toast_password_updated">Password updated successfully</string>
+    <string name="toast_password_update_error">Error: %1$s</string>
+
+    <!-- Email verification when editing profile -->
+    <string name="profile_verify_email_title">Verify your new email</string>
+    <string name="profile_verify_email_body">Enter the 6-digit code sent to %1$s</string>
+    <string name="profile_verify_email_btn">Verify</string>
+    <string name="profile_verify_email_ok">✅ Email verified</string>
+    <string name="profile_verify_email_error">❌ Incorrect code, please try again</string>
+    <string name="toast_invalid_email_format">Email does not look valid (e.g.: name@domain.com)</string>
+    <string name="toast_sending_code">Sending code...</string>
+    <string name="toast_code_sent_to">Code sent to %1$s</string>
+    <string name="toast_code_send_error">Error sending code: %1$s</string>
+    <string name="dialog_verify_resend">Resend code</string>
+
+    <!-- Verificación de Correo (Registro) -->
+    <string name="toast_email_verified">✅ Email verified successfully!</string>
+    <string name="toast_child_account_verified">✅ Child account verified and linked!</string>
+    <string name="error_no_email_provided">Error: No email was provided</string>
+    <string name="verify_email_bubble_speech">Verify your\nemail address</string>
+    <string name="verify_email_title">Email Verification</string>
+    <string name="verify_email_sent_to">We have sent a 6-digit code to:</string>
+    <string name="verify_email_code_placeholder">6-digit Code</string>
+    <string name="btn_verify">Verify</string>
+    <string name="btn_resend_code">Didn\'t receive the code? Resend</string>
+
+</resources>

@@ -22,4 +22,11 @@ object ThemeManager {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.getBoolean(KEY_DARK_MODE, false) // Por defecto: modo claro
     }
+
+    /**
+     * Siempre retorna escala mediana (opción de tamaño de fuente eliminada de la UI)
+     */
+    fun getFontSizeScale(context: Context): Float {
+        return 1.0f
+    }
 }

@@ -48,6 +48,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import android.widget.Toast
+import androidx.compose.ui.res.stringResource
+import com.example.rest.R
 import kotlinx.coroutines.launch
 import android.util.Log
 import android.app.AlarmManager
@@ -74,9 +76,13 @@ class CalendarioComposeActivity : BaseComposeActivity() {
 @Composable
 fun PantallaCalendario(onBackClick: () -> Unit) {
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Color(0xFF80DEEA), Primario),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -126,8 +132,14 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
 
     // ── Cargar eventos del usuario ───────────────────────────────────────────
     LaunchedEffect(Unit) {
+cristian-alvarado
         val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
         val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+=======
+        val prefs = com.example.rest.utils.PreferencesManager(context)
+        val idUsuario = prefs.getUserId()
+        
+ main
         if (idUsuario != -1) {
             withContext(Dispatchers.IO) {
                 try {
@@ -181,10 +193,10 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Calendario", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.calendar_title), fontWeight = FontWeight.Bold, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, "Regresar", tint = Negro)
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Color.White)
                     }
                 },
                 actions = {
@@ -243,8 +255,8 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                     }) {
                         Icon(
                             imageVector = if (vistaActual == "dia") Icons.Default.List else Icons.Default.DateRange,
-                            contentDescription = if (vistaActual == "dia") "Ver Lista" else "Ver Calendario",
-                            tint = Negro
+                            contentDescription = if (vistaActual == "dia") stringResource(R.string.calendar_view_list) else stringResource(R.string.calendar_view_calendar),
+                            tint = Color.White
                         )
                     }
                 },
@@ -258,7 +270,7 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                 containerColor = Color(0xFF00BCD4),
                 contentColor = Negro
             ) {
-                Icon(Icons.Default.Add, "Nuevo Evento")
+                Icon(Icons.Default.Add, stringResource(R.string.calendar_new_event))
             }
         },
         containerColor = Color.Transparent
@@ -317,9 +329,15 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                     onConfirmar = { titulo, tipo, inicioIso, finIso, lat, long ->
                         mostrarDialogo = false
                         scope.launch(Dispatchers.IO) {
+cristian-alvarado
                             val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
                             val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
 
+=======
+                            val prefs = com.example.rest.utils.PreferencesManager(context)
+                            val idUsuario = prefs.getUserId()
+                            
+main
                             if (idUsuario != -1) {
                                 try {
                                     if (eventoAEditar != null) {
@@ -364,8 +382,28 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                             }
                                         }
                                     } else {
+cristian-alvarado
                                         // ── CREAR nuevo evento ───────────────────────────────────
                                         val nuevoEvento = EventoInput(
+=======
+                                        // Validar fecha futura o actual
+                                        val fechaInicio = try {
+                                            LocalDateTime.parse(inicioIso.replace("Z", ""))
+                                        } catch (e: Exception) {
+                                            LocalDateTime.now()
+                                        }
+                                        
+                                        val hoy = LocalDate.now()
+                                        if (fechaInicio.toLocalDate().isBefore(hoy)) {
+                                            withContext(Dispatchers.Main) {
+                                                Toast.makeText(context, context.getString(R.string.calendar_error_past_date), Toast.LENGTH_SHORT).show()
+                                            }
+                                            return@launch
+                                        }
+
+                                        // Crear nuevo evento
+                                        val nuevoEvento = com.example.rest.data.models.EventoInput(
+main
                                             idUsuario = idUsuario,
                                             titulo = titulo,
                                             tipo = tipo,
@@ -374,6 +412,7 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                             latitud = lat,
                                             longitud = long
                                         )
+cristian-alvarado
                                         val res = SupabaseClient.api.crearEvento(nuevoEvento)
                                         if (res.isSuccessful) {
                                             // ✅ El ID real viene en la respuesta de Supabase
@@ -398,6 +437,35 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                     withContext(Dispatchers.Main) {
                                         Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                                     }
+=======
+                                        SupabaseClient.api.crearEvento(nuevoEvento)
+                                    }
+                                    if (res.isSuccessful) {
+                                        withContext(Dispatchers.Main) {
+                                            val mensaje = if (eventoAEditar != null) context.getString(R.string.calendar_event_updated) else context.getString(R.string.calendar_event_created)
+                                            Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
+                                            eventoAEditar = null
+                                            // Recargar eventos
+                                            val refresh = SupabaseClient.api.obtenerEventosPorUsuario(idUsuario = "eq.$idUsuario")
+                                            if (refresh.isSuccessful) {
+                                                eventos = refresh.body() ?: emptyList()
+                                            }
+                                        }
+                                    } else {
+                                        withContext(Dispatchers.Main) {
+                                            val errorBody = res.errorBody()?.string() ?: "Error desconocido"
+                                            Toast.makeText(context, context.getString(R.string.calendar_error_generic, "${res.code()}: $errorBody"), Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                     withContext(Dispatchers.Main) {
+                                         Toast.makeText(context, context.getString(R.string.calendar_error_create, e.message ?: ""), Toast.LENGTH_SHORT).show()
+                                     }
+                                } catch (e: Exception) {
+                                     withContext(Dispatchers.Main) {
+                                         Toast.makeText(context, context.getString(R.string.calendar_error_generic, e.message ?: ""), Toast.LENGTH_SHORT).show()
+                                     }
+main
                                 }
                             }
                         }
@@ -411,15 +479,19 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                     val res = SupabaseClient.api.eliminarEvento("eq.${eventoAEditar!!.id}")
                                     withContext(Dispatchers.Main) {
                                         if (res.isSuccessful) {
+cristian-alvarado
                                             // Cancelar alarma del evento eliminado
                                             eventoAEditar?.id?.let { id ->
                                                 EventoNotificationManager.cancelEventoAlarm(context, id)
                                             }
                                             Toast.makeText(context, "Evento eliminado", Toast.LENGTH_SHORT).show()
+=======
+                                            Toast.makeText(context, context.getString(R.string.calendar_event_deleted), Toast.LENGTH_SHORT).show()
+main
                                             eventoAEditar = null
                                             // Recargar eventos
-                                            val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                                            val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
+                                            val prefs = com.example.rest.utils.PreferencesManager(context)
+                                            val idUsuario = prefs.getUserId()
                                             if (idUsuario != -1) {
                                                 val refresh = SupabaseClient.api.obtenerEventosPorUsuario(idUsuario = "eq.$idUsuario")
                                                 if (refresh.isSuccessful) {
@@ -427,12 +499,12 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                                 }
                                             }
                                         } else {
-                                            Toast.makeText(context, "Error al eliminar", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, context.getString(R.string.calendar_error_delete), Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 } catch (e: Exception) {
                                     withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.calendar_error_generic, e.message ?: ""), Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -480,12 +552,12 @@ fun VistaCalendarioDia(
                 ) {
                     Icon(
                         Icons.Default.ArrowBack,
-                        "Mes Anterior",
+                        stringResource(R.string.calendar_prev_month),
                         tint = Primario
                     )
                 }
                 Text(
-                    text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale("es", "ES"))).uppercase(),
+                    text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())).uppercase(),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold
                     ),
@@ -499,7 +571,7 @@ fun VistaCalendarioDia(
                 ) {
                     Icon(
                         Icons.Default.ArrowForward,
-                        "Mes Siguiente",
+                        stringResource(R.string.calendar_next_month),
                         tint = Primario
                     )
                 }
@@ -521,7 +593,15 @@ fun VistaCalendarioDia(
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
             ) {
-                listOf("DOM", "LUN", "MAR", "MIE", "JUE", "VIE", "SAB").forEach { day ->
+                listOf(
+                    stringResource(R.string.day_sun).toUpperCase(),
+                    stringResource(R.string.day_mon).toUpperCase(),
+                    stringResource(R.string.day_tue).toUpperCase(),
+                    stringResource(R.string.day_wed).toUpperCase(),
+                    stringResource(R.string.day_thu).toUpperCase(),
+                    stringResource(R.string.day_fri).toUpperCase(),
+                    stringResource(R.string.day_sat).toUpperCase()
+                ).forEach { day ->
                     Text(
                         text = day,
                         modifier = Modifier.weight(1f),
@@ -557,7 +637,7 @@ fun VistaCalendarioDia(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Agenda - ${selectedDate.format(DateTimeFormatter.ofPattern("dd MMM"))}",
+                    text = stringResource(R.string.calendar_agenda_title, selectedDate.format(DateTimeFormatter.ofPattern("dd MMM"))),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     color = Negro
                 )
@@ -572,7 +652,7 @@ fun VistaCalendarioDia(
                 
                 if (eventosDia.isEmpty()) {
                     Text(
-                        "No hay eventos para este día",
+                        stringResource(R.string.calendar_no_events_day),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray,
                         modifier = Modifier.padding(vertical = 16.dp)
@@ -628,7 +708,7 @@ fun VistaListaEventosFuturos(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Próximos Eventos",
+                text = stringResource(R.string.calendar_upcoming_events),
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = Negro
             )
@@ -648,7 +728,7 @@ fun VistaListaEventosFuturos(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "No tienes eventos pendientes",
+                            stringResource(R.string.calendar_no_upcoming_events),
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.Gray
                         )
@@ -738,13 +818,13 @@ fun EventoItem(evento: Evento, onClick: () -> Unit = {}) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Place,
-                            contentDescription = "Con ubicación",
+                            contentDescription = stringResource(R.string.calendar_with_location),
                             tint = Color.Gray,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Con ubicación",
+                            text = stringResource(R.string.calendar_with_location),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.Gray
                         )
@@ -825,13 +905,13 @@ fun EventoItemConFecha(evento: Evento, onClick: () -> Unit = {}) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.Place,
-                            contentDescription = "Con ubicación",
+                            contentDescription = stringResource(R.string.calendar_with_location),
                             tint = Color.Gray,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Con ubicación",
+                            text = stringResource(R.string.calendar_with_location),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.Gray
                         )
@@ -978,7 +1058,7 @@ fun EventoItem(evento: Evento) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.Place,
-                            contentDescription = "Con ubicación",
+                            contentDescription = stringResource(R.string.calendar_with_location),
                             tint = Color.Gray,
                             modifier = Modifier.size(12.dp)
                         )

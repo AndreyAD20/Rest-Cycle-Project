@@ -1,5 +1,6 @@
 package com.example.rest.features.tools
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -8,23 +9,36 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.rest.data.repository.LocalBlockingRepository
+import com.example.rest.network.SupabaseClient
+import com.example.rest.data.models.AppVinculadaInput
+import com.example.rest.data.models.localTimestamp
+import android.util.Log
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,14 +54,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.rest.BaseComposeActivity
+import com.example.rest.features.home.PerfilComposeActivity
+import com.example.rest.features.home.HabitosInicioComposeActivity
 import com.example.rest.ui.theme.*
+import androidx.compose.ui.res.stringResource
+import com.example.rest.R
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.Date
+import java.util.TimeZone
 
 class BloqueoAppsComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             TemaRest {
-                PantallaBloqueoApps(onBackClick = { finish() })
+                PantallaBloqueoApps(onBackClick = {
+                    val intent = Intent(this, HabitosInicioComposeActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    startActivity(intent)
+                    finish()
+                })
             }
         }
     }
@@ -60,7 +87,8 @@ data class AppBloqueo(
     val limitHours: Int = 0,
     val limitMinutes: Int = 0,
     val isBlocked: Boolean = false,
-    val packageName: String = ""
+    val packageName: String = "",
+    val usageMinutes: Int = 0
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,38 +99,143 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
 
     // Gradiente de fondo
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Color(0xFF80DEEA), Primario),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     // Datos reales desde repositorio local
     val apps = remember { mutableStateListOf<AppBloqueo>() }
     
     // Cargar apps bloqueadas al inicio
+    // Cargar apps bloqueadas al inicio
     LaunchedEffect(Unit) {
-        apps.addAll(repository.getBlockedApps())
+        val loadedApps = repository.getBlockedApps()
+        val appsWithUsage = repository.updateAppsWithUsage(loadedApps)
+        apps.addAll(appsWithUsage)
     }
+
+    val scope = rememberCoroutineScope()
+    val sharedPref = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+    val dispositivoId = remember { sharedPref.getInt("ID_DISPOSITIVO", -1) }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showTimeDialog by remember { mutableStateOf(false) }
     var selectedApp by remember { mutableStateOf<AppBloqueo?>(null) }
+    
+    // Verificar Permiso de Superposición (Overlay) esencial para el bloqueo
+    var showOverlayDialog by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(context)) {
+            showOverlayDialog = true
+        }
+    }
+    
+    if (showOverlayDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Opcional: no permitir cerrar o sí */ },
+            title = { Text(stringResource(R.string.dialog_overlay_permission_title)) },
+            text = { Text(stringResource(R.string.dialog_overlay_permission_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showOverlayDialog = false
+                    val intent = Intent(
+                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:${context.packageName}")
+                    )
+                    context.startActivity(intent)
+                }) {
+                    Text(stringResource(R.string.btn_grant_permission))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOverlayDialog = false }) {
+                    Text(stringResource(R.string.btn_not_now))
+                }
+            }
+        )
+    }
 
     if (showAddDialog) {
         AppSelectionDialog(
             repository = repository,
+            linkedPackages = apps.map { it.packageName }.toSet(),
             onDismiss = { showAddDialog = false },
             onAppsSelected = { newApps ->
-                // Guardar cada app seleccionada y actualizar lista
+                // Guardar cada app seleccionada y actualizar lista local
                 newApps.forEach { app ->
                     repository.saveBlockedApp(app)
                     if (!apps.any { it.packageName == app.packageName }) {
                         apps.add(app)
                     }
                 }
+                
+                // Subir a la nube (Solo las seleccionadas)
+                if (dispositivoId != -1) {
+                    scope.launch(Dispatchers.IO) {
+                        newApps.forEach { app ->
+                             try {
+                                 // Verificar si ya existe en la nube para no duplicar (opcional pero recomendado)
+                                 // Por simplicidad y rapidez, confiamos en que el usuario no agregue la misma 2 veces
+                                 // o que la BD maneje ids únicos si hubiera constraints. 
+                                 // Como apps_vinculadas no tiene unique constraint en paquete+dispositivo explicito en el schema dado,
+                                 // podríamos chequear antes. Pero para un fix rápido:
+                                 
+                                 val now = localTimestamp()
+                                 val input = AppVinculadaInput(
+                                     idDispositivo = dispositivoId,
+                                     nombre = app.nombre,
+                                     nombrePaquete = app.packageName,
+                                     tiempoLimite = 0,
+                                     bloqueada = false,
+                                     activa = true,
+                                     categoria = "Otros",
+                                     fechaCreacion = now,
+                                     fechaActualizacion = now
+                                 )
+                                 val res = SupabaseClient.api.crearAppVinculada(input)
+                                 if (res.isSuccessful) {
+                                     Log.d("BloqueoApps", "App vinculada subida: ${app.nombre}")
+                                 } else {
+                                     Log.e("BloqueoApps", "Error API: ${res.code()}")
+                                 }
+                             } catch(e: Exception) {
+                                 Log.e("BloqueoApps", "Error subiendo app ${app.nombre}: ${e.message}")
+                             }
+                        }
+                    }
+                }
+                
                 showAddDialog = false
             }
         )
+    }
+
+    // Helper para actualizar en la nube
+    fun updateAppInCloud(app: AppBloqueo) {
+        if (dispositivoId != -1) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val updates = mapOf(
+                        "tiempolimite" to (app.limitHours * 60 + app.limitMinutes),
+                        "bloqueada" to app.isBlocked,
+                        "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
+                    )
+                    SupabaseClient.api.actualizarAppVinculadaPorPaquete(
+                        idDispositivo = "eq.$dispositivoId",
+                        nombrePaquete = "eq.${app.packageName}",
+                        app = updates
+                    )
+                } catch (e: Exception) {
+                    Log.e("BloqueoApps", "Error actualizando app: ${e.message}")
+                }
+            }
+        }
     }
 
     if (showTimeDialog && selectedApp != null) {
@@ -120,6 +253,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                     )
                     apps[index] = updatedApp
                     repository.saveBlockedApp(updatedApp)
+                    updateAppInCloud(updatedApp)
                 }
                 showTimeDialog = false
             }
@@ -131,13 +265,13 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "Bloqueo de Apps",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                        stringResource(R.string.blocking_title),
+                        style = MaterialTheme.typography.titleLarge
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, "Regresar", tint = Negro)
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Negro)
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -170,8 +304,8 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Configura límites diarios para tus aplicaciones y mejora tu productividad.",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            text = stringResource(R.string.blocking_desc),
+                            style = MaterialTheme.typography.bodyMedium, // Istok Web has Medium weight, this is fine or remove if needed. bodyMedium is Istok.
                             color = Negro,
                             modifier = Modifier.weight(1f)
                         )
@@ -193,8 +327,8 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Tus Aplicaciones",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        stringResource(R.string.blocking_your_apps),
+                        style = MaterialTheme.typography.titleMedium,
                         color = Negro
                     )
                     
@@ -206,16 +340,51 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                             .size(48.dp)
                             .border(1.dp, Negro, CircleShape)
                     ) {
-                        Icon(Icons.Default.Add, "Agregar")
+                        Icon(Icons.Default.Add, stringResource(R.string.blocking_add_btn))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
+    var appToDelete by remember { mutableStateOf<AppBloqueo?>(null) }
+    
+    if (appToDelete != null) {
+        DeleteConfirmDialog(
+            appName = appToDelete!!.nombre,
+            onDismiss = { appToDelete = null },
+            onConfirm = {
+                val app = appToDelete!!
+                // 1. Eliminar localmente
+                repository.removeBlockedApp(app.packageName)
+                apps.remove(app)
+                
+                // 2. Eliminar de la nube
+                if (dispositivoId != -1) {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            val res = SupabaseClient.api.eliminarAppVinculada(
+                                idDispositivo = "eq.$dispositivoId",
+                                nombrePaquete = "eq.${app.packageName}"
+                            )
+                            if (res.isSuccessful) {
+                                Log.d("BloqueoApps", "App eliminada de nube: ${app.nombre}")
+                            } else {
+                                Log.e("BloqueoApps", "Error eliminando app: ${res.code()}")
+                            }
+                        } catch (e: Exception) {
+                            Log.e("BloqueoApps", "Excepción al eliminar: ${e.message}")
+                        }
+                    }
+                }
+                appToDelete = null
+            }
+        )
+    }
+
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
                     items(apps) { app ->
                         AppBloqueoItem(
                             app = app,
@@ -223,22 +392,15 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                                 selectedApp = app
                                 showTimeDialog = true
                             },
-                            onToggleBlock = { 
-                                val index = apps.indexOfFirst { it.id == app.id }
-                                if (index != -1) {
-                                    apps[index] = apps[index].copy(
-                                        isBlocked = !apps[index].isBlocked,
-                                        limitHours = 0,
-                                        limitMinutes = 0
-                                    )
-                                }
+                            onDelete = { 
+                                appToDelete = app
                             }
                         )
                     }
-                    item {
-                        Spacer(modifier = Modifier.height(80.dp))
-                    }
-                }
+        item {
+            Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
             }
         }
     }
@@ -250,16 +412,16 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
 @Composable
 fun AppSelectionDialog(
     repository: LocalBlockingRepository,
+    linkedPackages: Set<String> = emptySet(),
     onDismiss: () -> Unit,
     onAppsSelected: (List<AppBloqueo>) -> Unit
 ) {
-    // Cargar apps instaladas
+    // Cargar apps instaladas excluyendo las ya enlazadas
     var installedApps by remember { mutableStateOf<List<AppBloqueo>>(emptyList()) }
     
     LaunchedEffect(Unit) {
-        // Ejecutar en background para no bloquear UI
         withContext(Dispatchers.IO) {
-            val apps = repository.getInstalledApps()
+            val apps = repository.getInstalledApps(excludePackages = linkedPackages)
             withContext(Dispatchers.Main) {
                 installedApps = apps
             }
@@ -294,7 +456,11 @@ fun AppSelectionDialog(
                         .height(100.dp)
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(Primario, Color(0xFF80DEEA))
+                                colors = listOf(
+                                    Color(0xFF0D47A1),
+                                    Color(0xFF00838F),
+                                    Color(0xFF00BFA5)
+                                )
                             )
                         )
                 ) {
@@ -323,9 +489,8 @@ fun AppSelectionDialog(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "Agregar Apps",
+                            text = stringResource(R.string.blocking_add_apps),
                             style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
                                 color = Blanco
                             )
                         )
@@ -348,12 +513,12 @@ fun AppSelectionDialog(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Buscar...", color = Color.Gray) },
+                        placeholder = { Text(stringResource(R.string.notes_search_hint), color = Color.Gray) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primario) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Borrar", tint = Color.Gray)
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.btn_cancel), tint = Color.Gray)
                                 }
                             }
                         },
@@ -365,7 +530,10 @@ fun AppSelectionDialog(
                             focusedContainerColor = Blanco,
                             unfocusedContainerColor = Blanco,
                             focusedBorderColor = Primario,
-                            unfocusedBorderColor = Color.Transparent
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedTextColor = Negro,
+                            unfocusedTextColor = Negro,
+                            cursorColor = Primario
                         ),
                         singleLine = true
                     )
@@ -414,7 +582,7 @@ fun AppSelectionDialog(
                                     
                                     Text(
                                         text = app.nombre,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        style = MaterialTheme.typography.titleMedium,
                                         color = Negro,
                                         modifier = Modifier.weight(1f)
                                     )
@@ -447,7 +615,7 @@ fun AppSelectionDialog(
                                     modifier = Modifier.fillMaxWidth().padding(32.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("No se encontraron apps", color = Color.Gray)
+                                    Text(stringResource(R.string.blocking_no_apps_found), color = Color.Gray)
                                 }
                             }
                         }
@@ -455,34 +623,35 @@ fun AppSelectionDialog(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Botones de Acción
-                    Row(
+                    // Botones de Acción Centrados
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        TextButton(
-                            onClick = onDismiss,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Cancelar", color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
                         Button(
                             onClick = { onAppsSelected(selected) },
                             colors = ButtonDefaults.buttonColors(containerColor = Primario),
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
-                                .weight(1f)
+                                .fillMaxWidth(0.8f) // 80% ancho
                                 .height(50.dp),
                             elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                         ) {
                             Text(
-                                text = "Agregar (${selected.size})",
+                                text = "${stringResource(R.string.blocking_add_btn)} (${selected.size})",
                                 color = Blanco,
                                 style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1
                             )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        TextButton(
+                            onClick = onDismiss,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(stringResource(R.string.btn_cancel), color = Color.Gray, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
@@ -495,7 +664,7 @@ fun AppSelectionDialog(
 fun AppBloqueoItem(
     app: AppBloqueo,
     onClick: () -> Unit,
-    onToggleBlock: () -> Unit
+    onDelete: () -> Unit
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f)),
@@ -503,11 +672,10 @@ fun AppBloqueoItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp) // Compact padding
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -533,19 +701,39 @@ fun AppBloqueoItem(
                     // Mostrar estado actual
                     if (app.isBlocked) {
                         Text(
-                            "Bloqueado",
+                            stringResource(R.string.blocking_status_blocked),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Red
                         )
                     } else if (app.limitHours > 0 || app.limitMinutes > 0) {
-                        Text(
-                            "${app.limitHours}h ${app.limitMinutes}m diarios",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFF004D40)
-                        )
+                        val limitTotal = (app.limitHours * 60) + app.limitMinutes
+                        val remaining = limitTotal - app.usageMinutes
+                        
+                        Column {
+                            Text(
+                                stringResource(R.string.blocking_time_allowed, app.limitHours, app.limitMinutes),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color(0xFF004D40)
+                            )
+                            if (remaining > 0) {
+                                val h = remaining / 60
+                                val m = remaining % 60
+                                Text(
+                                    stringResource(R.string.blocking_time_remaining, h, m),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Primario
+                                )
+                            } else {
+                                Text(
+                                    stringResource(R.string.blocking_time_exhausted),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.Red
+                                )
+                            }
+                        }
                     } else {
                         Text(
-                            "Sin límite",
+                            stringResource(R.string.blocking_status_nolimit),
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray
                         )
@@ -553,19 +741,35 @@ fun AppBloqueoItem(
                 }
             }
 
-            // Botón de Acción (Reloj/Editar)
-            IconButton(
-                onClick = onClick,
-                modifier = Modifier
-                    .border(1.dp, Color.LightGray, CircleShape)
-                    .size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Editar Límite",
-                    tint = Negro,
-                    modifier = Modifier.size(18.dp)
-                )
+            // Acciones (Editar y Eliminar)
+            Row {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier
+                        .padding(end = 4.dp)
+                        .size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.blocking_remove_btn),
+                        tint = Color.Red, // mismo color que "Bloqueado"
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onClick,
+                    modifier = Modifier
+                        .border(1.dp, Color.LightGray, CircleShape)
+                        .size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar Límite",
+                        tint = Negro,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
@@ -578,8 +782,8 @@ fun TimeLimitDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int, Int) -> Unit
 ) {
-    var hours by remember { mutableStateOf(currentHours.toString()) }
-    var minutes by remember { mutableStateOf(currentMinutes.toString()) }
+    var hours by remember { mutableIntStateOf(currentHours.coerceIn(0, 24)) }
+    var minutes by remember { mutableIntStateOf(currentMinutes.coerceIn(0, 59)) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -592,91 +796,199 @@ fun TimeLimitDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Establecer Límite Diario",
+                    text = stringResource(R.string.blocking_set_limit_title),
                     style = MaterialTheme.typography.headlineSmall,
                     color = Negro,
                     textAlign = TextAlign.Center
                 )
-                
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.blocking_set_limit_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center
+                )
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    // Horas
-                    OutlinedTextField(
-                        value = hours,
-                        onValueChange = { if (it.length <= 2 && it.all { c -> c.isDigit() }) hours = it },
-                        label = { Text("Horas") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Blanco,
-                            unfocusedContainerColor = Blanco,
-                            focusedBorderColor = Primario,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedTextColor = Negro,
-                            unfocusedTextColor = Negro
-                        )
+                    // Drum-roll Horas
+                    WheelPicker(
+                        items = (0..24).map { it.toString().padStart(2, '0') },
+                        initialIndex = hours,
+                        label = "h",
+                        onSelected = { hours = it }
                     )
-                    
+
                     Text(
                         ":",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.displaySmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
                         modifier = Modifier.padding(horizontal = 8.dp),
                         color = Negro
                     )
-                    
-                    // Minutos
-                    OutlinedTextField(
-                        value = minutes,
-                        onValueChange = { 
-                            if (it.length <= 2 && it.all { c -> c.isDigit() }) {
-                                val valInt = it.toIntOrNull() ?: 0
-                                if (valInt < 60) minutes = it 
-                            }
-                        },
-                        label = { Text("Min") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.width(80.dp),
-                        singleLine = true,
-                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Blanco,
-                            unfocusedContainerColor = Blanco,
-                            focusedBorderColor = Primario,
-                            unfocusedBorderColor = Color.Gray,
-                             focusedTextColor = Negro,
-                             unfocusedTextColor = Negro
-                        )
+
+                    // Drum-roll Minutos
+                    WheelPicker(
+                        items = (0..59).map { it.toString().padStart(2, '0') },
+                        initialIndex = minutes,
+                        label = "min",
+                        onSelected = { minutes = it }
                     )
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancelar", color = Color.Gray)
+                        Text(stringResource(R.string.btn_cancel), color = Color.Gray)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
-                        onClick = {
-                            val h = hours.toIntOrNull() ?: 0
-                            val m = minutes.toIntOrNull() ?: 0
-                            onConfirm(h, m)
-                        },
+                        onClick = { onConfirm(hours, minutes) },
                         colors = ButtonDefaults.buttonColors(containerColor = Primario)
                     ) {
-                        Text("Guardar", color = Blanco)
+                        Text(stringResource(R.string.btn_save), color = Blanco)
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * Picker tipo tambor deslizable.
+ * Muestra 3 elementos visibles; el del centro es el seleccionado.
+ * Se puede hacer scroll y hace snap al valor más cercano.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun WheelPicker(
+    items: List<String>,
+    initialIndex: Int,
+    label: String,
+    onSelected: (Int) -> Unit
+) {
+    val itemHeightDp = 48.dp
+    val visibleItems = 3
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = (initialIndex).coerceIn(0, items.size - 1)
+    )
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
+    // Notificar el valor seleccionado cuando el scroll se estabiliza
+    val snappedIndex by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex
+        }
+    }
+    LaunchedEffect(snappedIndex) {
+        onSelected(snappedIndex)
+    }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Contenedor con líneas de selección
+        Box(
+            modifier = Modifier
+                .width(72.dp)
+                .height(itemHeightDp * visibleItems)
+        ) {
+            // Lista desplazable
+            LazyColumn(
+                state = listState,
+                flingBehavior = flingBehavior,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = itemHeightDp) // padding para que el primero/último queden centrados
+            ) {
+                items(items) { item ->
+                    val idx = items.indexOf(item)
+                    val isSelected = idx == snappedIndex
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(itemHeightDp)
+                    ) {
+                        Text(
+                            text = item,
+                            style = if (isSelected)
+                                MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+                            else
+                                MaterialTheme.typography.titleLarge,
+                            color = if (isSelected) Negro else Color.LightGray
+                        )
+                    }
+                }
+            }
+
+            // Línea superior de selección
+            HorizontalDivider(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = itemHeightDp),
+                color = Primario,
+                thickness = 2.dp
+            )
+            // Línea inferior de selección
+            HorizontalDivider(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = itemHeightDp * 2),
+                color = Primario,
+                thickness = 2.dp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Gray
+        )
+    }
+}
+
+
+
+@Composable
+fun DeleteConfirmDialog(
+    appName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.blocking_remove_app_title), color = Negro) },
+        text = { Text(stringResource(R.string.blocking_remove_app_msg, appName), color = Negro) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red,
+                    contentColor = Color.White
+                )
+            ) {
+                Text(stringResource(R.string.blocking_remove_btn))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = Color.DarkGray)
+            ) {
+                Text(stringResource(R.string.btn_cancel))
+            }
+        },
+        containerColor = Blanco,
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 8.dp
+    )
 }
 
 @Composable

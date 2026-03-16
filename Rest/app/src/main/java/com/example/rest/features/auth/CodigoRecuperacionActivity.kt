@@ -1,4 +1,4 @@
-﻿package com.example.rest.features.auth
+package com.example.rest.features.auth
 
 import android.content.Intent
 import android.os.Bundle
@@ -11,6 +11,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -28,6 +31,12 @@ import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import com.example.rest.data.repository.RecuperacionRepository
 import com.example.rest.ui.theme.*
@@ -52,8 +61,8 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                 if (mostrarDialogoSalir) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoSalir = false },
-                        title = { Text("¿Cancelar recuperación?") },
-                        text = { Text("Si sales ahora, tendrás que solicitar un nuevo código de recuperación.") },
+                        title = { Text(stringResource(R.string.dialog_cancel_recovery_title)) },
+                        text = { Text(stringResource(R.string.dialog_cancel_recovery_text)) },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -61,12 +70,12 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                                     finish()
                                 }
                             ) {
-                                Text("Sí, salir")
+                                Text(stringResource(R.string.btn_yes_exit))
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { mostrarDialogoSalir = false }) {
-                                Text("Cancelar")
+                                Text(stringResource(R.string.btn_cancel))
                             }
                         }
                     )
@@ -79,7 +88,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                     alClickConfirmar = { codigo ->
                         when {
                             codigo.isBlank() || codigo.length != 6 -> {
-                                Toast.makeText(this, "Por favor ingresa un código de 6 dígitos", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, getString(R.string.toast_invalid_code_length), Toast.LENGTH_SHORT).show()
                             }
                             else -> {
                                 cargando = true
@@ -110,7 +119,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@CodigoRecuperacionActivity,
-                                "Nuevo código enviado a tu correo",
+                                getString(R.string.toast_new_code_sent),
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -132,7 +141,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@CodigoRecuperacionActivity,
-                        "Error al reenviar código: ${e.message}",
+                        getString(R.string.toast_resend_code_error, e.message),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -151,7 +160,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                         runOnUiThread {
                             Toast.makeText(
                                 this@CodigoRecuperacionActivity,
-                                "Código verificado correctamente",
+                                getString(R.string.toast_code_verified),
                                 Toast.LENGTH_SHORT
                             ).show()
                             
@@ -180,7 +189,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                 runOnUiThread {
                     Toast.makeText(
                         this@CodigoRecuperacionActivity,
-                        "Error inesperado: ${e.message}",
+                        getString(R.string.toast_unexpected_error, e.message),
                         Toast.LENGTH_LONG
                     ).show()
                 }
@@ -199,8 +208,11 @@ fun PantallaCodigoRecuperacion(
     cargando: Boolean = false
 ) {
     var codigo by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     var tiempoRestante by remember { mutableStateOf(60) } // Iniciar con 60 segundos
     var puedeReenviar by remember { mutableStateOf(false) } // Iniciar deshabilitado
+    var menuIdiomaExpandido by remember { mutableStateOf(false) }
     
     // Interceptar botón atrás del sistema
     BackHandler {
@@ -219,11 +231,12 @@ fun PantallaCodigoRecuperacion(
 
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            Primario,
-            Color(0xFF80DEEA)
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
 
     Box(
@@ -231,19 +244,87 @@ fun PantallaCodigoRecuperacion(
             .fillMaxSize()
             .background(brochaGradiente)
     ) {
-        // BotÃ³n de regresar
-        IconButton(
-            onClick = alClickRegresar,
+        // Barra Superior
+        Row(
             modifier = Modifier
+                .fillMaxWidth()
                 .padding(16.dp)
-                .align(Alignment.TopStart)
+                .align(Alignment.TopCenter),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Regresar",
-                tint = Color(0xFF004D40),
-                modifier = Modifier.size(32.dp)
-            )
+            // Bot\u00f3n de regresar
+            IconButton(onClick = alClickRegresar) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = stringResource(R.string.content_desc_back),
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            // Selector de Idioma
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+            var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Espa\u00f1ol") ?: "Espa\u00f1ol") }
+
+            Box {
+                IconButton(onClick = { menuIdiomaExpandido = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = "Cambiar Idioma",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = menuIdiomaExpandido,
+                    onDismissRequest = { menuIdiomaExpandido = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                ) {
+                    val opciones = listOf(
+                        stringResource(R.string.lang_spanish),
+                        stringResource(R.string.lang_english),
+                        stringResource(R.string.lang_portuguese)
+                    )
+                    
+                    val langEn = stringResource(R.string.lang_english)
+                    val langPt = stringResource(R.string.lang_portuguese)
+                    
+                    opciones.forEach { opcion ->
+                        DropdownMenuItem(
+                            text = { 
+                                Text(
+                                    text = opcion,
+                                    color = if (opcion == idiomaSeleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                ) 
+                            },
+                            onClick = {
+                                idiomaSeleccionado = opcion
+                                sharedPrefs.edit().putString("IDIOMA", opcion).apply()
+                                
+                                val code = when (opcion) {
+                                    langEn, "English" -> "en"
+                                    langPt, "Portugu\u00eas" -> "pt"
+                                    else -> "es"
+                                }
+                                AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_language_saved, opcion), android.widget.Toast.LENGTH_SHORT).show()
+                                
+                                val activity = context as? android.app.Activity
+                                if (activity is CodigoRecuperacionActivity) {
+                                    val intent = android.content.Intent(activity, CodigoRecuperacionActivity::class.java)
+                                    intent.putExtra("correo", activity.intent.getStringExtra("correo") ?: "")
+                                    intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    activity.startActivity(intent)
+                                    activity.finish()
+                                }
+                                menuIdiomaExpandido = false
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         Column(
@@ -253,7 +334,7 @@ fun PantallaCodigoRecuperacion(
                 .fillMaxSize()
                 .padding(horizontal = 32.dp)
         ) {
-            // Logo del bÃºho con bocadillo
+            // Logo del b\u00facho con bocadillo
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
@@ -263,7 +344,7 @@ fun PantallaCodigoRecuperacion(
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.buho_background),
-                    contentDescription = "Logo Búho",
+                    contentDescription = stringResource(R.string.content_desc_owl_logo),
                     modifier = Modifier.size(100.dp)
                 )
 
@@ -271,7 +352,7 @@ fun PantallaCodigoRecuperacion(
 
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = Blanco,
+                    color = Color.White.copy(alpha = 0.2f),
                     modifier = Modifier
                         .width(200.dp)
                         .height(80.dp)
@@ -281,9 +362,9 @@ fun PantallaCodigoRecuperacion(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "Pon tu código\nde recuperación",
+                            text = stringResource(R.string.recovery_code_title_speech),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Negro,
+                            color = Color.White,
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp
                         )
@@ -291,79 +372,93 @@ fun PantallaCodigoRecuperacion(
                 }
             }
 
-            // Campo de CÃ³digo de VerificaciÃ³n
+            // Campo de C\u00f3digo de Verificaci\u00f3n
             OutlinedTextField(
                 value = codigo,
                 onValueChange = { if (it.length <= 6) codigo = it },
                 placeholder = {
                     Text(
-                        "Código de Recuperación",
+                        stringResource(R.string.recovery_code_placeholder),
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color(0xFF757575)
+                        color = Color.White.copy(alpha = 0.6f)
                     )
                 },
                 modifier = Modifier
                     .width(330.dp)
-                    .height(56.dp),
+                    .height(56.dp)
+                    .focusRequester(focusRequester)
+                    .clickable {
+                        focusRequester.requestFocus()
+                        keyboardController?.show()
+                    },
                 shape = RoundedCornerShape(30.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Blanco,
-                    unfocusedContainerColor = Blanco,
-                    focusedBorderColor = Color(0xFF6B4EFF),
-                    unfocusedBorderColor = Color(0xFFB0BEC5),
-                    focusedTextColor = Negro,
-                    unfocusedTextColor = Negro
+                    focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                    focusedBorderColor = Color.White,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedPlaceholderColor = Color.White.copy(alpha = 0.7f),
+                    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f)
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge
             )
 
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
-            // BotÃ³n Confirmar
+            // Bot\u00f3n Confirmar
             Button(
                 onClick = { alClickConfirmar(codigo) },
                 modifier = Modifier
-                    .width(200.dp)
+                    .width(220.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(30.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(30.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primario
+                    containerColor = Color.White.copy(alpha = 0.2f),
+                    contentColor = Color.White
                 ),
                 enabled = !cargando
             ) {
                 if (cargando) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Blanco,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Text(
-                        text = "Confirmar",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Negro
+                        text = stringResource(R.string.btn_confirm),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = Color.White
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Link para reenviar código
+            // Link para reenviar c\u00f3digo
             Text(
                 text = if (puedeReenviar) {
-                    "Volver a Enviar Código"
+                    stringResource(R.string.recovery_resend_code)
                 } else {
-                    "Reenviar en ${tiempoRestante}s"
+                    stringResource(R.string.recovery_resend_in_seconds, tiempoRestante)
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (puedeReenviar) Color(0xFF004D40) else Color(0xFF999999),
+                color = if (puedeReenviar) Color.White else Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.clickable(enabled = puedeReenviar) {
                     if (puedeReenviar) {
                         puedeReenviar = false
@@ -375,6 +470,3 @@ fun PantallaCodigoRecuperacion(
         }
     }
 }
-
-
-

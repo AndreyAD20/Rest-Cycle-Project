@@ -9,7 +9,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.Density
 import androidx.core.view.WindowCompat
 
 // Esquema de colores claro usando los colores definidos
@@ -75,6 +79,7 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun TemaRest(
     temaOscuro: Boolean = isSystemInDarkTheme(),
+    fontScale: Float? = null,
     contenido: @Composable () -> Unit
 ) {
     val esquemaColor = if (temaOscuro) {
@@ -95,9 +100,17 @@ fun TemaRest(
         }
     }
 
-    MaterialTheme(
-        colorScheme = esquemaColor,
-        typography = Typography,
-        content = contenido
-    )
+    val context = LocalContext.current
+    val currentFontScale = fontScale ?: com.example.rest.utils.ThemeManager.getFontSizeScale(context)
+    val density = LocalDensity.current
+
+    CompositionLocalProvider(
+        LocalDensity provides Density(density.density, fontScale = currentFontScale * density.fontScale)
+    ) {
+        MaterialTheme(
+            colorScheme = esquemaColor,
+            typography = Typography,
+            content = contenido
+        )
+    }
 }

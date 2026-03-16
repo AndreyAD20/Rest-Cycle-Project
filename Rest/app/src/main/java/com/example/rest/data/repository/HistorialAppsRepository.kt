@@ -69,10 +69,10 @@ class HistorialAppsRepository {
     /**
      * Registrar uso de app en historial
      */
-    suspend fun registrarUsoApp(historial: HistorialApp): Result<Boolean> {
+    suspend fun registrarUsoApp(historial: com.example.rest.data.models.HistorialAppInput): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = api.registrarUsoApp(historial)
+                val response = api.crearHistorialApp(historial)
                 
                 if (response.isSuccessful) {
                     Result.Success(true)

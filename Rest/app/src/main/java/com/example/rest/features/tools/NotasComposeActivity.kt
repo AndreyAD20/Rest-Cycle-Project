@@ -43,6 +43,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import com.example.rest.R
+import androidx.compose.ui.res.stringResource
 import com.example.rest.ui.components.dialogs.DialogoNota
 
 class NotasComposeActivity : BaseComposeActivity() {
@@ -51,15 +53,15 @@ class NotasComposeActivity : BaseComposeActivity() {
     
     // Obtener ID real del usuario desde SharedPreferences
     private val idUsuarioActual: Int by lazy {
-        val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-        sharedPref.getInt("ID_USUARIO", -1)
+        val prefs = com.example.rest.utils.PreferencesManager(this)
+        prefs.getUserId()
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         if (idUsuarioActual == -1) {
-            Toast.makeText(this, "Error de sesión. Por favor inicia sesión nuevamente.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.notes_error_session), Toast.LENGTH_LONG).show()
             finish()
             return
         }
@@ -159,18 +161,19 @@ class NotasComposeActivity : BaseComposeActivity() {
             // Fecha ISO 8601 actual
             val fechaActual = obtenerFechaActualIso()
             
-            val nuevaNota = Nota(
+            val nuevaNota = com.example.rest.data.models.NotaInput(
                 idUsuario = idUsuarioActual,
                 titulo = titulo,
                 contenido = contenido,
                 color = color,
-                fecha_actualizacion = fechaActual
+                fecha_actualizacion = fechaActual,
+                favorito = false
             )
             
             when (val resultado = notaRepository.crearNota(nuevaNota)) {
                 // ... same success/error
                 is NotaRepository.Result.Success<*> -> {
-                    Toast.makeText(this@NotasComposeActivity, "Nota creada exitosamente", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@NotasComposeActivity, getString(R.string.notes_toast_created), Toast.LENGTH_SHORT).show()
                     onComplete()
                 }
                 is NotaRepository.Result.Error -> {
@@ -186,7 +189,7 @@ class NotasComposeActivity : BaseComposeActivity() {
             nota.id?.let { idNota ->
                 when (val resultado = notaRepository.eliminarNota(idNota)) {
                     is NotaRepository.Result.Success<*> -> {
-                        Toast.makeText(this@NotasComposeActivity, "Nota eliminada", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@NotasComposeActivity, getString(R.string.notes_toast_deleted), Toast.LENGTH_SHORT).show()
                         onComplete()
                     }
                     is NotaRepository.Result.Error -> {
@@ -214,7 +217,7 @@ class NotasComposeActivity : BaseComposeActivity() {
             notaOriginal.id?.let { id ->
                 when (val resultado = notaRepository.actualizarNota(id, notaActualizada)) {
                     is NotaRepository.Result.Success<*> -> {
-                        Toast.makeText(this@NotasComposeActivity, "Nota actualizada", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@NotasComposeActivity, getString(R.string.notes_toast_updated), Toast.LENGTH_SHORT).show()
                         onComplete()
                     }
                     is NotaRepository.Result.Error -> {
@@ -239,7 +242,7 @@ class NotasComposeActivity : BaseComposeActivity() {
                 val nuevoEstadoFavorito = !(nota.favorito ?: false)
                 when (val resultado = notaRepository.actualizarFavorito(idNota, nuevoEstadoFavorito)) {
                     is NotaRepository.Result.Success<*> -> {
-                        val mensaje = if (nuevoEstadoFavorito) "★ Agregada a favoritos" else "Removida de favoritos"
+                        val mensaje = if (nuevoEstadoFavorito) getString(R.string.notes_toast_fav_added) else getString(R.string.notes_toast_fav_removed)
                         Toast.makeText(this@NotasComposeActivity, mensaje, Toast.LENGTH_SHORT).show()
                         onComplete()
                     }
@@ -289,9 +292,13 @@ fun PantallaNotas(
     )
 
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Color(0xFF80DEEA), Primario),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     Scaffold(
@@ -304,13 +311,13 @@ fun PantallaNotas(
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                            "Mis Notas",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
+                            stringResource(R.string.notes_title),
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
                         )
                     },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.Default.ArrowBack, "Regresar", tint = Negro)
+                            Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -320,33 +327,53 @@ fun PantallaNotas(
                 OutlinedTextField(
                     value = textoBusqueda,
                     onValueChange = { textoBusqueda = it },
-                    placeholder = { Text("Buscar notas...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                    placeholder = { Text(stringResource(R.string.notes_search_hint), color = Color.White.copy(alpha = 0.7f)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.notes_content_desc_search), tint = Color.White) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Blanco.copy(alpha = 0.9f),
-                        unfocusedContainerColor = Blanco.copy(alpha = 0.7f),
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent
+                        focusedContainerColor = Color.White.copy(alpha = 0.2f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.15f),
+                        focusedBorderColor = Color.White.copy(alpha = 0.5f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
                     ),
                     singleLine = true
                 )
             }
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = { 
                     notaEnEdicion = null // Nueva nota
                     mostrarDialogo = true
                 },
-                containerColor = Color(0xFF00BCD4),
-                contentColor = Negro
-            ) {
-                Icon(Icons.Default.Add, "Agregar Nota")
-            }
+                modifier = Modifier
+                    .border(
+                        width = 1.dp, 
+                        color = Color.White.copy(alpha = 0.6f), 
+                        shape = RoundedCornerShape(20.dp)
+                    ),
+                shape = RoundedCornerShape(20.dp),
+                containerColor = Color.White.copy(alpha = 0.2f),
+                contentColor = Color.White,
+                icon = { 
+                    Icon(
+                        imageVector = Icons.Default.Add, 
+                        contentDescription = stringResource(R.string.notes_content_desc_add),
+                        modifier = Modifier.size(28.dp)
+                    ) 
+                },
+                text = { 
+                    Text(
+                        text = stringResource(R.string.dialog_note_title_new), 
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    ) 
+                }
+            )
         },
         containerColor = Color.Transparent
     ) { paddingValues ->
@@ -363,7 +390,7 @@ fun PantallaNotas(
                 )
             } else if (notas.isEmpty()) {
                 Text(
-                    text = "No tienes notas aún\nPresiona + para crear una",
+                    text = stringResource(R.string.notes_empty_state),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = Blanco,
@@ -371,7 +398,7 @@ fun PantallaNotas(
                 )
             } else if (notasFiltradas.isEmpty()) {
                  Text(
-                    text = "No se encontraron resultados",
+                    text = stringResource(R.string.notes_no_results),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Blanco,
                     modifier = Modifier.align(Alignment.Center)
@@ -427,7 +454,7 @@ fun PantallaNotas(
             onDismissRequest = { mostrarDialogoEliminar = false },
             title = { 
                 Text(
-                    "Eliminar nota",
+                    stringResource(R.string.dialog_delete_note_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = Negro
@@ -436,13 +463,13 @@ fun PantallaNotas(
             text = { 
                 Column {
                     Text(
-                        "¿Estás seguro de que deseas eliminar esta nota?",
+                        stringResource(R.string.dialog_delete_note_msg),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Negro
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        notaAEliminar?.titulo ?: "Sin título",
+                        notaAEliminar?.titulo ?: stringResource(R.string.dialog_delete_note_untitled),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF6B4EFF)
@@ -461,7 +488,7 @@ fun PantallaNotas(
                         contentColor = Blanco
                     )
                 ) {
-                    Text("Eliminar", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.note_card_desc_delete), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -471,7 +498,7 @@ fun PantallaNotas(
                         notaAEliminar = null
                     }
                 ) {
-                    Text("Cancelar", color = Negro, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.btn_cancel), color = Negro, fontWeight = FontWeight.Medium)
                 }
             },
             containerColor = Blanco,
@@ -548,7 +575,7 @@ fun NotaCard(
                     // Botón eliminar
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar",
+                        contentDescription = stringResource(R.string.note_card_desc_delete),
                         tint = Color.Red.copy(alpha = 0.7f),
                         modifier = Modifier
                             .size(20.dp)
@@ -560,7 +587,7 @@ fun NotaCard(
             // Icono de estrella para favoritos (siempre visible)
             Icon(
                 imageVector = if (nota.favorito == true) Icons.Default.Star else Icons.Outlined.StarBorder,
-                contentDescription = if (nota.favorito == true) "Quitar de favoritos" else "Agregar a favoritos",
+                contentDescription = if (nota.favorito == true) stringResource(R.string.note_card_desc_fav_remove) else stringResource(R.string.note_card_desc_fav_add),
                 tint = if (nota.favorito == true) Color(0xFFFFD700) else Color.Gray,
                 modifier = Modifier
                     .align(Alignment.TopEnd)

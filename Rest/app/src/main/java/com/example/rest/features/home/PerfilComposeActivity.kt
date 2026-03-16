@@ -1,4 +1,4 @@
-﻿package com.example.rest.features.home
+package com.example.rest.features.home
 
 import android.os.Bundle
 import com.example.rest.BaseComposeActivity
@@ -6,11 +6,15 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
@@ -23,7 +27,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import android.Manifest
 import android.content.Context
 import android.graphics.Bitmap
@@ -43,12 +51,15 @@ import androidx.core.content.FileProvider
 import com.example.rest.features.habits.*
 import com.example.rest.ui.theme.*
 import com.example.rest.ui.components.dialogs.DialogoNota
+import androidx.compose.ui.res.stringResource
+import com.example.rest.R
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.example.rest.utils.*
 
 class PerfilComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,57 +77,46 @@ class PerfilComposeActivity : BaseComposeActivity() {
 @Composable
 fun PantallaPerfil(onBackClick: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     
     // Estado para la imagen de perfil
     var profileImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
 
-    // Cargar imagen guardada al inicio
+    // Cargar imagen guardada al inicio y SIEMPRE verificar actualizaciones
     LaunchedEffect(Unit) {
-        val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-        val userId = sharedPref.getInt("ID_USUARIO", -1)
+        val prefs = com.example.rest.utils.PreferencesManager(context)
+        val userId = prefs.getUserId()
         
         if (userId != -1) {
-            // Primero intentar cargar desde almacenamiento local
-            val bitmap = getProfileImageBitmap(context, userId)
-            if (bitmap != null) {
-                profileImageBitmap = bitmap
-            } else {
-                // Si no existe localmente, intentar descargar desde Supabase
-                scope.launch {
-                    descargarFotoDeSupabase(context, userId)?.let {
-                        profileImageBitmap = it
-                    }
+            // 1. Cargar lo que tengamos localmente primero (para velocidad)
+            val localBitmap = getProfileImageBitmap(context, userId)
+            if (localBitmap != null) {
+                profileImageBitmap = localBitmap
+            }
+
+            // 2. SIEMPRE intentar sincronizar con Supabase en segundo plano
+            scope.launch {
+                isCheckingUpdate = true
+                val remoteBitmap = descargarFotoDeSupabase(context, userId)
+                if (remoteBitmap != null) {
+                    // Si hay foto remota, actualizamos la UI y el caché local
+                    profileImageBitmap = remoteBitmap
                 }
+                isCheckingUpdate = false
             }
         }
     }
 
-    // Cerrar drawer cuando se vuelve a la actividad
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                scope.launch {
-                    drawerState.close()
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
 
 
     // Launchers para cámara y galería
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success && tempCameraUri != null) {
-            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            val prefs = com.example.rest.utils.PreferencesManager(context)
+            val userId = prefs.getUserId()
             
             if (userId != -1) {
                 saveImageToInternalStorage(context, tempCameraUri!!, userId)
@@ -134,8 +134,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
     
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
-            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            val prefs = com.example.rest.utils.PreferencesManager(context)
+            val userId = prefs.getUserId()
             
             if (userId != -1) {
                 saveImageToInternalStorage(context, uri, userId)
@@ -165,26 +165,26 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
         } catch (e: Exception) {
             Log.e("PerfilDebug", "Error al lanzar cámara: ${e.message}")
             e.printStackTrace()
-            Toast.makeText(context, "Error al iniciar cámara: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.toast_camera_error, e.message ?: ""), Toast.LENGTH_LONG).show()
         }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
-            Toast.makeText(context, "Permiso concedido", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_permission_granted), Toast.LENGTH_SHORT).show()
             launchCamera()
         } else {
-            Toast.makeText(context, "Se requiere permiso para cambiar la foto", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.toast_permission_required_photo), Toast.LENGTH_SHORT).show()
         }
     }
 
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { showImageSourceDialog = false },
-            title = { Text("Foto de Perfil") },
+            title = { Text(stringResource(R.string.profile_photo_title)) },
             text = {
                 Column {
-                    Text("Elige una opción:")
+                    Text(stringResource(R.string.profile_photo_choose_option))
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // Botón Cámara
@@ -203,7 +203,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     ) {
                         Icon(Icons.Default.CameraAlt, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Tomar Foto")
+                        Text(stringResource(R.string.profile_photo_take))
                     }
                     
                     Spacer(modifier = Modifier.height(8.dp))
@@ -219,7 +219,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     ) {
                         Icon(Icons.Default.PhotoLibrary, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Elegir de Galería")
+                        Text(stringResource(R.string.profile_photo_choose_gallery))
                     }
                     
                     // Mostrar botón de eliminar solo si hay foto
@@ -230,8 +230,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                             onClick = {
                                 showImageSourceDialog = false
                                 // Eliminar foto
-                                val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-                                val userId = sharedPref.getInt("ID_USUARIO", -1)
+                                val prefs = com.example.rest.utils.PreferencesManager(context)
+                                val userId = prefs.getUserId()
                                 
                                 if (userId != -1) {
                                     // Eliminar localmente
@@ -243,7 +243,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                         eliminarFotoDeSupabase(context)
                                     }
                                     
-                                    Toast.makeText(context, "Foto eliminada", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.toast_photo_deleted), Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -251,7 +251,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Eliminar Foto")
+                            Text(stringResource(R.string.profile_photo_delete))
                         }
                     }
                 }
@@ -259,7 +259,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showImageSourceDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.btn_cancel))
                 }
             }
         )
@@ -271,181 +271,237 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
         end = Offset(0f, 2000f)
     )
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = Color.Transparent,
-                drawerContentColor = Negro
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(Primario, Color(0xFF80DEEA)),
-                                start = Offset(0f, 0f),
-                                end = Offset(0f, 2000f)
-                            )
-                        )
-                ) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        val context = androidx.compose.ui.platform.LocalContext.current
-                        Spacer(Modifier.height(12.dp))
-                        
-                        Text(
-                            "Menu",
-                            modifier = Modifier.padding(16.dp),
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Blanco
-                        )
-                        
-                        Divider(color = Blanco.copy(alpha = 0.3f))
-                
-                        // 1. Estadísticas
-                        NavigationDrawerItem(
-                            label = { Text("Estadísticas", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.habits.EstadisticasComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.Star, null, tint = Blanco) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 2. Notas
-                        NavigationDrawerItem(
-                            label = { Text("Notas", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.tools.NotasComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.Edit, null, tint = Blanco) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 3. Bloqueo de Aplicaciones
-                        NavigationDrawerItem(
-                            label = { Text("Bloqueo de Apps", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.tools.BloqueoAppsComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.Lock, null, tint = Blanco) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 4. Horas de Descanso
-                        NavigationDrawerItem(
-                            label = { Text("Horas de Descanso", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.tools.HoraDescansoComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.Face, null, tint = Blanco) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 5. Calendario
-                        NavigationDrawerItem(
-                            label = { Text("Calendario", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
-                            selected = false,
-                            onClick = {
-                                context.startActivity(android.content.Intent(context, com.example.rest.features.tools.CalendarioComposeActivity::class.java))
-                            },
-                            icon = { Icon(Icons.Default.DateRange, null, tint = Blanco) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
-                            )
-                        )
-                        
-                        // 6. Control Parental
-                        NavigationDrawerItem(
-                            label = { Text("Control Parental", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
-                            selected = false,
-                            onClick = {
-                            },
-                            icon = { Icon(Icons.Default.Person, null, tint = Blanco) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
-                            )
-                        )
+    // Variables de estado para edición de perfil
+    var userId by remember { mutableStateOf(-1) }
+    var nombreText by remember { mutableStateOf("") }
+    var apellidoText by remember { mutableStateOf("") }
+    var correoText by remember { mutableStateOf("") }
+    var correoOriginal by remember { mutableStateOf("") } // Para detectar si el correo cambió
+    var fechaText by remember { mutableStateOf("") }
+    var nuevaContraseña by remember { mutableStateOf("") }
+    var confirmarContraseña by remember { mutableStateOf("") }
+    var isLoadingUserData by remember { mutableStateOf(true) }
+    var isSavingUser by remember { mutableStateOf(false) }
 
-                        Spacer(modifier = Modifier.weight(1f)) // Empujar hacia abajo
+    // Estado para verificación de correo
+    var mostrarDialogoVerificacion by remember { mutableStateOf(false) }
+    var codigoIngresado by remember { mutableStateOf("") }
+    var codigoGenerado by remember { mutableStateOf("") }
+    var codigoVerificado by remember { mutableStateOf(false) }
+    var errorCodigo by remember { mutableStateOf(false) }
+    var enviandoCodigo by remember { mutableStateOf(false) }
+    var pendienteGuardar by remember { mutableStateOf(false) } // Bandera: guardar después de verificar
+    var mostrarContraseña by remember { mutableStateOf(false) } // Toggle visibilidad contraseña
 
-                        Divider(color = Blanco.copy(alpha = 0.3f), modifier = Modifier.padding(vertical = 8.dp))
+    val recuperacionRepository = remember { com.example.rest.data.repository.RecuperacionRepository() }
+    val usuarioRepository = remember { com.example.rest.data.repository.UsuarioRepository() }
 
-                        // 7. Cerrar Sesión
-                        NavigationDrawerItem(
-                            label = { Text("Cerrar Sesión", style = MaterialTheme.typography.bodyLarge, color = Blanco) },
-                            selected = false,
-                            onClick = {
-                                // Limpiar fotos de perfil locales
-                                try {
-                                    context.filesDir.listFiles()?.forEach { file ->
-                                        if (file.name.startsWith("profile_image_")) {
-                                            file.delete()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("PerfilDebug", "Error al limpiar fotos: ${e.message}")
-                                }
-                                
-                                // Borrar sesión y volver al login
-                                val sharedAction = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                                with(sharedAction.edit()) {
-                                    clear()
-                                    apply()
-                                }
-                                val intent = android.content.Intent(context, com.example.rest.features.auth.LoginComposeActivity::class.java)
-                                intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                context.startActivity(intent)
-                                (context as? android.app.Activity)?.finish()
-                            },
-                            icon = { Icon(Icons.Default.ExitToApp, null, tint = Blanco) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(bottom = 16.dp),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                unselectedContainerColor = Color.Transparent,
-                                selectedContainerColor = Blanco.copy(alpha = 0.2f)
-                            )
-                        )
+    // Función de validación de formato de correo
+    fun esCorreoValido(correo: String): Boolean {
+        if (!correo.contains("@")) return false
+        val partes = correo.split("@")
+        if (partes.size != 2) return false
+        val dominio = partes[1]
+        val sufijosValidos = listOf(".com", ".net", ".org", ".co", ".edu", ".io", ".gov", ".mil", ".int", ".info", ".biz")
+        return sufijosValidos.any { dominio.endsWith(it) }
+    }
+
+    // Función reutilizable para guardar cambios del perfil
+    fun guardarCambiosPerfil() {
+        isSavingUser = true
+        scope.launch {
+            try {
+                val getRes = usuarioRepository.obtenerUsuarioPorId(userId)
+                if (getRes is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
+                    val currentUsuario = getRes.data
+
+                    if (!com.example.rest.utils.SecurityUtils.verifyPassword(confirmarContraseña, currentUsuario.contraseña)) {
+                        Toast.makeText(context, context.getString(R.string.err_password_mismatch), Toast.LENGTH_SHORT).show()
+                        isSavingUser = false
+                        return@launch
                     }
+
+                    val fechaFormateada = if (fechaText.length == 8) {
+                        "${fechaText.substring(0, 4)}-${fechaText.substring(4, 6)}-${fechaText.substring(6, 8)}"
+                    } else {
+                        fechaText
+                    }
+
+                    val updatedUsuario = currentUsuario.copy(
+                        nombre = nombreText,
+                        apellido = apellidoText.ifBlank { null },
+                        correo = correoText,
+                        fechaNacimiento = fechaFormateada
+                    )
+
+                    when (val updateRes = usuarioRepository.actualizarUsuario(userId, updatedUsuario)) {
+                        is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                            Toast.makeText(context, context.getString(R.string.toast_profile_updated), Toast.LENGTH_SHORT).show()
+                            val prefs = com.example.rest.utils.PreferencesManager(context)
+                            prefs.saveUserName(nombreText)
+                            prefs.saveUserEmail(correoText)
+                            correoOriginal = correoText // Actualizar el correo original
+                        }
+                        is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
+                            Toast.makeText(context, context.getString(R.string.toast_error_saving_changes, updateRes.message), Toast.LENGTH_SHORT).show()
+                        }
+                        else -> {}
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, context.getString(R.string.toast_exception_saving_profile, e.message), Toast.LENGTH_SHORT).show()
+            } finally {
+                isSavingUser = false
+                confirmarContraseña = ""
+                pendienteGuardar = false
+            }
+        }
+    }
+
+    // Cargar datos del usuario desde Supabase al iniciar
+    LaunchedEffect(Unit) {
+        val prefs = com.example.rest.utils.PreferencesManager(context)
+        userId = prefs.getUserId()
+        if (userId != -1) {
+            when (val res = usuarioRepository.obtenerUsuarioPorId(userId)) {
+                is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                    val usuario = res.data
+                    nombreText = usuario.nombre
+                    apellidoText = usuario.apellido ?: ""
+                    correoText = usuario.correo
+                    correoOriginal = usuario.correo // Guardar correo original
+                    fechaText = usuario.fechaNacimiento.replace("-", "")
+                }
+                else -> {
+                    Toast.makeText(context, context.getString(R.string.toast_error_loading_profile), Toast.LENGTH_SHORT).show()
                 }
             }
         }
-    ) {
+        isLoadingUserData = false
+    }
+
+    // Diálogo de verificación de correo
+    if (mostrarDialogoVerificacion) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!enviandoCodigo) {
+                    mostrarDialogoVerificacion = false
+                    codigoIngresado = ""
+                    codigoVerificado = false
+                    errorCodigo = false
+                }
+            },
+            title = { Text(stringResource(R.string.profile_verify_email_title), fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.profile_verify_email_body, correoText),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = codigoIngresado,
+                        onValueChange = {
+                            if (it.length <= 6 && it.all { c -> c.isDigit() }) {
+                                codigoIngresado = it
+                                errorCodigo = false
+                            }
+                        },
+                        label = { Text(stringResource(R.string.recovery_code_placeholder)) },
+                        singleLine = true,
+                        enabled = !codigoVerificado && !enviandoCodigo,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primario,
+                            unfocusedBorderColor = Color.LightGray
+                        )
+                    )
+
+                    if (codigoVerificado) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.profile_verify_email_ok),
+                                color = Color(0xFF4CAF50),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    if (errorCodigo) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.profile_verify_email_error),
+                            color = Color(0xFFF44336),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (codigoVerificado) {
+                    Button(
+                        onClick = {
+                            mostrarDialogoVerificacion = false
+                            guardarCambiosPerfil()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                    ) {
+                        Text(stringResource(R.string.btn_confirm), color = Blanco)
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            if (codigoIngresado == codigoGenerado) {
+                                codigoVerificado = true
+                                errorCodigo = false
+                            } else {
+                                errorCodigo = true
+                            }
+                        },
+                        enabled = codigoIngresado.length == 6 && !enviandoCodigo,
+                        colors = ButtonDefaults.buttonColors(containerColor = Primario)
+                    ) {
+                        Text(stringResource(R.string.profile_verify_email_btn))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        if (!enviandoCodigo) {
+                            mostrarDialogoVerificacion = false
+                            codigoIngresado = ""
+                            codigoVerificado = false
+                            errorCodigo = false
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.btn_cancel))
+                }
+            }
+        )
+    }
         Scaffold(
             topBar = {
-               CenterAlignedTopAppBar(
-                    title = { },
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, "Menu", tint = Negro)
-                        }
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(stringResource(R.string.settings_edit_profile), color = Color.White, fontWeight = FontWeight.Bold)
                     },
-                    actions = {
+                    navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.Default.ArrowBack, "Regresar", tint = Negro)
+                            Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
@@ -456,190 +512,274 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(brochaGradiente)
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF0D47A1),
+                                Color(0xFF00838F),
+                                Color(0xFF00BFA5)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(1000f, 2000f)
+                        )
+                    )
                     .padding(paddingValues)
             ) {
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(24.dp),
+                        .padding(horizontal = 24.dp)
+                        .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Spacer(modifier = Modifier.height(60.dp)) // Espacio para que la foto superponga el header
+
+                    // Foto de Perfil superpuesta
                     Box(
                         modifier = Modifier
-                            .size(120.dp)
+                            .size(130.dp)
                             .clip(CircleShape)
                             .background(Blanco)
-                            .border(4.dp, Color(0xFF004D40), CircleShape)
+                            .border(4.dp, Blanco, CircleShape)
                             .clickable { showImageSourceDialog = true },
                         contentAlignment = Alignment.Center
                     ) {
                         if (profileImageBitmap != null) {
                             androidx.compose.foundation.Image(
                                 bitmap = profileImageBitmap!!.asImageBitmap(),
-                                contentDescription = "Foto de Perfil",
+                                contentDescription = stringResource(R.string.profile_photo_title),
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Person,
-                                contentDescription = "Perfil",
-                                modifier = Modifier.size(64.dp),
-                                tint = Negro
+                                contentDescription = stringResource(R.string.settings_profile),
+                                modifier = Modifier.size(80.dp),
+                                tint = Color.Gray
                             )
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Obtener nombre de usuario
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    val nombreUsuario = remember {
-                        val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                        sharedPref.getString("NOMBRE_USUARIO", "Usuario") ?: "Usuario"
-                    }
-
-                    Text(
-                        text = nombreUsuario,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = Negro
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // ... (existing header code)
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // SECCIÓN NOTA RECIENTE (Dinámica)
-                    var ultimaNota by remember { mutableStateOf<com.example.rest.data.models.Nota?>(null) }
-                    var mostrarDialogoNota by remember { mutableStateOf(false) }
-                    val notaRepository = remember { com.example.rest.data.repository.NotaRepository() }
-                    
-                    // Función para cargar la última nota
-                    fun cargarUltimaNota() {
-                         scope.launch {
-                             // Obtener ID real del usuario
-                             val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                             val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
-                             
-                             if (idUsuario != -1) {
-                                 when (val result = notaRepository.obtenerUltimaNota(idUsuario)) {
-                                     is com.example.rest.data.repository.NotaRepository.Result.Success<*> -> {
-                                         @Suppress("UNCHECKED_CAST")
-                                         ultimaNota = result.data as? com.example.rest.data.models.Nota
-                                     }
-                                     else -> {} // Manejar error si es necesario
-                                 }
-                             }
-                         }
-                    }
-
-                    // Cargar al inicio
-                    LaunchedEffect(Unit) {
-                        cargarUltimaNota()
-                    }
-                    
-                    if (ultimaNota != null) {
-                        Text(
-                            "Última Nota Modificada",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Negro,
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Start
-                        )
                         
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color(android.graphics.Color.parseColor(ultimaNota?.color ?: "#FFFFFF"))
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { mostrarDialogoNota = true }
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = ultimaNota?.titulo ?: "Sin título",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = Negro
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = ultimaNota?.contenido ?: "",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Negro,
-                                    maxLines = 2,
-                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                )
-                            }
+                        // Indicador de carga (Overlay)
+                        if (isCheckingUpdate || isLoadingUserData) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                color = Primario, 
+                                strokeWidth = 3.dp
+                            )
                         }
-                    } else {
-                        // Placeholder si no hay notas
-                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f))
+                        
+                        // Icono de pequeña cámara superpuesto
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset(x = (-4).dp, y = (-4).dp)
+                                .size(36.dp)
+                                .background(Primario, CircleShape)
+                                .border(2.dp, Blanco, CircleShape),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    "Hábitos Saludables",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Negro
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "Gestiona tus hábitos diarios",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.Gray
-                                )
-                            }
+                            Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Blanco, modifier = Modifier.size(20.dp))
                         }
                     }
-                    
-                    // Diálogo para editar la nota reciente sin salir
-                    if (mostrarDialogoNota && ultimaNota != null) {
-                        DialogoNota(
-                            nota = ultimaNota,
-                            onDismiss = { mostrarDialogoNota = false },
-                            onConfirmar = { titulo, contenido, color ->
-                                scope.launch {
-                                    val fechaActual = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US).apply {
-                                        timeZone = java.util.TimeZone.getTimeZone("UTC")
-                                    }.format(java.util.Date())
-                                    
-                                    val notaActualizada = ultimaNota!!.copy(
-                                        titulo = titulo,
-                                        contenido = contenido,
-                                        color = color,
-                                        fecha_actualizacion = fechaActual
-                                    )
-                                    
-                                    ultimaNota?.id?.let { id ->
-                                        when (notaRepository.actualizarNota(id, notaActualizada)) {
-                                            is com.example.rest.data.repository.NotaRepository.Result.Success<*> -> {
-                                                android.widget.Toast.makeText(context, "Nota actualizada", android.widget.Toast.LENGTH_SHORT).show()
-                                                cargarUltimaNota() // Recargar para ver cambios
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (!isLoadingUserData) {
+                        // Tarjeta Principal de Información
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(containerColor = Blanco),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.profile_info_title),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = TextUnit(18f, TextUnitType.Sp),
+                                    color = TextoSecundario,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+
+                                // Campo Nombre
+                                OutlinedTextField(
+                                    value = nombreText,
+                                    onValueChange = { nombreText = it },
+                                    label = { Text(stringResource(R.string.register_name_placeholder)) },
+                                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = Primario) },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Primario,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
+
+                                // Campo Apellido
+                                OutlinedTextField(
+                                    value = apellidoText,
+                                    onValueChange = { apellidoText = it },
+                                    label = { Text(stringResource(R.string.register_lastname_placeholder)) },
+                                    leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null, tint = Primario) },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Primario,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
+
+                                // Campo Fecha
+                                com.example.rest.ui.components.inputs.CampoFechaAutoFormato(
+                                    value = fechaText,
+                                    onValueChange = { fechaText = it },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                                    // Nota: Para que el icono y forma entren aquí, CampoFechaAutoFormato tendría que exponer esas propiedades o tendríamos que modificar dicho componente. 
+                                    // De lo contrario aplicará su diseño original.
+                                )
+
+                                // Campo Correo
+                                OutlinedTextField(
+                                    value = correoText,
+                                    onValueChange = { correoText = it },
+                                    label = { Text(stringResource(R.string.register_email_placeholder)) },
+                                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = Primario) },
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Primario,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
+                                
+                                Divider(color = FondoSecundario, modifier = Modifier.padding(vertical = 8.dp))
+
+                                // Campo Confirmar Contraseña (para validación)
+                                Text(
+                                    text = stringResource(R.string.profile_confirm_identity),
+                                    fontSize = TextUnit(14f, TextUnitType.Sp),
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                OutlinedTextField(
+                                    value = confirmarContraseña,
+                                    onValueChange = { confirmarContraseña = it },
+                                    label = { Text(stringResource(R.string.register_confirm_password_placeholder)) },
+                                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Primario) },
+                                    trailingIcon = {
+                                        IconButton(onClick = { mostrarContraseña = !mostrarContraseña }) {
+                                            Icon(
+                                                imageVector = if (mostrarContraseña) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                                contentDescription = if (mostrarContraseña) "Ocultar contraseña" else "Mostrar contraseña",
+                                                tint = Color.Gray
+                                            )
+                                        }
+                                    },
+                                    visualTransformation = if (mostrarContraseña) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Primario,
+                                        unfocusedBorderColor = Color.LightGray
+                                    ),
+                                    singleLine = true
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Botón de Guardar Cambios
+                        Button(
+                            onClick = {
+                                if (nombreText.isBlank() || correoText.isBlank() || fechaText.length != 8) {
+                                    Toast.makeText(context, context.getString(R.string.err_empty_fields), Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                
+                                // Validar formato de correo
+                                if (!esCorreoValido(correoText)) {
+                                    Toast.makeText(context, context.getString(R.string.toast_invalid_email_format), Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+                                
+                                if (confirmarContraseña.isBlank()) {
+                                    Toast.makeText(context, context.getString(R.string.err_empty_confirm_password), Toast.LENGTH_SHORT).show()
+                                    return@Button
+                                }
+
+                                // Si el correo cambió, solicitar verificación
+                                if (correoText.trim().lowercase() != correoOriginal.trim().lowercase()) {
+                                    enviandoCodigo = true
+                                    codigoVerificado = false
+                                    codigoIngresado = ""
+                                    errorCodigo = false
+                                    scope.launch {
+                                        val resultado = recuperacionRepository.enviarCodigoVerificacionCorreo(correoText.trim())
+                                        enviandoCodigo = false
+                                        when (resultado) {
+                                            is com.example.rest.data.repository.RecuperacionRepository.Result.Success -> {
+                                                codigoGenerado = resultado.data
+                                                mostrarDialogoVerificacion = true
+                                                Toast.makeText(context, context.getString(R.string.toast_code_sent_to, correoText), Toast.LENGTH_SHORT).show()
                                             }
-                                            is com.example.rest.data.repository.NotaRepository.Result.Error -> {
-                                                android.widget.Toast.makeText(context, "Error al actualizar", android.widget.Toast.LENGTH_SHORT).show()
+                                            is com.example.rest.data.repository.RecuperacionRepository.Result.Error -> {
+                                                Toast.makeText(context, context.getString(R.string.toast_code_send_error, resultado.message), Toast.LENGTH_LONG).show()
                                             }
                                             else -> {}
                                         }
                                     }
+                                } else {
+                                    // Correo no cambió, guardar directamente
+                                    guardarCambiosPerfil()
                                 }
-                                mostrarDialogoNota = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Primario),
+                            enabled = !isSavingUser,
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                        ) {
+                            if (isSavingUser) {
+                                CircularProgressIndicator(color = Blanco, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = Blanco)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.settings_edit_profile), color = Blanco, fontWeight = FontWeight.Bold, fontSize = TextUnit(18f, TextUnitType.Sp))
                             }
-                        )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Botón para cambiar contraseña (Secundario/Tonal)
+                        OutlinedButton(
+                            onClick = {
+                                context.startActivity(android.content.Intent(context, com.example.rest.features.home.CambiarContrasenaComposeActivity::class.java))
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Primario),
+                            border = BorderStroke(1.dp, Primario)
+                        ) {
+                            Icon(Icons.Default.LockReset, contentDescription = null, tint = Primario)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.change_password_title), color = Primario, fontWeight = FontWeight.Bold, fontSize = TextUnit(18f, TextUnitType.Sp))
+                        }
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
-            }
         }
     }
 }
@@ -705,21 +845,24 @@ suspend fun subirFotoASupabase(context: Context, bitmap: Bitmap) {
     withContext(Dispatchers.IO) {
         try {
             // Obtener ID del usuario desde SharedPreferences
-            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            val prefs = com.example.rest.utils.PreferencesManager(context)
+            val userId = prefs.getUserId()
             
             if (userId == -1) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_error_unidentified_user), Toast.LENGTH_SHORT).show()
                 }
                 return@withContext
             }
             
+            // Redimensionar imagen si es muy grande (Max 800x800)
+            val resizedBitmap = resizeBitmap(bitmap, 800, 800)
+
             // Convertir bitmap a Base64
             val byteArrayOutputStream = java.io.ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream)
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream) // Calidad 80 es suficiente
             val byteArray = byteArrayOutputStream.toByteArray()
-            val base64String = android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
+            val base64String = android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP) // NO_WRAP para evitar saltos de línea
             
             // Subir a Supabase
             val repository = com.example.rest.data.repository.UsuarioRepository()
@@ -728,17 +871,17 @@ suspend fun subirFotoASupabase(context: Context, bitmap: Bitmap) {
             withContext(Dispatchers.Main) {
                 when (result) {
                     is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
-                        Toast.makeText(context, "Foto de perfil actualizada", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.toast_photo_updated), Toast.LENGTH_SHORT).show()
                     }
                     is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
-                        Toast.makeText(context, "Error: ${result.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, context.getString(R.string.toast_error_uploading_photo, result.message), Toast.LENGTH_LONG).show()
                     }
                     else -> {}
                 }
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Error al subir foto: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.toast_error_uploading_photo, e.message ?: ""), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -815,12 +958,12 @@ fun deleteProfileImage(context: Context, userId: Int) {
 suspend fun eliminarFotoDeSupabase(context: Context) {
     withContext(Dispatchers.IO) {
         try {
-            val sharedPref = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-            val userId = sharedPref.getInt("ID_USUARIO", -1)
+            val prefs = com.example.rest.utils.PreferencesManager(context)
+            val userId = prefs.getUserId()
             
             if (userId == -1) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Error: Usuario no identificado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.toast_error_unidentified_user), Toast.LENGTH_SHORT).show()
                 }
                 return@withContext
             }
@@ -835,15 +978,39 @@ suspend fun eliminarFotoDeSupabase(context: Context) {
                         Log.d("PerfilDebug", "Foto eliminada de Supabase")
                     }
                     is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
-                        Toast.makeText(context, "Error al eliminar de servidor: ${result.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, context.getString(R.string.toast_error_server_delete, result.message), Toast.LENGTH_LONG).show()
                     }
                     else -> {}
                 }
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Error al eliminar foto: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.toast_error_photo_delete, e.message), Toast.LENGTH_LONG).show()
             }
         }
     }
+}
+
+/**
+ * Redimensionar bitmap manteniendo la proporción
+ */
+fun resizeBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+    val width = bitmap.width
+    val height = bitmap.height
+    
+    if (width <= maxWidth && height <= maxHeight) return bitmap
+
+    val ratioBitmap = width.toFloat() / height.toFloat()
+    val ratioMax = maxWidth.toFloat() / maxHeight.toFloat()
+
+    var finalWidth = maxWidth
+    var finalHeight = maxHeight
+
+    if (ratioMax > ratioBitmap) {
+        finalWidth = (maxHeight.toFloat() * ratioBitmap).toInt()
+    } else {
+        finalHeight = (maxWidth.toFloat() / ratioBitmap).toInt()
+    }
+
+    return Bitmap.createScaledBitmap(bitmap, finalWidth, finalHeight, true)
 }

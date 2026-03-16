@@ -29,10 +29,8 @@ class SplashActivity : BaseComposeActivity() {
         setContent {
             TemaRest {
                 SplashScreen {
-                    // Navegar a Login al terminar
-                    val intent = Intent(this, LoginComposeActivity::class.java)
-                    startActivity(intent)
-                    finish()
+                    // La lógica real de navegación ahora está dentro de SplashScreen
+                    // dependiendo del resultado de la verificación
                 }
             }
         }
@@ -46,8 +44,69 @@ fun SplashScreen(onTimeout: () -> Unit) {
     // Usaremos Color(0xFFE0F7FA) que corresponde a azul_splash_fondo o el recurso si está disponible
     val backgroundColor = Color(0xFFE0F7FA) // Light Cyan
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
     LaunchedEffect(true) {
-        delay(2500) // Esperar 2.5 segundos
+        // En paralelo, mostramos el splash un tiempo mínimo y verificamos sesión
+        val minSplashTime = 2000L
+        val startTime = System.currentTimeMillis()
+        
+        var navigateToLogin = true
+        var forceLogoutMessage = false
+        val prefs = com.example.rest.utils.PreferencesManager(context)
+        
+        try {
+            val idUsuario = prefs.getUserId()
+            val tokenLocal = prefs.getSessionToken()
+            
+            if (idUsuario != -1) {
+                // Hay sesión local, vamos a verificar el token en Supabase
+                // Podríamos usar el repositorio, pero hacemos directo para evitar dependencias circulares si es complejo
+                val repository = com.example.rest.data.repository.UsuarioRepository()
+                val response = repository.obtenerUsuarioPorId(idUsuario)
+                
+                if (response is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
+                    val tokenServidor = response.data.ultimoTokenSesion
+                    
+                    if (tokenLocal != null && tokenLocal == tokenServidor) {
+                        // El token coincide, la sesión es válida
+                        navigateToLogin = false
+                    } else {
+                        // Token inválido (se inició sesión en otro lado o se borró de DB)
+                        prefs.clearPreferences()
+                        forceLogoutMessage = true
+                    }
+                } else {
+                    // Si no hay internet o error servidor, por defecto dejamos pasar 
+                    // a la app asumiendo sesión válida temporal (offline support)
+                    // Las demás partes de la app fallarán si necesitan online, pero no bloqueamos el inicio
+                    navigateToLogin = false
+                }
+            }
+        } catch (e: Exception) {
+            // Error de hardware/encriptación o red muy severo
+            prefs.clearPreferences()
+        }
+        
+        val elapsedTime = System.currentTimeMillis() - startTime
+        if (elapsedTime < minSplashTime) {
+            delay(minSplashTime - elapsedTime)
+        }
+
+        if (forceLogoutMessage) {
+            android.widget.Toast.makeText(context, "La sesión ha expirado o se ha iniciado en otro dispositivo", android.widget.Toast.LENGTH_LONG).show()
+        }
+
+        val activity = context as? android.app.Activity
+        if (navigateToLogin) {
+            val intent = Intent(context, LoginComposeActivity::class.java)
+            context.startActivity(intent)
+        } else {
+            val intent = Intent(context, com.example.rest.features.home.InicioComposeActivity::class.java)
+            context.startActivity(intent)
+        }
+        activity?.finish()
         onTimeout()
     }
 

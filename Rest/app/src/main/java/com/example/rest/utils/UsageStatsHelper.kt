@@ -20,6 +20,56 @@ object UsageStatsHelper {
     private const val TAG = "UsageStatsHelper"
     
     /**
+     * Obtiene el tiempo exacto en milisegundos que cada app ha estado en primer plano.
+     * Calcula utilizando eventos en lugar de los buckets agregados para evitar el bug 
+     * donde Android reinicia los buckets a la medianoche UTC (ej. 7pm/8pm local).
+     */
+    fun getExactDailyUsageMap(
+        usageStatsManager: UsageStatsManager,
+        startTime: Long,
+        endTime: Long
+    ): Map<String, Long> {
+        val usageMap = mutableMapOf<String, Long>()
+        val events = usageStatsManager.queryEvents(startTime, endTime)
+        val event = android.app.usage.UsageEvents.Event()
+
+        val lastEventTimeMap = mutableMapOf<String, Long>()
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            val pkg = event.packageName
+            val time = event.timeStamp
+
+            if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED ||
+                event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                lastEventTimeMap[pkg] = time
+            } else if (event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED ||
+                event.eventType == android.app.usage.UsageEvents.Event.MOVE_TO_BACKGROUND ||
+                event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_STOPPED) {
+                
+                val lastTime = lastEventTimeMap[pkg]
+                if (lastTime != null) {
+                    val duration = time - lastTime
+                    if (duration > 0) {
+                        usageMap[pkg] = (usageMap[pkg] ?: 0L) + duration
+                    }
+                    lastEventTimeMap.remove(pkg)
+                }
+            }
+        }
+
+        // Añadir el tiempo para las aplicaciones que siguen en primer plano al finalizar el rango
+        for ((pkg, lastTime) in lastEventTimeMap) {
+            val duration = endTime - lastTime
+            if (duration > 0) {
+                usageMap[pkg] = (usageMap[pkg] ?: 0L) + duration
+            }
+        }
+
+        return usageMap
+    }
+
+    /**
      * Verifica si la app tiene permiso para acceder a estadísticas de uso
      */
     fun checkUsageStatsPermission(context: Context): Boolean {

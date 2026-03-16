@@ -13,6 +13,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.res.stringResource
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import com.example.rest.R
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -41,14 +46,12 @@ class ConfiguracionComposeActivity : BaseComposeActivity() {
 @Composable
 fun PantallaConfiguracion(onBackClick: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
     
-    // Cargar preferencia guardada
-    var modoOscuro by remember { 
-        mutableStateOf(com.example.rest.utils.ThemeManager.isDarkMode(context)) 
-    }
-    var tamañoFuenteExpandido by remember { mutableStateOf(false) }
-    var tamañoFuenteSeleccionado by remember { mutableStateOf("Mediano") }
+    var monitoreoActivo by remember { mutableStateOf(sharedPrefs.getBoolean("MONITOREO_ACTIVO", true)) }
+    var burbujaActiva by remember { mutableStateOf(sharedPrefs.getBoolean("BURBUJA_ACTIVA", false)) }
     
+cristian-alvarado
     // Estado para el diálogo de Burbuja
     var mostrarDialogoBurbuja by remember { mutableStateOf(false) }
     
@@ -60,7 +63,16 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
         start = Offset(0f, 0f),
         end = Offset(0f, 2000f)
     )
+=======
+    var idiomaExpandido by remember { mutableStateOf(false) }
+    var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
+ main
     
+    // Estado para los diálogos de Privacidad y Acerca de
+    var showPrivacyDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -70,7 +82,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                         Icon(
                             Icons.Default.ArrowBack,
                             contentDescription = "Regresar",
-                            tint = MaterialTheme.colorScheme.onBackground
+                            tint = Color.White
                         )
                     }
                 },
@@ -84,7 +96,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(gradienteBrush)
+                .background(MaterialTheme.colorScheme.primary)
                 .padding(paddingValues)
         ) {
             LazyColumn(
@@ -95,44 +107,35 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
             ) {
                 // Header con icono y título
                 item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = stringResource(R.string.settings_title),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                    )
+                    
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    Row(
+                    Text(
+                        text = stringResource(R.string.settings_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f),
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start
-                    ) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Text(
-                            text = "Configura La App y\nTus Preferencias",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            lineHeight = 28.sp
-                        )
-                    }
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                    )
                     
                     Spacer(modifier = Modifier.height(24.dp))
                 }
                 
                 // Monitoreo de APPS (con toggle)
                 item {
-                    val sharedPrefs = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
-                    var monitoreoActivo by remember { 
-                        mutableStateOf(sharedPrefs.getBoolean("MONITOREO_ACTIVO", true)) 
-                    }
-                    
                     OpcionConfiguracionToggle(
                         icono = Icons.Default.Visibility,
-                        titulo = "Monitoreo de Uso",
+                        titulo = stringResource(R.string.settings_monitoring),
                         activado = monitoreoActivo,
                         onToggle = { isEnabled ->
                             monitoreoActivo = isEnabled
@@ -142,73 +145,59 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                             // Activar/Desactivar Servicio
                             if (isEnabled) {
                                 com.example.rest.services.AppMonitorService.startService(context)
-                                android.widget.Toast.makeText(context, "Monitoreo activado", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_monitoring_enabled), android.widget.Toast.LENGTH_SHORT).show()
                             } else {
                                 com.example.rest.services.AppMonitorService.stopService(context)
-                                android.widget.Toast.makeText(context, "Monitoreo pausado", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_monitoring_paused), android.widget.Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                // Modo Oscuro (con toggle)
-                item {
-                    OpcionConfiguracionToggle(
-                        icono = Icons.Default.DarkMode,
-                        titulo = "Modo Oscuro",
-                        activado = modoOscuro,
-                        onToggle = { 
-                            modoOscuro = it
-                            // Guardar preferencia
-                            com.example.rest.utils.ThemeManager.setDarkMode(context, it)
-                            // Recrear actividad para aplicar cambios
-                            (context as? android.app.Activity)?.recreate()
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-                
-                // Notificaciones
-                item {
-                    OpcionConfiguracion(
-                        icono = Icons.Default.Notifications,
-                        titulo = "Notificaciones",
-                        onClick = { /* TODO */ }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-                
+
+
                 // Burbuja
                 item {
-                    OpcionConfiguracion(
+                    OpcionConfiguracionToggle(
                         icono = Icons.Default.MoreHoriz,
-                        titulo = "Burbuja",
-                        onClick = { mostrarDialogoBurbuja = true }
+                        titulo = stringResource(R.string.settings_bubble),
+                        activado = burbujaActiva,
+                        onToggle = { isEnabled ->
+                            burbujaActiva = isEnabled
+                            sharedPrefs.edit().putBoolean("BURBUJA_ACTIVA", isEnabled).apply()
+                            android.widget.Toast.makeText(context, context.getString(R.string.toast_setting_saved), android.widget.Toast.LENGTH_SHORT).show()
+                        }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
                 
                 // Cambiar Idioma
                 item {
-                    OpcionConfiguracion(
-                        icono = Icons.Default.Language,
-                        titulo = "Cambiar Idioma",
-                        onClick = { /* TODO */ }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-                
-                // Tamaño de la Fuente (con dropdown)
-                item {
                     OpcionConfiguracionDropdown(
-                        icono = Icons.Default.TextFields,
-                        titulo = "Tamaño de la Fuente",
-                        valorSeleccionado = tamañoFuenteSeleccionado,
-                        expandido = tamañoFuenteExpandido,
-                        onExpandirCambio = { tamañoFuenteExpandido = it },
-                        opciones = listOf("Pequeño", "Mediano", "Grande"),
-                        onSeleccion = { tamañoFuenteSeleccionado = it }
+                        icono = Icons.Default.Language,
+                        titulo = stringResource(R.string.settings_language),
+                        valorSeleccionado = idiomaSeleccionado,
+                        expandido = idiomaExpandido,
+                        onExpandirCambio = { idiomaExpandido = it },
+                        opciones = listOf(
+                            stringResource(R.string.lang_spanish),
+                            stringResource(R.string.lang_english),
+                            stringResource(R.string.lang_portuguese)
+                        ),
+                        onSeleccion = { nuevoIdioma ->
+                            idiomaSeleccionado = nuevoIdioma
+                            sharedPrefs.edit().putString("IDIOMA", nuevoIdioma).apply()
+                            
+                            val code = when (nuevoIdioma) {
+                                "English" -> "en"
+                                "Português" -> "pt"
+                                else -> "es"
+                            }
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
+                            
+                            android.widget.Toast.makeText(context, context.getString(R.string.toast_language_saved, nuevoIdioma), android.widget.Toast.LENGTH_SHORT).show()
+                        }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -216,9 +205,17 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                 // Perfil
                 item {
                     OpcionConfiguracion(
+ cristian-alvarado
+                        icono = Icons.Default.MoreHoriz,
+                        titulo = "Burbuja",
+                        onClick = { mostrarDialogoBurbuja = true }
+=======
                         icono = Icons.Default.People,
-                        titulo = "Perfil",
-                        onClick = { /* TODO */ }
+                        titulo = stringResource(R.string.settings_edit_profile),
+                        onClick = {
+                            context.startActivity(android.content.Intent(context, com.example.rest.features.home.PerfilComposeActivity::class.java))
+                        }
+main
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -227,12 +224,76 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                 item {
                     OpcionConfiguracion(
                         icono = Icons.Default.Security,
-                        titulo = "Seguridad",
-                        onClick = { /* TODO */ }
+                        titulo = stringResource(R.string.settings_security),
+                        onClick = {
+                            android.widget.Toast.makeText(context, context.getString(R.string.toast_security_warning), android.widget.Toast.LENGTH_LONG).show()
+                        }
                     )
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // Privacidad y Términos
+                item {
+                    OpcionConfiguracion(
+                        icono = Icons.Default.PrivacyTip,
+                        titulo = stringResource(R.string.settings_privacy),
+                        onClick = { showPrivacyDialog = true }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // Acerca de
+                item {
+                    OpcionConfiguracion(
+                        icono = Icons.Default.Info,
+                        titulo = stringResource(R.string.settings_about),
+                        onClick = { showAboutDialog = true }
+                    )
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
+        }
+
+        // Diálogo de Privacidad
+        if (showPrivacyDialog) {
+            AlertDialog(
+                onDismissRequest = { showPrivacyDialog = false },
+                icon = { Icon(Icons.Default.PrivacyTip, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                title = { Text(stringResource(R.string.dialog_privacy_title)) },
+                text = { Text(stringResource(R.string.dialog_privacy_desc)) },
+                confirmButton = {
+                    TextButton(onClick = { showPrivacyDialog = false }) {
+                        Text(stringResource(android.R.string.ok))
+                    }
+                }
+            )
+        }
+
+        // Diálogo de Acerca de
+        if (showAboutDialog) {
+            AlertDialog(
+                onDismissRequest = { showAboutDialog = false },
+                icon = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                title = { Text(stringResource(R.string.dialog_about_title)) },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = stringResource(R.string.dialog_about_version),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.dialog_about_desc),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAboutDialog = false }) {
+                        Text(stringResource(android.R.string.ok))
+                    }
+                }
+            )
         }
     }
     
@@ -413,12 +474,11 @@ fun OpcionConfiguracion(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(64.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -426,20 +486,35 @@ fun OpcionConfiguracion(
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icono,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(28.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icono,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
             
             Spacer(modifier = Modifier.width(16.dp))
             
             Text(
                 text = titulo,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -455,11 +530,10 @@ fun OpcionConfiguracionToggle(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp),
+            .height(64.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -467,20 +541,27 @@ fun OpcionConfiguracionToggle(
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icono,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(28.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icono,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
             
             Spacer(modifier = Modifier.width(16.dp))
             
             Text(
                 text = titulo,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
             
@@ -490,9 +571,10 @@ fun OpcionConfiguracionToggle(
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                     checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
                     uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                ),
+                modifier = Modifier.scale(0.9f)
             )
         }
     }
@@ -513,39 +595,52 @@ fun OpcionConfiguracionDropdown(
             .fillMaxWidth()
             .clickable { onExpandirCambio(!expandido) },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(64.dp)
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = icono,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(28.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icono,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
                 
                 Spacer(modifier = Modifier.width(16.dp))
                 
                 Text(
                     text = titulo,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.weight(1f)
+                )
+
+                Text(
+                    text = valorSeleccionado,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 8.dp)
                 )
                 
                 Icon(
                     imageVector = if (expandido) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
@@ -564,7 +659,8 @@ fun OpcionConfiguracionDropdown(
                                 color = if (opcion == valorSeleccionado) 
                                     MaterialTheme.colorScheme.primary 
                                 else 
-                                    MaterialTheme.colorScheme.onSurface
+                                    MaterialTheme.colorScheme.onSurface,
+                                fontWeight = if (opcion == valorSeleccionado) FontWeight.Bold else FontWeight.Normal
                             )
                         },
                         onClick = {

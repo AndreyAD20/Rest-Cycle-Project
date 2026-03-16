@@ -14,7 +14,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+ cristian-alvarado
 import androidx.compose.material.icons.filled.Lightbulb
+=======
+import androidx.compose.material.icons.automirrored.filled.Logout
+ main
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,7 +52,7 @@ class InicioComposeActivity : BaseComposeActivity() {
         } else {
             android.widget.Toast.makeText(
                 this,
-                "El permiso de notificaciones es necesario para el monitoreo en tiempo real",
+                getString(R.string.toast_notif_permission_needed),
                 android.widget.Toast.LENGTH_LONG
             ).show()
         }
@@ -76,13 +81,19 @@ class InicioComposeActivity : BaseComposeActivity() {
                         startActivity(intent)
                     },
                     alClickControlParental = {
-                        // Navegar a Control Parental
-                        val intent = Intent(this, com.example.rest.features.parental.GestionHijosComposeActivity::class.java)
+                        // Redirigir segun si es mayor de edad
+                        val prefs = com.example.rest.utils.PreferencesManager(this)
+                        val esMayor = prefs.getMayorEdad()
+                        val intent = if (!esMayor) {
+                            Intent(this, com.example.rest.features.hijo.EnlaceHijoComposeActivity::class.java)
+                        } else {
+                            Intent(this, com.example.rest.features.parental.GestionHijosComposeActivity::class.java)
+                        }
                         startActivity(intent)
                     },
                     alClickHabitosSaludables = {
                         // Navegar a Perfil
-                        val intent = Intent(this, com.example.rest.features.home.PerfilComposeActivity::class.java)
+                        val intent = Intent(this, com.example.rest.features.home.HabitosInicioComposeActivity::class.java)
                         startActivity(intent)
                     },
                     alClickTemasInteres = {
@@ -104,8 +115,8 @@ class InicioComposeActivity : BaseComposeActivity() {
                 if (mostrarDialogoCerrarSesion) {
                     AlertDialog(
                         onDismissRequest = { mostrarDialogoCerrarSesion = false },
-                        title = { Text("Cerrar sesión") },
-                        text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
+                        title = { Text(stringResource(R.string.dialog_logout_title)) },
+                        text = { Text(stringResource(R.string.dialog_logout_text)) },
                         confirmButton = {
                             TextButton(
                                 onClick = {
@@ -115,11 +126,8 @@ class InicioComposeActivity : BaseComposeActivity() {
                                     com.example.rest.services.AppMonitorService.stopService(this@InicioComposeActivity)
                                     
                                     // Borrar sesión
-                                    val sharedPref = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                                    with(sharedPref.edit()) {
-                                        clear()
-                                        apply()
-                                    }
+                                    val preferencesManager = com.example.rest.utils.PreferencesManager(this@InicioComposeActivity)
+                                    preferencesManager.clearPreferences()
                                     
                                     // Ir a Login
                                     val intent = Intent(this@InicioComposeActivity, com.example.rest.features.auth.LoginComposeActivity::class.java)
@@ -128,12 +136,12 @@ class InicioComposeActivity : BaseComposeActivity() {
                                     finish()
                                 }
                             ) {
-                                Text("Cerrar Sesión")
+                                Text(stringResource(R.string.btn_logout))
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { mostrarDialogoCerrarSesion = false }) {
-                                Text("Cancelar")
+                                Text(stringResource(R.string.btn_cancel))
                             }
                         }
                     )
@@ -155,41 +163,14 @@ class InicioComposeActivity : BaseComposeActivity() {
                 if (showUsageStatsDialog) {
                     AlertDialog(
                         onDismissRequest = { /* No dismiss allowed optionally */ },
-                        title = { Text("Permiso Requerido") },
-                        text = { Text("Para que Rest Cycle funcione correctamente y bloquee aplicaciones, necesita acceso a las estadísticas de uso.") },
+                        title = { Text(stringResource(R.string.dialog_permission_required)) },
+                        text = { Text(stringResource(R.string.dialog_usage_permission_block_text)) },
                         confirmButton = {
                             TextButton(onClick = {
                                 showUsageStatsDialog = false
                                 startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
                             }) {
-                                Text("Conceder Permiso")
-                            }
-                        }
-                    )
-                }
-
-                // Check for Overlay Permission (Android 10+)
-                var showOverlayDialog by remember { mutableStateOf(false) }
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(this)) {
-                    // Only show if usage stats is already granted or dismissed to avoid stacking
-                    if (!showUsageStatsDialog) {
-                         showOverlayDialog = true
-                    }
-                }
-
-                if (showOverlayDialog) {
-                    AlertDialog(
-                        onDismissRequest = { /* No dismiss */ },
-                        title = { Text("Permiso de Superposición") },
-                        text = { Text("Para mostrar la pantalla de bloqueo sobre otras apps, Rest Cycle necesita permiso para mostrarse encima.") },
-                        confirmButton = {
-                            TextButton(onClick = {
-                                showOverlayDialog = false
-                                val intent = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, 
-                                                    android.net.Uri.parse("package:$packageName"))
-                                startActivity(intent)
-                            }) {
-                                Text("Conceder Permiso")
+                                Text(stringResource(R.string.btn_grant_permission))
                             }
                         }
                     )
@@ -250,42 +231,35 @@ fun PantallaModosDeUso(
         return true // Para versiones anteriores a Android 11, devolvemos true porque no requieren permiso
     }
 
-    // Verificar permisos al iniciar
-    LaunchedEffect(Unit) {
-        val hasUsagePermission = checkUsageStatsPermission(context)
-        android.util.Log.d("InicioActivity", "Permiso de uso: $hasUsagePermission")
-        
-        if (!hasUsagePermission) {
-            android.util.Log.d("InicioActivity", "Mostrando diálogo de permiso de uso")
+    // Acción pendiente para ejecutar después de otorgar permisos
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    // Función para verificar y pedir permisos antes de navegar
+    val checkAndRequestPermissions = { action: () -> Unit ->
+        val hasUsage = checkUsageStatsPermission(context)
+        if (!hasUsage) {
+            pendingAction = action
             showPermissionDialog = true
         } else {
-            // Si ya tiene permiso de uso, verificar permiso de notificaciones
+            // Verificar Notificaciones (Android 13+)
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                val hasNotificationPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                val hasNotif = androidx.core.content.ContextCompat.checkSelfPermission(
                     context,
                     android.Manifest.permission.POST_NOTIFICATIONS
                 ) == android.content.pm.PackageManager.PERMISSION_GRANTED
                 
-                android.util.Log.d("InicioActivity", "Permiso de notificaciones: $hasNotificationPermission (Android ${android.os.Build.VERSION.SDK_INT})")
-                
-                if (!hasNotificationPermission) {
-                    android.util.Log.d("InicioActivity", "Mostrando diálogo de permiso de notificaciones")
+                if (!hasNotif) {
+                    pendingAction = action
                     showNotificationPermissionDialog = true
                 } else {
-                    // Tiene ambos permisos, verificar Configuración antes de iniciar
-                    val monitoreoActivo = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE).getBoolean("MONITOREO_ACTIVO", true)
-                    
-                    if (monitoreoActivo) {
-                        android.util.Log.d("InicioActivity", "Iniciando servicio (Config: Activo)")
-                        com.example.rest.services.AppMonitorService.startService(context)
-                    } else {
-                        android.util.Log.d("InicioActivity", "Servicio NO iniciado (Config: Pausado)")
-                    }
+                    // Todo OK, ejecutar acción e iniciar servicio si no está corriendo
+                    com.example.rest.services.AppMonitorService.startService(context)
+                    action()
                 }
             } else {
-                // Android < 13, solo iniciar servicio
-                android.util.Log.d("InicioActivity", "Android < 13, iniciando servicio sin permiso de notificaciones")
+                // Android < 13
                 com.example.rest.services.AppMonitorService.startService(context)
+                action()
             }
             
             // Verificamos si las burbujas están habilitadas
@@ -294,13 +268,48 @@ fun PantallaModosDeUso(
             }
         }
     }
+    
+    // Verificar si regresamos de configuración (onResume) y hay acción pendiente
+    // Esto maneja el caso donde el usuario fue a Settings a dar permiso de uso y volvió
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                 if (pendingAction != null && checkUsageStatsPermission(context)) {
+                     // Si ya tiene uso, verificar notif o ejecutar
+                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                         val hasNotif = androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            android.Manifest.permission.POST_NOTIFICATIONS
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        
+                        if (hasNotif) {
+                             val action = pendingAction
+                             pendingAction = null
+                             com.example.rest.services.AppMonitorService.startService(context)
+                             action?.invoke()
+                        }
+                     } else {
+                         val action = pendingAction
+                         pendingAction = null
+                         com.example.rest.services.AppMonitorService.startService(context)
+                         action?.invoke()
+                     }
+                 }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Diálogo de permiso de uso de estadísticas
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { /* No permitir cerrar sin decidir */ },
-            title = { Text("Permiso Requerido") },
-            text = { Text("Para que la aplicación funcione correctamente y registre tus estadísticas en tiempo real, necesitamos acceso a los datos de uso. Por favor activa el permiso para 'Rest Cycle'.") },
+            title = { Text(stringResource(R.string.dialog_permission_required)) },
+            text = { Text(stringResource(R.string.dialog_usage_permission_stats_text)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -308,17 +317,17 @@ fun PantallaModosDeUso(
                         requestUsageStatsPermission(context)
                     }
                 ) {
-                    Text("Activar Permiso")
+                    Text(stringResource(R.string.btn_activate_permission))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { 
                         showPermissionDialog = false 
-                        android.widget.Toast.makeText(context, "El monitoreo en tiempo real no estará disponible", android.widget.Toast.LENGTH_LONG).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.toast_monitoring_unavailable), android.widget.Toast.LENGTH_LONG).show()
                     }
                 ) {
-                    Text("Ahora no")
+                    Text(stringResource(R.string.btn_not_now))
                 }
             }
         )
@@ -328,8 +337,8 @@ fun PantallaModosDeUso(
     if (showNotificationPermissionDialog) {
         AlertDialog(
             onDismissRequest = { /* No permitir cerrar sin decidir */ },
-            title = { Text("Permiso de Notificaciones") },
-            text = { Text("Para monitorear tus aplicaciones en tiempo real, necesitamos mostrar una notificación persistente. Esto es requerido por Android para servicios en segundo plano.") },
+            title = { Text(stringResource(R.string.dialog_notif_permission_title)) },
+            text = { Text(stringResource(R.string.dialog_notif_permission_text)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -337,22 +346,23 @@ fun PantallaModosDeUso(
                         onRequestNotificationPermission()
                     }
                 ) {
-                    Text("Permitir")
+                    Text(stringResource(R.string.btn_allow))
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = { 
                         showNotificationPermissionDialog = false 
-                        android.widget.Toast.makeText(context, "El monitoreo en tiempo real no estará disponible", android.widget.Toast.LENGTH_LONG).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.toast_monitoring_unavailable), android.widget.Toast.LENGTH_LONG).show()
                     }
                 ) {
-                    Text("Ahora no")
+                    Text(stringResource(R.string.btn_not_now))
                 }
             }
         )
     }
 
+ cristian-alvarado
     // Diálogo persuasivo para las Burbujas (Android 11+)
     if (showBubblePermissionDialog) {
         AlertDialog(
@@ -384,13 +394,17 @@ fun PantallaModosDeUso(
     }
 
     // Gradiente de fondo cyan/turquesa
+=======
+    // Gradiente de fondo estilo Hijo (Azul profundo -> Teal -> Verde menta)
+ main
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
-            MaterialTheme.colorScheme.primary,
-            MaterialTheme.colorScheme.primaryContainer
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
         ),
         start = Offset(0f, 0f),
-        end = Offset(1000f, 1000f)
+        end = Offset(1000f, 2000f)
     )
 
     Box(
@@ -406,9 +420,9 @@ fun PantallaModosDeUso(
                 .align(Alignment.TopStart)
         ) {
             Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Regresar",
-                tint = MaterialTheme.colorScheme.onBackground,
+                imageVector = Icons.AutoMirrored.Filled.Logout,
+                contentDescription = stringResource(R.string.btn_logout),
+                tint = Color.White,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -422,8 +436,8 @@ fun PantallaModosDeUso(
         ) {
             Icon(
                 imageVector = Icons.Default.Settings,
-                contentDescription = "Configuración",
-                tint = MaterialTheme.colorScheme.onBackground,
+                contentDescription = stringResource(R.string.content_desc_settings),
+                tint = Color.White,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -443,37 +457,37 @@ fun PantallaModosDeUso(
 
             // Título "Modos de Uso"
             Text(
-                text = "Modos de Uso",
+                text = stringResource(R.string.home_usage_modes),
                 style = MaterialTheme.typography.headlineLarge,
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
-                color = Negro,
+                color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 40.dp)
             )
 
             // Botón Control Parental
             Button(
-                onClick = alClickControlParental,
+                onClick = { checkAndRequestPermissions(alClickControlParental) },
                 modifier = Modifier
                     .width(260.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(12.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00ACC1)
+                    containerColor = Color.White.copy(alpha = 0.15f)
                 )
             ) {
                 Text(
-                    text = "Control Parental",
+                    text = stringResource(R.string.home_parental_control),
                     style = MaterialTheme.typography.titleMedium,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Negro
+                    color = Color.White
                 )
             }
 
@@ -482,7 +496,7 @@ fun PantallaModosDeUso(
             // Logo del búho
             Image(
                 painter = painterResource(id = R.drawable.buho_background),
-                contentDescription = "Logo Búho",
+                contentDescription = stringResource(R.string.content_desc_owl_logo),
                 modifier = Modifier
                     .size(180.dp)
                     .padding(vertical = 20.dp)
@@ -492,26 +506,26 @@ fun PantallaModosDeUso(
 
             // Botón Hábitos Saludables
             Button(
-                onClick = alClickHabitosSaludables,
+                onClick = { checkAndRequestPermissions(alClickHabitosSaludables) },
                 modifier = Modifier
                     .width(260.dp)
                     .height(56.dp)
                     .border(
-                        width = 2.dp,
-                        color = Negro,
-                        shape = RoundedCornerShape(12.dp)
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(16.dp)
                     ),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00ACC1)
+                    containerColor = Color.White.copy(alpha = 0.15f)
                 )
             ) {
                 Text(
-                    text = "Habitos Saludables",
+                    text = stringResource(R.string.home_healthy_habits),
                     style = MaterialTheme.typography.titleMedium,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Negro
+                    color = Color.White
                 )
             }
 

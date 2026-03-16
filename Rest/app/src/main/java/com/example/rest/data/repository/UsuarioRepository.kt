@@ -24,27 +24,51 @@ class UsuarioRepository {
     sealed class Result<out T> {
         data class Success<T>(val data: T) : Result<T>()
         data class Error(val message: String) : Result<Nothing>()
+        data class NotVerified(val correo: String) : Result<Nothing>()
+        data class Requires2FA(val correo: String, val contrasena: String) : Result<Nothing>()
         object Loading : Result<Nothing>()
     }
     
     /**
      * Realizar login
+     * @param context Contexto de la aplicación para guardar preferencias
      * @param correo Correo electrónico del usuario
-     * @param contraseña Contraseña del usuario
+     * @param contraseña Contraseña del usuario en texto plano
      * @return Result con el usuario si las credenciales son correctas
      */
-    suspend fun login(correo: String, contraseña: String): Result<Usuario> {
+    suspend fun login(context: android.content.Context, correo: String, contraseña: String): Result<Usuario> {
         return withContext(Dispatchers.IO) {
             try {
-                val response = api.login(
+                // Paso 1: Buscar al usuario solo por correo
+                val response = api.verificarCorreo(
                     correo = "eq.$correo",
-                    contraseña = "eq.$contraseña"
+                    select = "*"
                 )
                 
                 if (response.isSuccessful) {
                     val usuarios = response.body()
                     if (!usuarios.isNullOrEmpty()) {
-                        Result.Success(usuarios[0])
+                        val usuario = usuarios[0]
+                        
+                        // Verificar si el correo electrónico ha sido verificado antes de permitir login
+                        if (!usuario.emailVerificado) {
+                            return@withContext Result.NotVerified(usuario.correo)
+                        }
+
+                        // Paso 2: Verificar el hash de la contraseña devuelta por BD
+                        val esValida = com.example.rest.utils.SecurityUtils.verifyPassword(contraseña, usuario.contraseña)
+                        
+                        if (esValida) {
+                            // En lugar de iniciar sesión, generamos y enviamos código 2FA
+                            val envioResult = enviarCodigo2FA(usuario.correo, usuario.nombre)
+                            if (envioResult is Result.Success) {
+                                return@withContext Result.Requires2FA(correo, contraseña)
+                            } else {
+                                return@withContext Result.Error("Error al enviar código de verificación. Intenta nuevamente.")
+                            }
+                        } else {
+                            Result.Error("Correo o contraseña incorrectos")
+                        }
                     } else {
                         Result.Error("Correo o contraseña incorrectos")
                     }
@@ -57,6 +81,276 @@ class UsuarioRepository {
         }
     }
     
+    /**
+     * Enviar código de autenticación de dos pasos (2FA) al correo del usuario
+     */
+    suspend fun enviarCodigo2FA(correo: String, nombre: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val nuevoCodigo = CodeGenerator.generateVerificationCode()
+                val nuevaExpiracion = CodeGenerator.getExpirationTime()
+
+                val updateData: Map<String, @JvmSuppressWildcards Any> = mapOf(
+                    "codigo_verificacion" to nuevoCodigo,
+                    "codigo_expiracion" to nuevaExpiracion
+                )
+
+                val updateResponse = api.actualizarCodigoVerificacion(correo = "eq.$correo", update = updateData)
+
+                if (!updateResponse.isSuccessful) {
+                    return@withContext Result.Error("Error al generar código 2FA.")
+                }
+
+                val envioExitoso = EmailService.enviarCodigo2FA(correo = correo, codigo = nuevoCodigo, nombre = nombre)
+
+                if (envioExitoso) {
+                    Result.Success("Código 2FA enviado.")
+                } else {
+                    Result.Error("Error al enviar el email.")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Reenviar código 2FA si el usuario no lo recibió.
+     */
+    suspend fun reenviarCodigo2FA(correo: String, nombre: String = "Usuario"): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Generar nuevo código 2FA en lugar del de registro normal
+                val nuevoCodigo = CodeGenerator.generateVerificationCode()
+                val nuevaExpiracion = CodeGenerator.getExpirationTime()
+
+                val updateData: Map<String, @JvmSuppressWildcards Any> = mapOf(
+                    "codigo_verificacion" to nuevoCodigo,
+                    "codigo_expiracion" to nuevaExpiracion
+                )
+
+                val updateResponse = api.actualizarCodigoVerificacion(correo = "eq.$correo", update = updateData)
+
+                if (!updateResponse.isSuccessful) {
+                    return@withContext Result.Error("Error al generar un nuevo código 2FA.")
+                }
+
+                val envioExitoso = EmailService.enviarCodigo2FA(correo = correo, codigo = nuevoCodigo, nombre = nombre)
+
+                if (envioExitoso) {
+                    Result.Success("Código 2FA reenviado al correo.")
+                } else {
+                    Result.Error("Error al reenviar el email.")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Verificar código 2FA y completar login
+     */
+    suspend fun verificarCodigo2FA(context: android.content.Context, correo: String, codigo: String): Result<Usuario> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.verificarCorreo(correo = "eq.$correo", select = "*")
+                if (!response.isSuccessful || response.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("Usuario no encontrado")
+                }
+
+                val usuario = response.body()!![0]
+                
+                if (usuario.codigoVerificacion != codigo) {
+                    return@withContext Result.Error("Código incorrecto")
+                }
+
+                val currentTime = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault()).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }.format(java.util.Date())
+
+                if (usuario.codigoExpiracion != null && usuario.codigoExpiracion < currentTime) {
+                    return@withContext Result.Error("El código ha expirado. Solicita uno nuevo.")
+                }
+
+                val nuevoToken = java.util.UUID.randomUUID().toString()
+                
+                val updateResponse = api.actualizarUsuario(id = "eq.${usuario.id}", usuario = usuario.copy(
+                    ultimoTokenSesion = nuevoToken,
+                    codigoVerificacion = null,
+                    codigoExpiracion = null
+                ))
+
+                if (updateResponse.isSuccessful) {
+                    val prefs = com.example.rest.utils.PreferencesManager(context)
+                    prefs.saveSessionToken(nuevoToken)
+                    Result.Success(usuario.copy(ultimoTokenSesion = nuevoToken))
+                } else {
+                    Result.Error("Error al validar código.")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Obtiene o genera el código de vinculación para un hijo.
+     * Si no tiene código, genera uno nuevo de 6 caracteres alfanuméricos y lo guarda en Supabase.
+     * @param idHijo ID entero del hijo en la tabla `usuario`
+     * @return Result con el código de vinculación
+     */
+    suspend fun obtenerYGenerarCodigoVinculacion(idHijo: Int): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Primero, obtener el usuario actual para ver si ya tiene código
+                val response = api.obtenerUsuarioPorId(id = "eq.$idHijo")
+                if (!response.isSuccessful || response.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("No se pudo obtener la información del usuario.")
+                }
+                val usuario = response.body()!![0]
+                
+                // Si ya tiene código de vinculación vigente, retornarlo
+                if (!usuario.codigoVinculacion.isNullOrBlank()) {
+                    return@withContext Result.Success(usuario.codigoVinculacion)
+                }
+                
+                // Si no tiene código, generar uno nuevo
+                val nuevoCodigoBase = java.util.UUID.randomUUID().toString()
+                    .replace("-", "")
+                    .uppercase()
+                    .take(5)
+                
+                // Guardarlo en Supabase
+                val updateBody = mapOf<String, Any?>("codigo_vinculacion" to nuevoCodigoBase)
+                val updateResponse = api.actualizarFotoPerfil(id = "eq.$idHijo", update = mapOf("codigo_vinculacion" to nuevoCodigoBase))
+                
+                if (updateResponse.isSuccessful) {
+                    Result.Success(nuevoCodigoBase)
+                } else {
+                    Result.Error("Error al guardar el código de vinculación.")
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+
+    suspend fun estaVinculado(idHijo: Int): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Verificar directamente si existe un registro en conexion_parentales
+                // donde el idhijo corresponda al proporcionado
+                val response = api.obtenerConexionesPorHijo(idHijo = "eq.$idHijo")
+                if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                    Result.Success(true)
+                } else {
+                    Result.Success(false)
+                }
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Obtiene la lista de hijos vinculados a un padre desde `conexion_parentales`.
+     * Para cada conexión, busca el usuario hijo y retorna sus datos.
+     * @param idPadre ID del padre
+     * @return Result con lista de Usuario (los hijos)
+     */
+    suspend fun obtenerHijosVinculados(idPadre: Int): Result<List<Usuario>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val conexionesResponse = api.obtenerConexionesPorPadre(idPadre = "eq.$idPadre")
+                if (!conexionesResponse.isSuccessful) {
+                    return@withContext Result.Error("No se pudieron cargar las conexiones.")
+                }
+                val conexiones = conexionesResponse.body() ?: emptyList()
+
+                // Para cada conexión, buscar los datos del hijo
+                val hijos = mutableListOf<Usuario>()
+                for (conexion in conexiones) {
+                    val hijoResponse = api.obtenerUsuarioPorId(id = "eq.${conexion.idHijo}")
+                    if (hijoResponse.isSuccessful && !hijoResponse.body().isNullOrEmpty()) {
+                        hijos.add(hijoResponse.body()!![0])
+                    }
+                }
+                Result.Success(hijos)
+            } catch (e: Exception) {
+                Result.Error("Error de conexión: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Vincula un hijo con el padre usando el código de vinculación del hijo.
+     * (1) Busca al hijo por su código de vinculación.
+     * (2) Hashea la contraseña parental.
+     * (3) Graba en `conexion_parentales`.
+     * (4) Borra el código de vinculación del hijo (lo marca como usado).
+     * @param idPadre ID del usuario padre.
+     * @param codigoVinculacion Código de 5 caracteres del hijo.
+     * @param contrasenaParental Contraseña libre que elige el padre (se guarda hasheada).
+     * @return Result<Unit>
+     */
+    suspend fun vincularHijo(idPadre: Int, codigoVinculacion: String, contrasenaParental: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1 — Buscar al hijo por su código de vinculación
+                val searchResponse = api.verificarCorreo(
+                    correo = "", select = "*"
+                )
+                // Usamos el endpoint genérico para buscar por codigo_vinculacion:
+                val hijoResponse = api.obtenerUsuarioPorId(
+                    id = "",
+                    select = "*"
+                )
+                // Realizamos la búsqueda directamente con el PATCH de código verificación
+                // que acepta un query param arbitrario p.e. ?codigo_vinculacion=eq.AB45XC
+                // Como no tenemos endpoint específico aún, hacemos GET con el filtro de código
+                val busquedaResponse = api.buscarPorCodigoVinculacion(codigoVinculacion = "eq.${codigoVinculacion.uppercase()}")
+
+                if (!busquedaResponse.isSuccessful || busquedaResponse.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("Código de vinculación incorrecto o ya fue usado.")
+                }
+
+                val hijo = busquedaResponse.body()!![0]
+                val idHijo = hijo.id ?: return@withContext Result.Error("Error obteniendo el ID del hijo.")
+
+                // 2 — No vincular si ya está vinculado con alguien
+                val yaVinculado = api.obtenerConexionesPorHijo(idHijo = "eq.$idHijo")
+                if (yaVinculado.isSuccessful && !yaVinculado.body().isNullOrEmpty()) {
+                    return@withContext Result.Error("Este hijo ya está vinculado con un padre.")
+                }
+
+                // 3 — Hashear la contraseña parental
+                val contrasenaHash = com.example.rest.utils.SecurityUtils.hashPassword(contrasenaParental)
+
+                // 4 — Guardar la conexión
+                val conexion = com.example.rest.data.models.ConexionParental(
+                    idPadre = idPadre,
+                    idHijo = idHijo,
+                    contrasenaSegura = contrasenaHash
+                )
+                val saveResponse = api.crearConexionParental(conexion)
+                if (!saveResponse.isSuccessful) {
+                    return@withContext Result.Error("Error al guardar la conexión parental.")
+                }
+
+                // 5 — Borrar el código de vinculación del hijo (marcar como usado)
+                api.actualizarFotoPerfil(
+                    id = "eq.$idHijo",
+                    update = mapOf("codigo_vinculacion" to null, "codigo_vinculacion_expiracion" to null)
+                )
+
+                Result.Success(Unit)
+            } catch (e: Exception) {
+                Result.Error("Error al vincular: ${e.message}")
+            }
+        }
+    }
+
     /**
      * Registrar nuevo usuario
      * @param request Datos del usuario a registrar
@@ -82,7 +376,9 @@ class UsuarioRepository {
                         Result.Error("Error al crear el usuario")
                     }
                 } else {
-                    Result.Error("Error en el servidor: ${response.code()}")
+                    val errorBody = response.errorBody()?.string()
+                    android.util.Log.e("UsuarioRepository", "Ocurrió un error (400) al registrar: $errorBody")
+                    Result.Error("Error en el servidor: ${response.code()} - ${errorBody ?: "Desconocido"}")
                 }
             } catch (e: Exception) {
                 Result.Error("Error de conexión: ${e.message}")

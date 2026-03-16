@@ -590,9 +590,13 @@ fun PantallaHorasDescanso(
 
     // Gradiente del fondo: de Primario (arriba) a cian claro (abajo)
     val brochaGradiente = Brush.linearGradient(
-        colors = listOf(Primario, Color(0xFF80DEEA)),
+        colors = listOf(
+            Color(0xFF0D47A1),   // Azul profundo
+            Color(0xFF00838F),   // Teal
+            Color(0xFF00BFA5)    // Verde menta
+        ),
         start = Offset(0f, 0f),
-        end = Offset(0f, 2000f)
+        end = Offset(1000f, 2000f)
     )
 
     /**
@@ -613,15 +617,15 @@ fun PantallaHorasDescanso(
                     Text(
                         "Horas de Descanso",
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Blanco
+                        color = Color.White
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, "Regresar", tint = Blanco)
+                        Icon(Icons.Default.ArrowBack, "Regresar", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Primario)
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = Color.Transparent)
             )
         },
         floatingActionButton = {

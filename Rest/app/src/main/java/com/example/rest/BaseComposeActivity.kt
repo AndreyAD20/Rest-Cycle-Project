@@ -6,25 +6,41 @@ import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
+ cristian-alvarado
 import android.util.Log
 import androidx.activity.ComponentActivity
+=======
+import androidx.appcompat.app.AppCompatActivity
+ main
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 
 /**
  * Actividad base para todas las actividades Compose del proyecto.
  * - Configura automáticamente el modo edge-to-edge y oculta las barras del sistema.
  * - Crea todos los canales de notificación necesarios (idempotente — se puede llamar N veces).
  */
+ cristian-alvarado
 abstract class BaseComposeActivity : ComponentActivity() {
 
+=======
+abstract class BaseComposeActivity : AppCompatActivity() {
+    
+    private var escaladoFuenteActual: Float = 1.0f
+    
+ main
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        aplicarIdiomaGuardado()
+        escaladoFuenteActual = com.example.rest.utils.ThemeManager.getFontSizeScale(this)
         configurarPantallaCompleta()
         inicializarCanalesNotificacion()
     }
+ cristian-alvarado
 
     /**
      * Crea todos los canales de notificación de la app.
@@ -77,6 +93,29 @@ abstract class BaseComposeActivity : ComponentActivity() {
         }
     }
 
+=======
+    
+    private fun aplicarIdiomaGuardado() {
+        val sharedPrefs = getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+        val idiomaSeleccionado = sharedPrefs.getString("IDIOMA", "Español") ?: "Español"
+        val code = when (idiomaSeleccionado) {
+            "English" -> "en"
+            "Português" -> "pt"
+            else -> "es"
+        }
+        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(code))
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Si el tamaño de la fuente fue modificado en configuraciones, recargar la pantalla
+        val nuevaEscala = com.example.rest.utils.ThemeManager.getFontSizeScale(this)
+        if (nuevaEscala != escaladoFuenteActual) {
+            recreate()
+        }
+    }
+    
+ main
     /**
      * Configura el modo de pantalla completa ocultando las barras del sistema.
      */
