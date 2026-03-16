@@ -12,7 +12,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import com.example.rest.ui.theme.Fondo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +24,8 @@ import androidx.lifecycle.lifecycleScope
 import com.example.rest.BaseComposeActivity
 import com.example.rest.data.models.RegistroRequest
 import com.example.rest.data.repository.UsuarioRepository
+import androidx.compose.ui.res.stringResource
+import com.example.rest.R
 import com.example.rest.ui.theme.*
 import com.example.rest.ui.components.inputs.CampoFechaAutoFormato
 import kotlinx.coroutines.launch
@@ -59,16 +60,16 @@ class CrearHijoActivity : BaseComposeActivity() {
     private fun crearCuentaHijo(request: RegistroRequest, securityPass: String, onComplete: () -> Unit) {
         val idPadre = obtenerIdUsuarioLogueado()
         if (idPadre == -1) {
-            Toast.makeText(this, "Error: No se pudo identificar al padre (sesión inválida)", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.err_parental_session_invalid), Toast.LENGTH_SHORT).show()
             onComplete()
             return
         }
 
         lifecycleScope.launch {
             try {
-                when (val result = usuarioRepository.crearHijo(idPadre, request, securityPass)) {
+                when (val result = usuarioRepository.crearHijo(this@CrearHijoActivity, idPadre, request, securityPass)) {
                     is UsuarioRepository.Result.Success<*> -> {
-                        Toast.makeText(this@CrearHijoActivity, "✅ Código enviado a ${request.correo}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@CrearHijoActivity, getString(R.string.toast_code_sent_to, request.correo), Toast.LENGTH_LONG).show()
                         
                         // Ir a la pantalla de verificación
                         val intent = Intent(this@CrearHijoActivity, com.example.rest.features.auth.VerificacionCodigoActivity::class.java)
@@ -78,12 +79,12 @@ class CrearHijoActivity : BaseComposeActivity() {
                         finish() // Cerramos esta, el usuario seguirá en verificación
                     }
                     is UsuarioRepository.Result.Error -> {
-                        Toast.makeText(this@CrearHijoActivity, "❌ ${result.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@CrearHijoActivity, getString(R.string.toast_error_generic, result.message), Toast.LENGTH_LONG).show()
                     }
                     else -> {}
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@CrearHijoActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@CrearHijoActivity, getString(R.string.toast_error_generic, e.message ?: ""), Toast.LENGTH_SHORT).show()
             } finally {
                 onComplete()
             }
@@ -114,10 +115,10 @@ fun PantallaCrearHijo(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Crear Cuenta de Hijo") },
+                title = { Text(stringResource(R.string.create_child_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.content_desc_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Primario)
@@ -135,41 +136,41 @@ fun PantallaCrearHijo(
         ) {
             OutlinedTextField(
                 value = nombre, onValueChange = { nombre = it },
-                label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth()
+                label = { Text(stringResource(R.string.label_name)) }, modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = apellido, onValueChange = { apellido = it },
-                label = { Text("Apellido") }, modifier = Modifier.fillMaxWidth()
+                label = { Text(stringResource(R.string.label_lastname)) }, modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = correo, onValueChange = { correo = it.trim() },
-                label = { Text("Correo Electrónico") }, modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.label_email)) }, modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
             Spacer(modifier = Modifier.height(8.dp))
             CampoFechaAutoFormato(
                 value = fechaNacimiento,
                 onValueChange = { fechaNacimiento = it },
-                label = "Fecha Nacimiento (YYYY-MM-DD)",
+                label = stringResource(R.string.label_birthdate_format),
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = contrasena, onValueChange = { contrasena = it },
-                label = { Text("Contraseña de Login (Hijo)") }, modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.label_login_password_child)) }, modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
             Spacer(modifier = Modifier.height(16.dp))
             
-            Text("Seguridad Parental", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-            Text("Esta contraseña se usará para autorizar cambios.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text(stringResource(R.string.security_parental_title), style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            Text(stringResource(R.string.security_parental_subtitle), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             
             OutlinedTextField(
                 value = contrasenaSegura, onValueChange = { contrasenaSegura = it },
-                label = { Text("Contraseña de Seguridad") }, modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.label_security_password)) }, modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
             )
@@ -179,19 +180,19 @@ fun PantallaCrearHijo(
             Button(
                 onClick = {
                     if (nombre.isNotBlank() && !nombre.matches("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$".toRegex())) {
-                        android.widget.Toast.makeText(context, "El nombre solo debe contener letras", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.err_name_letters_only), android.widget.Toast.LENGTH_SHORT).show()
                         return@Button
                     }
                     if (apellido.isNotBlank() && !apellido.matches("^[a-zA-ZáéíóúÁÉÍÓÚñÑ\\s]+$".toRegex())) {
-                        android.widget.Toast.makeText(context, "El apellido solo debe contener letras", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.err_lastname_letters_only), android.widget.Toast.LENGTH_SHORT).show()
                         return@Button
                     }
                     if (!com.example.rest.utils.SecurityUtils.isValidEmailDomain(correo)) {
-                        android.widget.Toast.makeText(context, "Ingresa un correo válido (ej: usuario@gmail.com)", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.err_invalid_email_format_v2), android.widget.Toast.LENGTH_SHORT).show()
                         return@Button
                     }
                     if (!com.example.rest.utils.SecurityUtils.isValidPassword(contrasenaSegura)) {
-                        android.widget.Toast.makeText(context, "La contraseña segura debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial", android.widget.Toast.LENGTH_LONG).show()
+                        android.widget.Toast.makeText(context, context.getString(R.string.err_parental_password_format), android.widget.Toast.LENGTH_LONG).show()
                         return@Button
                     }
                     // Convertir fecha de dígitos (YYYYMMDD) a formato YYYY-MM-DD
@@ -216,7 +217,7 @@ fun PantallaCrearHijo(
                 enabled = !cargando && nombre.isNotBlank() && correo.isNotBlank() && contrasena.isNotBlank() && contrasenaSegura.isNotBlank()
             ) {
                 if (cargando) CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
-                else Text("Crear y Vincular Cuenta", color = Color.Black)
+                else Text(stringResource(R.string.btn_create_and_link), color = Color.Black)
             }
         }
     }

@@ -107,7 +107,7 @@ class LoginComposeActivity : BaseComposeActivity() {
                     AlertDialog(
                         onDismissRequest = { showVerificationDialog = false },
                         title = { Text(stringResource(R.string.verify_email_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
-                        text = { Text("Tu cuenta aún no ha sido verificada. Debes ingresar el código que enviamos a tu correo para poder iniciar sesión.") },
+                        text = { Text(stringResource(R.string.login_unverified_account_msg)) },
                         confirmButton = {
                             Button(
                                 onClick = {
@@ -120,7 +120,7 @@ class LoginComposeActivity : BaseComposeActivity() {
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = Primario)
                             ) {
-                                Text("Verificar ahora")
+                                Text(stringResource(R.string.login_verify_now))
                             }
                         },
                         dismissButton = {
@@ -137,10 +137,10 @@ class LoginComposeActivity : BaseComposeActivity() {
                             show2FADialog = false 
                             code2FA = ""
                         },
-                        title = { Text("Verificación en dos pasos", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+                        title = { Text(stringResource(R.string.two_factor_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
                         text = {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Hemos enviado un código a tu correo para confirmar tu identidad. Por favor, ingrésalo a continuación:")
+                                Text(stringResource(R.string.two_factor_msg))
                                 Spacer(modifier = Modifier.height(16.dp))
                                 OtpInputField(
                                     otpValue = code2FA,
@@ -149,9 +149,9 @@ class LoginComposeActivity : BaseComposeActivity() {
                                 Spacer(modifier = Modifier.height(16.dp))
                                 
                                 val resendText = if (tiempoRestante > 0) {
-                                    "Reenviar código en $tiempoRestante s"
+                                    stringResource(R.string.two_factor_resend_countdown, tiempoRestante)
                                 } else {
-                                    "¿No recibiste el código? Reenviar"
+                                    stringResource(R.string.btn_resend_code)
                                 }
 
                                 Text(
@@ -165,7 +165,7 @@ class LoginComposeActivity : BaseComposeActivity() {
                                         cargando = true
                                         tiempoRestante = 30
                                         lifecycleScope.launch {
-                                            when (val resendResult = usuarioRepository.reenviarCodigo2FA(unverifiedEmail)) {
+                                            when (val resendResult = usuarioRepository.reenviarCodigo2FA(this@LoginComposeActivity, unverifiedEmail)) {
                                                 is UsuarioRepository.Result.Success -> {
                                                     Toast.makeText(this@LoginComposeActivity, resendResult.data, Toast.LENGTH_SHORT).show()
                                                 }
@@ -188,35 +188,39 @@ class LoginComposeActivity : BaseComposeActivity() {
                                         lifecycleScope.launch {
                                             val verifyResult = usuarioRepository.verificarCodigo2FA(this@LoginComposeActivity, unverifiedEmail, code2FA)
                                             cargando = false
-                                            if (verifyResult is UsuarioRepository.Result.Success) {
-                                                show2FADialog = false
-                                                val usuario = verifyResult.data
-                                                Toast.makeText(
-                                                    this@LoginComposeActivity,
-                                                    getString(R.string.toast_welcome, usuario.nombre),
-                                                    Toast.LENGTH_LONG
-                                                ).show()
+                                            when (verifyResult) {
+                                                is UsuarioRepository.Result.Success -> {
+                                                    show2FADialog = false
+                                                    val usuario = verifyResult.data
+                                                    Toast.makeText(
+                                                        this@LoginComposeActivity,
+                                                        getString(R.string.toast_welcome, usuario.nombre),
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
 
-                                                val preferencesManager = com.example.rest.utils.PreferencesManager(this@LoginComposeActivity)
-                                                preferencesManager.saveUserName(usuario.nombre)
-                                                preferencesManager.saveUserId(usuario.id ?: -1)
-                                                preferencesManager.saveUserEmail(unverifiedEmail)
-                                                preferencesManager.saveMayorEdad(usuario.mayorEdad)
+                                                    val preferencesManager = com.example.rest.utils.PreferencesManager(this@LoginComposeActivity)
+                                                    preferencesManager.saveUserName(usuario.nombre)
+                                                    preferencesManager.saveUserId(usuario.id ?: -1)
+                                                    preferencesManager.saveUserEmail(unverifiedEmail)
+                                                    preferencesManager.saveMayorEdad(usuario.mayorEdad)
 
-                                                val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
-                                                startActivity(intencion)
-                                                finish()
-                                            } else if (verifyResult is UsuarioRepository.Result.Error) {
-                                                Toast.makeText(this@LoginComposeActivity, verifyResult.message, Toast.LENGTH_SHORT).show()
+                                                    val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
+                                                    startActivity(intencion)
+                                                    finish()
+                                                }
+                                                is UsuarioRepository.Result.Error -> {
+                                                    Toast.makeText(this@LoginComposeActivity, verifyResult.message, Toast.LENGTH_LONG).show()
+                                                }
+                                                else -> {}
                                             }
                                         }
                                     } else {
-                                        Toast.makeText(this@LoginComposeActivity, "Ingresa los 6 dígitos", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(this@LoginComposeActivity, getString(R.string.err_enter_6_digits), Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = Primario)
                             ) {
-                                Text("Verificar")
+                                Text(stringResource(R.string.btn_verify))
                             }
                         },
                         dismissButton = {
@@ -443,7 +447,7 @@ fun PantallaLogin(
             // Logo del búho
             Image(
                 painter = painterResource(id = R.drawable.buho_background),
-                contentDescription = "Logo Búho",
+                contentDescription = stringResource(R.string.content_desc_owl_logo),
                 modifier = Modifier
                     .size(150.dp)
                     .padding(bottom = 40.dp)

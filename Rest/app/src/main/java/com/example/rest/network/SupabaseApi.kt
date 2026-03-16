@@ -555,7 +555,7 @@ interface SupabaseApi {
     @POST("historial_ubicacion")
     suspend fun guardarHistorialUbicacion(
         @Body historial: HistorialUbicacionInput
-    ): Response<List<Void>>
+    ): Response<List<HistorialUbicacion>>
 
     /**
      * Obtener la última ubicación registrada de un usuario (hijo)

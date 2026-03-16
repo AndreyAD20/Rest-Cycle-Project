@@ -369,7 +369,7 @@
     <string name="profile_verify_email_error">❌ Código incorrecto, intenta de nuevo</string>
     <string name="toast_invalid_email_format">El correo no parece válido (ej: nombre@dominio.com)</string>
     <string name="toast_sending_code">Enviando código...</string>
-    <string name="toast_code_sent_to">Código enviado a %1$s</string>
+    <string name="toast_code_sent_to">✅ Código enviado a %1$s</string>
     <string name="toast_code_send_error">Error enviando código: %1$s</string>
     <string name="dialog_verify_resend">Reenviar código</string>
 
@@ -381,7 +381,100 @@
     <string name="verify_email_title">Verificación de Email</string>
     <string name="verify_email_sent_to">Hemos enviado un código de 6 dígitos a:</string>
     <string name="verify_email_code_placeholder">Código de 6 dígitos</string>
-    <string name="btn_verify">Verificar</string>
-    <string name="btn_resend_code">¿No recibiste el código? Reenviar</string>
+    <string name="err_enter_6_digits">Ingresa los 6 dígitos</string>
 
+    <!-- Errores de Autenticación y Repositorio -->
+    <string name="err_invalid_credentials">Correo o contraseña incorrectos</string>
+    <string name="err_user_not_found">Usuario no encontrado</string>
+    <string name="err_server_error_code">Error en el servidor: %1$d</string>
+    <string name="err_server_error_msg">Error en el servidor: %1$s</string>
+    <string name="err_network_error_msg">Error de conexión: %1$s</string>
+    <string name="err_email_already_registered">El correo ya está registrado</string>
+    <string name="err_code_incorrect">Código incorrecto</string>
+    <string name="err_code_expired">El código ha expirado. Solicita uno nuevo.</string>
+    <string name="err_no_pending_code">No hay código de verificación pendiente</string>
+    <string name="err_user_already_verified">El usuario ya está verificado</string>
+    <string name="err_email_send_failure">Error al enviar el email</string>
+    <string name="err_code_generation_failure">Error al generar código de verificación</string>
+    <string name="err_vinculacion_invalid">Código de vinculación incorrecto o ya fue usado</string>
+    <string name="err_already_linked">Este hijo ya está vinculado con un padre</string>
+    <string name="err_save_conexion_failure">Error al guardar la conexión parental</string>
+    <string name="err_create_user_failure">Error al crear el usuario</string>
+    <string name="err_update_user_failure">Error al actualizar el usuario</string>
+    <string name="err_email_send_detailed">No se pudo enviar el correo de verificación. Por favor verifica que el correo sea válido o intenta más tarde.</string>
+    <string name="toast_register_success">Registro exitoso. Hemos enviado un código de verificación a su correo.</string>
+    <string name="toast_2fa_sent">Código 2FA enviado.</string>
+    <string name="toast_2fa_resent">Código 2FA reenviado al correo.</string>
+    <string name="login_unverified_account_msg">Tu cuenta aún no ha sido verificada. ¿Deseas verificarla ahora?</string>
+    <string name="login_verify_now">Verificar ahora</string>
+    <string name="two_factor_title">Verificación en dos pasos</string>
+    <string name="two_factor_msg">Se ha enviado un código de seguridad a tu correo. Por favor, ingrésalo para continuar.</string>
+    <string name="two_factor_resend_countdown">Reenviar en %1$ds</string>
+    <string name="btn_resend_code">Reenviar Código</string>
+    <string name="btn_verify">Verificar</string>
+    <string name="btn_back">Regresar</string>
+    <string name="content_desc_refresh">Actualizar</string>
+
+    <!-- Mensajes Genéricos de Servidor / Errores -->
+    <string name="toast_error_generic">❌ Error: %1$s</string>
+    <string name="toast_code_resent_success">✅ Código reenviado exitosamente. Revisa tu correo.</string>
+
+    <!-- Control Parental / Gestión de Hijos -->
+    <string name="parental_control_title">Control Parental</string>
+    <string name="parental_control_subtitle">Gestiona los Dispositivos\nde tus Hijos</string>
+    <string name="btn_link_new_user">Enlazar Nuevo Usuario</string>
+    <string name="loading_linked_children">Cargando hijos vinculados...</string>
+    <string name="no_children_linked">No tienes hijos vinculados todavía</string>
+    <string name="link_child_instruction">Toca \"Enlazar Nuevo Usuario\" para agregar a tu hijo</string>
+    
+    <!-- Vincular Hijo -->
+    <string name="link_child_title">Vincular Hijo</string>
+    <string name="link_child_code_instruction">Ingresa el código que aparece\nen la app de tu hijo/a</string>
+    <string name="link_child_code_label">Código de vinculación</string>
+    <string name="link_child_code_placeholder">Ej: AB4XC</string>
+    <string name="parental_password_label">Contraseña de control parental</string>
+    <string name="parental_password_placeholder">Nueva contraseña segura</string>
+    <string name="parental_password_confirm_label">Confirmar contraseña</string>
+    <string name="link_child_info_banner">El código de vinculación solo puede usarse una vez. Pídele a tu hijo que abra la app Rest Cycle para obtener su código.</string>
+    <string name="err_code_length">El código debe tener exactamente 5 caracteres</string>
+    <string name="err_parental_password_format">La contraseña parental debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 carácter especial</string>
+    <string name="toast_child_linked_success">✅ ¡Hijo vinculado correctamente!</string>
+
+    <!-- Crear Hijo (Padre) -->
+    <string name="create_child_title">Crear Cuenta de Hijo</string>
+    <string name="label_name">Nombre</string>
+    <string name="label_lastname">Apellido</string>
+    <string name="label_email">Correo Electrónico</string>
+    <string name="label_birthdate_format">Fecha Nacimiento (YYYY-MM-DD)</string>
+    <string name="label_login_password_child">Contraseña de Login (Hijo)</string>
+    <string name="security_parental_title">Seguridad Parental</string>
+    <string name="security_parental_subtitle">Esta contraseña se usará para autorizar cambios.</string>
+    <string name="label_security_password">Contraseña de Seguridad</string>
+    <string name="btn_create_and_link">Crear y Vincular Cuenta</string>
+
+    <string name="err_name_letters_only">El nombre solo debe contener letras</string>
+    <string name="err_lastname_letters_only">El apellido solo debe contener letras</string>
+    <string name="err_invalid_email_format_v2">Ingresa un correo válido (ej: usuario@gmail.com)</string>
+    <string name="err_parental_session_invalid">Error: No se pudo identificar al padre (sesión inválida)</string>
+
+    <!-- Enlace Hijo (Hijo) -->
+    <string name="tracking_permanent_active">✅ Rastreo permanente activado.</string>
+    <string name="tracking_permission_missing">⚠️ Sin permiso permanente: el rastreo se detendrá al cerrar la app.</string>
+    <string name="location_permission_missing_msg">Sin permiso de ubicación: tu padre no podrá ver dónde estás.</string>
+    <string name="dialog_permanent_tracking_title">Rastreo Permanente</string>
+    <string name="dialog_permanent_tracking_msg">Para que tu padre pueda ver tu ubicación incluso cuando la aplicación está cerrada o el teléfono bloqueado, debes seleccionar la opción \"Permitir todo el tiempo\" en la siguiente pantalla.</string>
+    <string name="btn_understood">Entendido</string>
+
+    <string name="toast_already_linked_hijo">✅ ¡Ya estás vinculado con tu padre!</string>
+    <string name="toast_not_yet_linked">⏳ Aún no estás vinculado. Muéstrale el código a tu padre.</string>
+    <string name="loading_info">Cargando tu información...</string>
+    <string name="link_status_not_connected">¡Hola! Aún no estás\nconectado con tu familia</string>
+    <string name="link_instruction_hijo">Muéstrale este código a tu padre o tutor para que te agregue desde su aplicación:</string>
+    <string name="your_link_code">Tu código de vinculación</string>
+    <string name="no_connection">⚠ Sin conexión</string>
+    <string name="code_expires_msg">Este código expira una vez que te vinculen</string>
+    <string name="btn_check_link_status">¿Ya te vincularon? Verificar</string>
+    <string name="panel_linked_title">¡Estás vinculado!</string>
+    <string name="panel_linked_msg">Tu familia puede ver y gestionar tus actividades desde su aplicación.</string>
+    <string name="panel_linked_supervision_msg">Tu dispositivo está siendo supervisado. Actúa con responsabilidad.</string>
 </resources>
