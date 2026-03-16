@@ -108,8 +108,31 @@ fun showDownloadNotification(context: Context, uri: android.net.Uri) {
         .setContentTitle(context.getString(R.string.notif_report_downloaded_title))
         .setContentText(context.getString(R.string.notif_report_downloaded_text))
         .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        .setCategory(NotificationCompat.CATEGORY_MESSAGE)
         .setContentIntent(pendingIntent)
         .setAutoCancel(true)
+
+    val textContent = "Toca para abrir el reporte PDF"
+    
+    // ── Fase 4: Centralizar en el Historial del Asistente (Burbuja Rest Cycle) ──
+    com.example.rest.data.NotificationRepository.addNotification(
+        title = "Informe Descargado",
+        message = textContent,
+        category = "Notificación de Estadísticas",
+        sourceClass = "com.example.rest.features.habits.EstadisticasComposeActivity"
+    )
+    // Forzamos levantar el globo flotante
+    com.example.rest.ChatHeadManager.showChat(context, "rest_cycle_assistant", "Asistente Rest Cycle")
+
+    // Añadimos configuración de Burbuja
+    val bubbleData = com.example.rest.utils.BubbleHelper.createBubbleMetadata(context, pendingIntent)
+    if (bubbleData != null) {
+        builder.setBubbleMetadata(bubbleData)
+        val person = com.example.rest.utils.BubbleHelper.createBotPerson()
+        builder.addPerson(person)
+        builder.setStyle(NotificationCompat.MessagingStyle(person)
+            .addMessage(textContent, System.currentTimeMillis(), person))
+    }
 
     try {
         if (androidx.core.content.ContextCompat.checkSelfPermission(

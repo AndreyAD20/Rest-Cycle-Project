@@ -7,10 +7,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+ cristian-alvarado
+import androidx.compose.material.icons.filled.Lightbulb
+=======
 import androidx.compose.material.icons.automirrored.filled.Logout
+ main
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +36,8 @@ import androidx.compose.ui.unit.sp
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import androidx.compose.ui.platform.LocalContext
+import com.example.rest.data.GeneradorContenidoMock
+import com.example.rest.data.PreferenciasInteresManager
 import com.example.rest.ui.theme.*
 
 class InicioComposeActivity : BaseComposeActivity() {
@@ -50,6 +60,12 @@ class InicioComposeActivity : BaseComposeActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Iniciar el servicio de notificaciones periódicas si ya se han elegido temas
+        if (com.example.rest.data.PreferenciasInteresManager.obtenerTemas(this).isNotEmpty()) {
+            com.example.rest.services.TopicNotificationService.startService(this)
+        }
+        
         setContent {
             val isDarkMode = com.example.rest.utils.ThemeManager.isDarkMode(this)
             TemaRest(temaOscuro = isDarkMode) {
@@ -78,6 +94,10 @@ class InicioComposeActivity : BaseComposeActivity() {
                     alClickHabitosSaludables = {
                         // Navegar a Perfil
                         val intent = Intent(this, com.example.rest.features.home.HabitosInicioComposeActivity::class.java)
+                        startActivity(intent)
+                    },
+                    alClickTemasInteres = {
+                        val intent = Intent(this, com.example.rest.features.tools.TemasInteresComposeActivity::class.java)
                         startActivity(intent)
                     },
                     onRequestNotificationPermission = {
@@ -184,11 +204,32 @@ fun PantallaModosDeUso(
     alClickConfiguracion: () -> Unit,
     alClickControlParental: () -> Unit,
     alClickHabitosSaludables: () -> Unit,
+    alClickTemasInteres: () -> Unit,
     onRequestNotificationPermission: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showNotificationPermissionDialog by remember { mutableStateOf(false) }
+    var showBubblePermissionDialog by remember { mutableStateOf(false) }
+    
+    // Variable para controlar la animación del Tooltip de 7 segundos
+    var showTooltip by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1000) // 1 segundo antes de aparecer
+        showTooltip = true
+        kotlinx.coroutines.delay(7000) // Se queda por 7 segundos
+        showTooltip = false
+    }
+
+    // Función auxiliar para verificar si las burbujas están activas
+    fun areBubblesEnabled(): Boolean {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
+            return notificationManager.areBubblesAllowed()
+        }
+        return true // Para versiones anteriores a Android 11, devolvemos true porque no requieren permiso
+    }
 
     // Acción pendiente para ejecutar después de otorgar permisos
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -219,6 +260,11 @@ fun PantallaModosDeUso(
                 // Android < 13
                 com.example.rest.services.AppMonitorService.startService(context)
                 action()
+            }
+            
+            // Verificamos si las burbujas están habilitadas
+            if (!areBubblesEnabled()) {
+                showBubblePermissionDialog = true
             }
         }
     }
@@ -316,7 +362,41 @@ fun PantallaModosDeUso(
         )
     }
 
+ cristian-alvarado
+    // Diálogo persuasivo para las Burbujas (Android 11+)
+    if (showBubblePermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showBubblePermissionDialog = false },
+            title = { Text("Habilitar Burbujas Flotantes") },
+            text = { Text("Rest Cycle usa burbujas interactivas para mostrar los reportes y recordatorios de tareas de manera amigable.\n\nPor favor, dirígete a las configuraciones de la aplicación, busca 'Burbujas' o 'Bubbles' y selecciona 'Todas las conversaciones pueden mostrar burbujas'.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showBubblePermissionDialog = false
+                        val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                            putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text("Abrir Ajustes")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showBubblePermissionDialog = false }
+                ) {
+                    Text("Más Tarde")
+                }
+            }
+        )
+    }
+
+    // Gradiente de fondo cyan/turquesa
+=======
     // Gradiente de fondo estilo Hijo (Azul profundo -> Teal -> Verde menta)
+ main
     val brochaGradiente = Brush.linearGradient(
         colors = listOf(
             Color(0xFF0D47A1),   // Azul profundo
@@ -364,11 +444,17 @@ fun PantallaModosDeUso(
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.Top,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 32.dp, vertical = 80.dp) // Padding top para no solapar los botones superiores
         ) {
+            // Sección Dinámica "Para Ti" basada en los Temas de Interés
+            SeccionParaTi(alClickTemasInteres = alClickTemasInteres)
+            
+            Spacer(modifier = Modifier.height(20.dp))
+
             // Título "Modos de Uso"
             Text(
                 text = stringResource(R.string.home_usage_modes),
@@ -442,6 +528,146 @@ fun PantallaModosDeUso(
                     color = Color.White
                 )
             }
+
+            Spacer(modifier = Modifier.height(40.dp))
         }
+
+        // Botón Temas de Interés (Bombillo) Flotante Arriba a la Derecha con Tooltip
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 80.dp, end = 16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Tooltip animado que dura visible 7 segundos
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showTooltip,
+                    enter = androidx.compose.animation.fadeIn(
+                        animationSpec = androidx.compose.animation.core.tween(500)
+                    ) + androidx.compose.animation.expandHorizontally(
+                        expandFrom = Alignment.End, 
+                        animationSpec = androidx.compose.animation.core.tween(500)
+                    ),
+                    exit = androidx.compose.animation.fadeOut(
+                        animationSpec = androidx.compose.animation.core.tween(500)
+                    ) + androidx.compose.animation.shrinkHorizontally(
+                        shrinkTowards = Alignment.End, 
+                        animationSpec = androidx.compose.animation.core.tween(500)
+                    )
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .widthIn(max = 200.dp)
+                            .padding(end = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp, bottomEnd = 16.dp, topEnd = 4.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Personaliza tu experiencia",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Toca aquí para elegir tus Temas de Interés y ver contenido adaptado a ti.",
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // Bombillo ajustado de tamaño
+                IconButton(
+                    onClick = {
+                        showTooltip = false // Lo ocultamos al tocar
+                        alClickTemasInteres()
+                    },
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(Color(0xFFFFF59D).copy(alpha = 0.9f), Color.Transparent),
+                                radius = 120f
+                            ),
+                            shape = androidx.compose.foundation.shape.CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lightbulb,
+                        contentDescription = "Temas de Interés",
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SeccionParaTi(alClickTemasInteres: () -> Unit) {
+    val context = LocalContext.current
+    var temasElegidos by remember { mutableStateOf(PreferenciasInteresManager.obtenerTemas(context)) }
+    var fraseDelDia by remember { mutableStateOf("") }
+    
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                // Actualizar temas elegidos y generar nueva frase cada vez que la pantalla vuelve al frente
+                temasElegidos = PreferenciasInteresManager.obtenerTemas(context)
+                if (temasElegidos.isNotEmpty()) {
+                    fraseDelDia = GeneradorContenidoMock.generarFraseMotivacional(temasElegidos)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (temasElegidos.isNotEmpty() && fraseDelDia.isNotEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = "Para ti",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Negro
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Frase motivacional
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "\"$fraseDelDia\"",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        // Si la lista de temas está vacía, no mostramos nada en esta sección ya que el bombillo flotante 
+        // superior se encarga de recordarle al usuario configurar sus temas.
     }
 }
