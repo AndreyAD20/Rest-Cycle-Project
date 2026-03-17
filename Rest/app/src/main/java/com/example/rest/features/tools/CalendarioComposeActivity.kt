@@ -132,14 +132,8 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
 
     // ── Cargar eventos del usuario ───────────────────────────────────────────
     LaunchedEffect(Unit) {
-cristian-alvarado
-        val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-        val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
-=======
         val prefs = com.example.rest.utils.PreferencesManager(context)
         val idUsuario = prefs.getUserId()
-        
- main
         if (idUsuario != -1) {
             withContext(Dispatchers.IO) {
                 try {
@@ -200,55 +194,6 @@ cristian-alvarado
                     }
                 },
                 actions = {
-                    // ── Botón Chat Head (Overlay) ───────────────────────────────────────
-                    IconButton(onClick = {
-                        try {
-                            ChatHeadManager.showChat(context, "chat_01", "Conversación 01")
-                        } catch (e: Exception) {
-                            val msg = "ERROR Overlay: ${e.message}"
-                            Log.e("CalendarioDEBUG", msg, e)
-                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                        }
-                    }) {
-                        Text("💬", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-                    }
-
-                    // ── Botón diagnóstico (Burbuja Nativa) ──────────────────────────────
-                    IconButton(onClick = {
-                        try {
-                            val nm = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE)
-                                    as android.app.NotificationManager
-
-                            // ── Estado del permiso de burbujas ────────────────────────────
-                            val prefMsg = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                when (nm.bubblePreference) {
-                                    NotificationManager.BUBBLE_PREFERENCE_ALL      -> "🟢 ALL — burbujas activas"
-                                    NotificationManager.BUBBLE_PREFERENCE_SELECTED -> "🟡 SELECTED — debes activar en Ajustes"
-                                    NotificationManager.BUBBLE_PREFERENCE_NONE     -> "🔴 NONE — burbujas desactivadas"
-                                    else -> "❓ pref=${nm.bubblePreference}"
-                                }
-                            } else "Android < 12"
-
-                            Log.d("CalendarioDEBUG", "BubblePref: $prefMsg")
-                            Toast.makeText(context, prefMsg, Toast.LENGTH_LONG).show()
-
-                            // ── Notificación con BubbleMetadata desde primer plano ────────
-                            EventoNotificationManager.showEventoNotification(
-                                context = context,
-                                notifId = 88888,
-                                titulo  = "Prueba Burbuja 🫧",
-                                tipo    = "Test"
-                            )
-
-                        } catch (e: Exception) {
-                            val msg = "ERROR: ${e.javaClass.simpleName}: ${e.message}"
-                            Log.e("CalendarioDEBUG", msg, e)
-                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                        }
-                    }) {
-                        Text("🧪", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-                    }
-
                     // Botón para alternar vista
                     IconButton(onClick = {
                         vistaActual = if (vistaActual == "dia") "lista" else "dia"
@@ -329,15 +274,8 @@ cristian-alvarado
                     onConfirmar = { titulo, tipo, inicioIso, finIso, lat, long ->
                         mostrarDialogo = false
                         scope.launch(Dispatchers.IO) {
-cristian-alvarado
-                            val sharedPref = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
-                            val idUsuario = sharedPref.getInt("ID_USUARIO", -1)
-
-=======
                             val prefs = com.example.rest.utils.PreferencesManager(context)
                             val idUsuario = prefs.getUserId()
-                            
-main
                             if (idUsuario != -1) {
                                 try {
                                     if (eventoAEditar != null) {
@@ -382,10 +320,7 @@ main
                                             }
                                         }
                                     } else {
-cristian-alvarado
                                         // ── CREAR nuevo evento ───────────────────────────────────
-                                        val nuevoEvento = EventoInput(
-=======
                                         // Validar fecha futura o actual
                                         val fechaInicio = try {
                                             LocalDateTime.parse(inicioIso.replace("Z", ""))
@@ -401,9 +336,7 @@ cristian-alvarado
                                             return@launch
                                         }
 
-                                        // Crear nuevo evento
-                                        val nuevoEvento = com.example.rest.data.models.EventoInput(
-main
+                                        val nuevoEvento = EventoInput(
                                             idUsuario = idUsuario,
                                             titulo = titulo,
                                             tipo = tipo,
@@ -412,7 +345,6 @@ main
                                             latitud = lat,
                                             longitud = long
                                         )
-cristian-alvarado
                                         val res = SupabaseClient.api.crearEvento(nuevoEvento)
                                         if (res.isSuccessful) {
                                             // ✅ El ID real viene en la respuesta de Supabase
@@ -422,50 +354,26 @@ cristian-alvarado
                                             }
 
                                             withContext(Dispatchers.Main) {
-                                                Toast.makeText(context, "Evento creado", Toast.LENGTH_SHORT).show()
+                                                val mensaje = context.getString(R.string.calendar_event_created)
+                                                Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
                                                 eventoAEditar = null
+                                                // Recargar eventos
                                                 val refresh = SupabaseClient.api.obtenerEventosPorUsuario(idUsuario = "eq.$idUsuario")
-                                                if (refresh.isSuccessful) eventos = refresh.body() ?: emptyList()
+                                                if (refresh.isSuccessful) {
+                                                    eventos = refresh.body() ?: emptyList()
+                                                }
                                             }
                                         } else {
                                             withContext(Dispatchers.Main) {
-                                                Toast.makeText(context, "Error ${res.code()}: ${res.errorBody()?.string()}", Toast.LENGTH_LONG).show()
+                                                val errorBody = res.errorBody()?.string() ?: "Error desconocido"
+                                                Toast.makeText(context, context.getString(R.string.calendar_error_generic, "${res.code()}: $errorBody"), Toast.LENGTH_LONG).show()
                                             }
                                         }
                                     }
                                 } catch (e: Exception) {
                                     withContext(Dispatchers.Main) {
-                                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, context.getString(R.string.calendar_error_generic, e.message ?: ""), Toast.LENGTH_SHORT).show()
                                     }
-=======
-                                        SupabaseClient.api.crearEvento(nuevoEvento)
-                                    }
-                                    if (res.isSuccessful) {
-                                        withContext(Dispatchers.Main) {
-                                            val mensaje = if (eventoAEditar != null) context.getString(R.string.calendar_event_updated) else context.getString(R.string.calendar_event_created)
-                                            Toast.makeText(context, mensaje, Toast.LENGTH_SHORT).show()
-                                            eventoAEditar = null
-                                            // Recargar eventos
-                                            val refresh = SupabaseClient.api.obtenerEventosPorUsuario(idUsuario = "eq.$idUsuario")
-                                            if (refresh.isSuccessful) {
-                                                eventos = refresh.body() ?: emptyList()
-                                            }
-                                        }
-                                    } else {
-                                        withContext(Dispatchers.Main) {
-                                            val errorBody = res.errorBody()?.string() ?: "Error desconocido"
-                                            Toast.makeText(context, context.getString(R.string.calendar_error_generic, "${res.code()}: $errorBody"), Toast.LENGTH_LONG).show()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                     withContext(Dispatchers.Main) {
-                                         Toast.makeText(context, context.getString(R.string.calendar_error_create, e.message ?: ""), Toast.LENGTH_SHORT).show()
-                                     }
-                                } catch (e: Exception) {
-                                     withContext(Dispatchers.Main) {
-                                         Toast.makeText(context, context.getString(R.string.calendar_error_generic, e.message ?: ""), Toast.LENGTH_SHORT).show()
-                                     }
-main
                                 }
                             }
                         }
@@ -479,15 +387,11 @@ main
                                     val res = SupabaseClient.api.eliminarEvento("eq.${eventoAEditar!!.id}")
                                     withContext(Dispatchers.Main) {
                                         if (res.isSuccessful) {
-cristian-alvarado
                                             // Cancelar alarma del evento eliminado
                                             eventoAEditar?.id?.let { id ->
                                                 EventoNotificationManager.cancelEventoAlarm(context, id)
                                             }
-                                            Toast.makeText(context, "Evento eliminado", Toast.LENGTH_SHORT).show()
-=======
                                             Toast.makeText(context, context.getString(R.string.calendar_event_deleted), Toast.LENGTH_SHORT).show()
-main
                                             eventoAEditar = null
                                             // Recargar eventos
                                             val prefs = com.example.rest.utils.PreferencesManager(context)

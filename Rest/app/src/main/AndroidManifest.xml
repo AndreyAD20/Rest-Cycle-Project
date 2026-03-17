@@ -56,7 +56,8 @@
         android:roundIcon="@mipmap/logo_buho"
         android:supportsRtl="true"
         android:localeConfig="@xml/locales_config"
-        android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+        android:theme="@style/Theme.Material3.DayNight.NoActionBar"
+        android:taskAffinity="com.example.rest.main">
 
         <!-- Google Maps API Key -->
         <meta-data
@@ -98,9 +99,7 @@
         <!-- ===== HOME ===== -->
         <activity android:name=".features.home.InicioComposeActivity"
             android:exported="true"
-            android:allowEmbedded="true"
-            android:documentLaunchMode="always"
-            android:resizeableActivity="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.home.PerfilComposeActivity"
             android:exported="false"
@@ -116,32 +115,21 @@
         <activity android:name=".features.tools.NotasComposeActivity"
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
-        <activity android:name=".features.tools.TemasInteresComposeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.BloqueoAppsComposeActivity"
             android:exported="true"
-            android:allowEmbedded="true"
-            android:documentLaunchMode="always"
-            android:resizeableActivity="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.HoraDescansoComposeActivity"
             android:exported="true"
-            android:allowEmbedded="true"
-            android:documentLaunchMode="always"
-            android:resizeableActivity="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.TareasComposeActivity"
             android:exported="true"
-            android:allowEmbedded="true"
-            android:documentLaunchMode="always"
-            android:resizeableActivity="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.tools.CalendarioComposeActivity"
             android:exported="true"
-            android:allowEmbedded="true"
-            android:documentLaunchMode="always"
-            android:resizeableActivity="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.blocking.BloqueoActivity"
             android:exported="false"
@@ -231,12 +219,6 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- Popups de Temas de Interés -->
-        <service
-            android:name=".services.TopicNotificationService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="systemExempted" />
 
         <!-- ===== RECEIVERS ===== -->
 

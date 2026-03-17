@@ -29,6 +29,8 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
@@ -69,6 +71,8 @@ fun PantallaUbicacion(
         start = Offset(0f, 0f),
         end = Offset(1000f, 2000f)
     )
+
+    val scope = rememberCoroutineScope()
 
     var latitud by remember { mutableStateOf<Double?>(null) }
     var longitud by remember { mutableStateOf<Double?>(null) }
@@ -183,6 +187,49 @@ fun PantallaUbicacion(
                 },
                 actions = {
                     val context = androidx.compose.ui.platform.LocalContext.current
+                    
+                    // Botón actualizar ubicación
+                    IconButton(onClick = {
+                        // Necesitamos usar GlobalScope o un nuevo scope
+                        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                            try {
+                                // Crear comando de solicitud de ubicación
+                                val comando = mapOf(
+                                    "id_hijo" to idHijo,
+                                    "tipo_comando" to "SOLICITAR_UBICACION",
+                                    "estado" to "PENDIENTE"
+                                )
+                                SupabaseClient.api.crearComandoControl(comando)
+                                android.util.Log.i("Ubicacion", "Solicitud de ubicación enviada al hijo")
+                            } catch (e: Exception) {
+                                android.util.Log.e("Ubicacion", "Error solicitando ubicación: ${e.message}")
+                            }
+                        }
+                        // Recargar ubicación
+                        cargando = true
+                        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                            try {
+                                val response = SupabaseClient.api.obtenerUltimaUbicacion(idUsuario = "eq.$idHijo")
+                                if (response.isSuccessful) {
+                                    val ubicaciones = response.body()
+                                    if (!ubicaciones.isNullOrEmpty()) {
+                                        latitud = ubicaciones[0].latitud
+                                        longitud = ubicaciones[0].longitud
+                                        timestamp = ubicaciones[0].timestamp
+                                        sinUbicacion = false
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("Ubicacion", "Error recargando: ${e.message}")
+                            } finally {
+                                cargando = false
+                            }
+                        }
+                    }) {
+                        Icon(Icons.Default.MyLocation, "Actualizar Ubicación", tint = Color.White)
+                    }
+                    
+                    // Botón historial
                     IconButton(onClick = {
                         val intent = Intent(context, HistorialUbicacionComposeActivity::class.java)
                         intent.putExtra("id_hijo", idHijo)

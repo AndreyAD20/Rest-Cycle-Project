@@ -1,4 +1,4 @@
-package com.example.rest.features.parental
+﻿package com.example.rest.features.parental
 
 import android.content.Intent
 import android.os.Bundle
@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,6 +37,9 @@ import androidx.compose.ui.window.Dialog
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import com.example.rest.data.models.AppVinculada
+import com.example.rest.data.models.AppInstalada
+import com.example.rest.data.models.AppInstaladaInput
+import com.example.rest.data.models.AppBloqueoInput
 import com.example.rest.network.SupabaseClient
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +47,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
+
+// Data class para combinar app instalada con su bloqueo
+data class AppDelHijo(
+    val id: Int,
+    val nombre: String,
+    val nombrePaquete: String,
+    val tiempoLimite: Int,
+    val bloqueada: Boolean,
+    val bloqueadaPor: String,
+    val tiempoUsado: Int = 0
+)
 
 class BloqueoRemotoHijoActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,7 +67,7 @@ class BloqueoRemotoHijoActivity : BaseComposeActivity() {
         val nombreHijo = intent.getStringExtra("nombre_hijo") ?: "Hijo"
         
         if (idHijo == -1) {
-            Toast.makeText(this, "Error: No se encontró el ID del hijo", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error: No se encontrÃ³ el ID del hijo", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -77,22 +92,31 @@ fun PantallaBloqueoRemoto(
     onBackClick: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val apps = remember { mutableStateListOf<AppVinculada>() }
+    val appsEnlazadas = remember { mutableStateListOf<Pair<AppInstalada, AppVinculada?>>() }
     var isLoading by remember { mutableStateOf(true) }
     var idDispositivo by remember { mutableIntStateOf(-1) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
 
     // Cargar ID de dispositivo y luego las apps
-    LaunchedEffect(idHijo) {
+    LaunchedEffect(idHijo, refreshTrigger) {
         isLoading = true
         try {
             val resDev = SupabaseClient.api.obtenerDispositivosPorUsuario("eq.$idHijo")
             if (resDev.isSuccessful && !resDev.body().isNullOrEmpty()) {
                 idDispositivo = resDev.body()!![0].id ?: -1
                 if (idDispositivo != -1) {
-                    val resApps = SupabaseClient.api.obtenerAppsVinculadas("eq.$idDispositivo")
-                    if (resApps.isSuccessful) {
-                        apps.clear()
-                        apps.addAll(resApps.body() ?: emptyList())
+                    // 1. Obtener apps instaladas donde enlazada = true
+                    val resEnlazadas = SupabaseClient.api.obtenerAppsInstaladasPorEstado("eq.$idDispositivo", "eq.true")
+                    // 2. Obtener bloqueos de apps_vinculadas
+                    val resBloqueos = SupabaseClient.api.obtenerAppsBloqueo("eq.$idDispositivo")
+                    
+                    val enlazadas = resEnlazadas.body() ?: emptyList()
+                    val bloqueos = resBloqueos.body() ?: emptyList()
+                    
+                    appsEnlazadas.clear()
+                    for (app in enlazadas) {
+                        val bloqueo = bloqueos.find { it.nombrePaquete == app.nombrePaquete }
+                        appsEnlazadas.add(Pair(app, bloqueo))
                     }
                 }
             }
@@ -103,10 +127,22 @@ fun PantallaBloqueoRemoto(
         }
     }
 
+    // Convertir a lista plana para filtrar
+    val appsList = appsEnlazadas.map { (app, bloqueo) ->
+        AppDelHijo(
+            id = app.id ?: 0,
+            nombre = app.nombre,
+            nombrePaquete = app.nombrePaquete,
+            tiempoLimite = bloqueo?.tiempoLimite ?: 0,
+            bloqueada = bloqueo?.bloqueada ?: false,
+            bloqueadaPor = bloqueo?.bloqueadaPor ?: "hijo"
+        )
+    }
+
     var searchText by remember { mutableStateOf("") }
-    val filteredApps = remember(apps, searchText) {
-        if (searchText.isEmpty()) apps.toList()
-        else apps.filter { it.nombre.contains(searchText, ignoreCase = true) || (it.nombrePaquete ?: "").contains(searchText, ignoreCase = true) }
+    val filteredApps = remember(appsList, searchText) {
+        if (searchText.isEmpty()) appsList
+        else appsList.filter { it.nombre.contains(searchText, ignoreCase = true) || it.nombrePaquete.contains(searchText, ignoreCase = true) }
     }
 
     val appsRestringidas = filteredApps.filter { it.bloqueada || it.tiempoLimite > 0 }.sortedBy { it.nombre }
@@ -119,7 +155,10 @@ fun PantallaBloqueoRemoto(
     )
 
     var showTimeDialog by remember { mutableStateOf(false) }
-    var selectedApp by remember { mutableStateOf<AppVinculada?>(null) }
+    var selectedApp by remember { mutableStateOf<AppDelHijo?>(null) }
+    var showEnlazarDialog by remember { mutableStateOf(false) }
+    var appsNoEnlazadas = remember { mutableStateListOf<AppInstalada>() }
+
 
     if (showTimeDialog && selectedApp != null) {
         val h = selectedApp!!.tiempoLimite / 60
@@ -131,16 +170,40 @@ fun PantallaBloqueoRemoto(
             onConfirm = { newH, newM ->
                 val newLimit = (newH * 60) + newM
                 val appToUpdate = selectedApp!!
-                apps[apps.indexOf(appToUpdate)] = appToUpdate.copy(tiempoLimite = newLimit, bloqueada = false)
                 
                 scope.launch(Dispatchers.IO) {
                     try {
-                        val updates = mapOf(
-                            "tiempolimite" to newLimit,
-                            "bloqueada" to false,
-                            "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
-                        )
-                        SupabaseClient.api.actualizarAppVinculada(appToUpdate.id.toString(), updates)
+                        // Buscar el bloqueo existente
+                        val resBloqueos = SupabaseClient.api.obtenerAppsBloqueo("eq.$idDispositivo")
+                        val bloqueo = resBloqueos.body()?.find { it.nombrePaquete == appToUpdate.nombrePaquete }
+                        
+                        if (bloqueo != null) {
+                            // Actualizar existente
+                            val updates = mapOf(
+                                "tiempolimite" to newLimit,
+                                "bloqueada_por" to "padre",
+                                "requiere_password" to (newLimit > 0),
+                                "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
+                            )
+                            SupabaseClient.api.actualizarAppVinculada(bloqueo.id.toString(), updates)
+                        } else {
+                            // Crear nuevo registro de bloqueo
+                            val nuevoBloqueo = AppBloqueoInput(
+                                idDispositivo = idDispositivo,
+                                nombre = appToUpdate.nombre,
+                                nombrePaquete = appToUpdate.nombrePaquete,
+                                tiempoLimite = newLimit,
+                                bloqueada = false,
+                                bloqueadaPor = "padre",
+                                requierePassword = newLimit > 0
+                            )
+                            SupabaseClient.api.crearAppBloqueo(nuevoBloqueo)
+                        }
+                        
+                        // Actualizar UI
+                        withContext(Dispatchers.Main) {
+                            refreshTrigger++
+                        }
                     } catch (e: Exception) {
                         Log.e("BloqueoRemoto", "Error actualizando limite: ${e.message}")
                     }
@@ -170,7 +233,7 @@ fun PantallaBloqueoRemoto(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 8.dp),
-                    placeholder = { Text("Buscar aplicación...", color = Blanco.copy(alpha = 0.6f)) },
+                    placeholder = { Text("Buscar aplicaciÃ³n...", color = Blanco.copy(alpha = 0.6f)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Blanco) },
                     trailingIcon = {
                         if (searchText.isNotEmpty()) {
@@ -200,18 +263,29 @@ fun PantallaBloqueoRemoto(
         ) {
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Blanco)
-            } else if (apps.isEmpty()) {
-                Text(
-                    "El hijo aún no ha vinculado aplicaciones.",
-                    color = Blanco,
+            } else if (appsList.isEmpty()) {
+                Column(
                     modifier = Modifier.align(Alignment.Center),
-                    textAlign = TextAlign.Center
-                )
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "El hijo aÃºn no ha vinculado aplicaciones.",
+                        color = Blanco,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Las apps aparecerÃ¡n cuando el hijo las comparta desde su dispositivo.",
+                        color = Blanco.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    )
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
                 ) {
                     if (appsRestringidas.isNotEmpty()) {
                         item {
@@ -227,12 +301,7 @@ fun PantallaBloqueoRemoto(
                             ItemAppRemoto(
                                 app = app,
                                 onToggleBlock = { isChecked ->
-                                    val idx = apps.indexOfFirst { it.id == app.id }
-                                    if (idx != -1) {
-                                        val updated = app.copy(bloqueada = isChecked)
-                                        apps[idx] = updated
-                                        actualizarAppEnBD(scope, updated)
-                                    }
+                                    actualizarBloqueoEnBD(scope, app, isChecked, idDispositivo)
                                 },
                                 onEditLimit = {
                                     selectedApp = app
@@ -256,12 +325,7 @@ fun PantallaBloqueoRemoto(
                             ItemAppRemoto(
                                 app = app,
                                 onToggleBlock = { isChecked ->
-                                    val idx = apps.indexOfFirst { it.id == app.id }
-                                    if (idx != -1) {
-                                        val updated = app.copy(bloqueada = isChecked)
-                                        apps[idx] = updated
-                                        actualizarAppEnBD(scope, updated)
-                                    }
+                                    actualizarBloqueoEnBD(scope, app, isChecked, idDispositivo)
                                 },
                                 onEditLimit = {
                                     selectedApp = app
@@ -269,16 +333,118 @@ fun PantallaBloqueoRemoto(
                                 }
                             )
                         }
+
+                        // BotÃ³n para enlazar mÃ¡s apps
+                        item {
+                            Button(
+                                onClick = {
+                                    scope.launch(Dispatchers.IO) {
+                                        try {
+                                            val res = SupabaseClient.api.obtenerAppsInstaladasPorEstado("eq.$idDispositivo", "eq.false")
+                                            val lista = res.body() ?: emptyList()
+                                            appsNoEnlazadas.clear()
+                                            appsNoEnlazadas.addAll(lista)
+                                        } catch (e: Exception) {
+                                            Log.e("BloqueoRemoto", "Error cargando apps: ${e.message}")
+                                        }
+                                    }
+                                    showEnlazarDialog = true
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                                    .padding(vertical = 4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Primario,
+                                    contentColor = Blanco
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Enlazar mÃ¡s apps",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                     }
                 }
             }
+        }
+
+        // Dialog para enlazar apps
+        if (showEnlazarDialog) {
+            DialogEnlazarApps(
+                apps = appsNoEnlazadas.toList(),
+                onEnlazar = { app ->
+                    // Enlazar app directamente
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            // 1. Marcar como enlazada en apps_instaladas (o crear si no existe)
+                            val updateRes = SupabaseClient.api.actualizarAppInstaladaPorPaquete(
+                                "eq.$idDispositivo",
+                                "eq.${app.nombrePaquete}",
+                                mapOf("enlazada" to true)
+                            )
+                            
+                            if (!updateRes.isSuccessful || updateRes.body().isNullOrEmpty()) {
+                                // Si no existe en la tabla de instaladas, la creamos
+                                SupabaseClient.api.crearAppInstalada(
+                                    AppInstaladaInput(
+                                        idDispositivo = idDispositivo,
+                                        nombre = app.nombre,
+                                        nombrePaquete = app.nombrePaquete,
+                                        enlazada = true
+                                    )
+                                )
+                            }
+
+                            // 2. Crear registro en apps_bloqueo
+                            SupabaseClient.api.crearAppBloqueo(
+                                AppBloqueoInput(
+                                    idDispositivo = idDispositivo,
+                                    nombre = app.nombre,
+                                    nombrePaquete = app.nombrePaquete,
+                                    tiempoLimite = 0,
+                                    bloqueada = false,
+                                    bloqueadaPor = "hijo",
+                                    requierePassword = false
+                                )
+                            )
+                            // Recargar lista
+                            withContext(Dispatchers.Main) {
+                                try {
+                                    val resEnlazadas = SupabaseClient.api.obtenerAppsInstaladasPorEstado("eq.$idDispositivo", "eq.true")
+                                    val resBloqueos = SupabaseClient.api.obtenerAppsBloqueo("eq.$idDispositivo")
+                                    val enlazadas = resEnlazadas.body() ?: emptyList()
+                                    val bloqueos = resBloqueos.body() ?: emptyList()
+                                    appsEnlazadas.clear()
+                                    for (a in enlazadas) {
+                                        val bloqueo = bloqueos.find { it.nombrePaquete == a.nombrePaquete }
+                                        appsEnlazadas.add(Pair(a, bloqueo))
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("BloqueoRemoto", "Error recargando: ${e.message}")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("BloqueoRemoto", "Error enlazando app: ${e.message}")
+                        }
+                    }
+                    showEnlazarDialog = false
+                },
+                onDismiss = { showEnlazarDialog = false }
+            )
         }
     }
 }
 
 @Composable
 fun ItemAppRemoto(
-    app: AppVinculada,
+    app: AppDelHijo,
     onToggleBlock: (Boolean) -> Unit,
     onEditLimit: () -> Unit
 ) {
@@ -297,7 +463,7 @@ fun ItemAppRemoto(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(Color((app.nombrePaquete ?: "").hashCode().or(0xFF000000.toInt()))),
+                    .background(Color(app.nombrePaquete.hashCode().or(0xFF000000.toInt()))),
                 contentAlignment = Alignment.Center
             ) {
                 Text(app.nombre.firstOrNull()?.toString() ?: "?", color = Blanco, fontWeight = FontWeight.Bold)
@@ -313,12 +479,17 @@ fun ItemAppRemoto(
                 } else if (app.tiempoLimite > 0) {
                     val h = app.tiempoLimite / 60
                     val m = app.tiempoLimite % 60
-                    Text("Límite: ${h}h ${m}m", style = MaterialTheme.typography.labelSmall, color = Primario)
+                    Text("LÃ­mite: ${h}h ${m}m", style = MaterialTheme.typography.labelSmall, color = Primario)
                 } else {
                     Text("Sin restricciones", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
                 
-                Text("Usado hoy: ${app.tiempoUsadoHoy} min", style = MaterialTheme.typography.labelSmall, color = Negro.copy(alpha = 0.6f))
+                // Mostrar quiÃ©n puso el bloqueo
+                if (app.bloqueadaPor == "padre") {
+                    Text("Bloqueado por padre", style = MaterialTheme.typography.labelSmall, color = Color.Red.copy(alpha = 0.7f))
+                }
+                
+                Text("Usado hoy: ${app.tiempoUsado} min", style = MaterialTheme.typography.labelSmall, color = Negro.copy(alpha = 0.6f))
             }
 
             // Interruptor de bloqueo total
@@ -361,7 +532,7 @@ fun TimeLimitDialogRemoto(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Límite de Tiempo",
+                    text = "LÃ­mite de Tiempo",
                     style = MaterialTheme.typography.headlineSmall,
                     color = Negro
                 )
@@ -421,18 +592,179 @@ fun WheelPickerRemoto(items: List<Int>, initialValue: Int, onValueChange: (Int) 
     }
 }
 
-private fun actualizarAppEnBD(scope: kotlinx.coroutines.CoroutineScope, app: AppVinculada) {
+private fun actualizarBloqueoEnBD(scope: kotlinx.coroutines.CoroutineScope, app: AppDelHijo, bloquear: Boolean, dispositivoId: Int) {
     scope.launch(Dispatchers.IO) {
         try {
-            val updates = mapOf(
-                "bloqueada" to app.bloqueada,
-                "tiempolimite" to app.tiempoLimite,
-                "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
-            )
-            SupabaseClient.api.actualizarAppVinculada(app.id.toString(), updates)
-            Log.d("BloqueoRemoto", "BD actualizada para ${app.nombre}: bloqueada=${app.bloqueada}, limite=${app.tiempoLimite}")
+            // Buscar el bloqueo existente
+            val resBloqueos = SupabaseClient.api.obtenerAppsBloqueo("eq.$dispositivoId")
+            val bloqueoExistente = resBloqueos.body()?.find { it.nombrePaquete == app.nombrePaquete }
+            
+            val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
+            
+            if (bloqueoExistente != null) {
+                // Actualizar existente
+                val updates = mapOf(
+                    "bloqueada" to bloquear,
+                    "bloqueada_por" to "padre",
+                    "requiere_password" to bloquear,
+                    "fecha_actualizacion" to timestamp
+                )
+                SupabaseClient.api.actualizarAppVinculada(bloqueoExistente.id.toString(), updates)
+                Log.d("BloqueoRemoto", "BD actualizada para ${app.nombre}: bloqueada=$bloquear")
+            } else {
+                // Crear nuevo registro de bloqueo
+                val nuevoBloqueo = AppBloqueoInput(
+                    idDispositivo = dispositivoId,
+                    nombre = app.nombre,
+                    nombrePaquete = app.nombrePaquete,
+                    tiempoLimite = app.tiempoLimite,
+                    bloqueada = bloquear,
+                    bloqueadaPor = "padre",
+                    requierePassword = bloquear
+                )
+                SupabaseClient.api.crearAppBloqueo(nuevoBloqueo)
+                Log.d("BloqueoRemoto", "BD creada para ${app.nombre}: bloqueada=$bloquear")
+            }
         } catch (e: Exception) {
             Log.e("BloqueoRemoto", "Error actualizando BD: ${e.message}")
+        }
+    }
+}
+
+@Composable
+fun DialogEnlazarApps(
+    apps: List<AppInstalada>,
+    onEnlazar: (AppInstalada) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var searchText by remember { mutableStateOf("") }
+    
+    val filteredApps = remember(apps, searchText) {
+        if (searchText.isEmpty()) apps
+        else apps.filter { it.nombre.contains(searchText, ignoreCase = true) }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = Blanco,
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.8f)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Enlazar mÃ¡s apps",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Negro,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Selecciona las apps del hijo que deseas monitorear:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Negro.copy(alpha = 0.7f)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Buscador
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Buscar app...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                if (filteredApps.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No hay mÃ¡s apps para enlazar",
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredApps) { app ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onEnlazar(app) },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = Primario.copy(alpha = 0.1f)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(12.dp)
+                                        .fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Icono
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(app.nombrePaquete.hashCode().or(0xFF000000.toInt()))),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            app.nombre.firstOrNull()?.toString() ?: "?",
+                                            color = Blanco,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    
+                                    Text(
+                                        text = app.nombre,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = Negro,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Enlazar",
+                                        tint = Primario
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cerrar", color = Color.Gray)
+                    }
+                }
+            }
         }
     }
 }

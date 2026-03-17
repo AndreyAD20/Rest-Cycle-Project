@@ -139,4 +139,18 @@ class PreferencesManager(context: Context) {
     fun clearPreferences() {
         sharedPreferences.edit().clear().apply()
     }
+    
+    /**
+     * Guarda la contraseña parental de forma encriptada
+     */
+    fun saveParentalPassword(password: String) {
+        sharedPreferences.edit().putString("PARENTAL_PASSWORD", password).apply()
+    }
+    
+    /**
+     * Recupera la contraseña parental encriptada
+     */
+    fun getParentalPassword(): String? {
+        return sharedPreferences.getString("PARENTAL_PASSWORD", null)
+    }
 }

@@ -51,7 +51,22 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
     var monitoreoActivo by remember { mutableStateOf(sharedPrefs.getBoolean("MONITOREO_ACTIVO", true)) }
     var burbujaActiva by remember { mutableStateOf(sharedPrefs.getBoolean("BURBUJA_ACTIVA", false)) }
     
-cristian-alvarado
+    // Estado para notificaciones flotantes (usando sharedPrefs)
+    var notifFlotanteEnabled by remember { mutableStateOf(sharedPrefs.getBoolean("FLOTANTE_ENABLED", true)) }
+    var notifFlotanteUsoExcesivo by remember { mutableStateOf(sharedPrefs.getBoolean("FLOTANTE_USO_EXCESIVO", true)) }
+    var notifFlotanteTareas by remember { mutableStateOf(sharedPrefs.getBoolean("FLOTANTE_TAREAS", true)) }
+    var notifFlotanteEventos by remember { mutableStateOf(sharedPrefs.getBoolean("FLOTANTE_EVENTOS", true)) }
+    var notifFlotanteTiempoPantalla by remember { mutableStateOf(sharedPrefs.getBoolean("FLOTANTE_TIEMPO_PANTALLA", true)) }
+    var notifFlotanteBloqueo by remember { mutableStateOf(sharedPrefs.getBoolean("FLOTANTE_BLOQUEO", true)) }
+
+    // Estado para notificaciones del sistema
+    var notifSistemaEnabled by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_ENABLED", true)) }
+    var notifSistemaUsoExcesivo by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_USO_EXCESIVO", true)) }
+    var notifSistemaTareas by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_TAREAS", true)) }
+    var notifSistemaEventos by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_EVENTOS", true)) }
+    var notifSistemaTiempoPantalla by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_TIEMPO_PANTALLA", true)) }
+    var notifSistemaBloqueo by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_BLOQUEO", true)) }
+    
     // Estado para el diálogo de Burbuja
     var mostrarDialogoBurbuja by remember { mutableStateOf(false) }
     
@@ -63,10 +78,8 @@ cristian-alvarado
         start = Offset(0f, 0f),
         end = Offset(0f, 2000f)
     )
-=======
     var idiomaExpandido by remember { mutableStateOf(false) }
     var idiomaSeleccionado by remember { mutableStateOf(sharedPrefs.getString("IDIOMA", "Español") ?: "Español") }
- main
     
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
@@ -176,11 +189,196 @@ cristian-alvarado
                         onToggle = { isEnabled ->
                             burbujaActiva = isEnabled
                             sharedPrefs.edit().putBoolean("BURBUJA_ACTIVA", isEnabled).apply()
-                            android.widget.Toast.makeText(context, context.getString(R.string.toast_setting_saved), android.widget.Toast.LENGTH_SHORT).show()
+                            
+                            if (isEnabled) {
+                                com.example.rest.ChatHeadManager.launchOverlayService(context)
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_setting_saved), android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                com.example.rest.ChatHeadManager.hideOverlayService(context)
+                                android.widget.Toast.makeText(context, context.getString(R.string.toast_setting_saved), android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
+
+                // ========== NOTIFICACIONES FLOTANTES ==========
+                item {
+                    Text(
+                        text = "Notificaciones Flotantes",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
+                item {
+                    OpcionConfiguracionToggle(
+                        icono = Icons.Default.NotificationsActive,
+                        titulo = "Activar flotantes",
+                        activado = notifFlotanteEnabled,
+                        onToggle = { isEnabled ->
+                            notifFlotanteEnabled = isEnabled
+                            sharedPrefs
+                                .edit().putBoolean("FLOTANTE_ENABLED", isEnabled).apply()
+                        }
+                    )
+                }
+
+                // Sub-toggle de uso excesivo
+                if (notifFlotanteEnabled) {
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Uso excesivo de apps",
+                            activado = notifFlotanteUsoExcesivo,
+                            onToggle = { isEnabled ->
+                                notifFlotanteUsoExcesivo = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("FLOTANTE_USO_EXCESIVO", isEnabled).apply()
+                            }
+                        )
+                    }
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Tareas",
+                            activado = notifFlotanteTareas,
+                            onToggle = { isEnabled ->
+                                notifFlotanteTareas = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("FLOTANTE_TAREAS", isEnabled).apply()
+                            }
+                        )
+                    }
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Eventos",
+                            activado = notifFlotanteEventos,
+                            onToggle = { isEnabled ->
+                                notifFlotanteEventos = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("FLOTANTE_EVENTOS", isEnabled).apply()
+                            }
+                        )
+                    }
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Tiempo de pantalla",
+                            activado = notifFlotanteTiempoPantalla,
+                            onToggle = { isEnabled ->
+                                notifFlotanteTiempoPantalla = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("FLOTANTE_TIEMPO_PANTALLA", isEnabled).apply()
+                            }
+                        )
+                    }
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Bloqueo de apps",
+                            activado = notifFlotanteBloqueo,
+                            onToggle = { isEnabled ->
+                                notifFlotanteBloqueo = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("FLOTANTE_BLOQUEO", isEnabled).apply()
+                            }
+                        )
+                    }
+                }
+
+                item { Spacer(modifier = Modifier.height(12.dp)) }
+
+                // ========== NOTIFICACIONES DEL SISTEMA ==========
+                item {
+                    Text(
+                        text = "Notificaciones del Sistema",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
+                item {
+                    OpcionConfiguracionToggle(
+                        icono = Icons.Default.Notifications,
+                        titulo = "Activar sistema",
+                        activado = notifSistemaEnabled,
+                        onToggle = { isEnabled ->
+                            notifSistemaEnabled = isEnabled
+                            sharedPrefs
+                                .edit().putBoolean("SISTEMA_ENABLED", isEnabled).apply()
+                        }
+                    )
+                }
+
+                // Sub-toggle de uso excesivo
+                if (notifSistemaEnabled) {
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Uso excesivo de apps",
+                            activado = notifSistemaUsoExcesivo,
+                            onToggle = { isEnabled ->
+                                notifSistemaUsoExcesivo = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("SISTEMA_USO_EXCESIVO", isEnabled).apply()
+                            }
+                        )
+                    }
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Tareas",
+                            activado = notifSistemaTareas,
+                            onToggle = { isEnabled ->
+                                notifSistemaTareas = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("SISTEMA_TAREAS", isEnabled).apply()
+                            }
+                        )
+                    }
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Eventos",
+                            activado = notifSistemaEventos,
+                            onToggle = { isEnabled ->
+                                notifSistemaEventos = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("SISTEMA_EVENTOS", isEnabled).apply()
+                            }
+                        )
+                    }
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Tiempo de pantalla",
+                            activado = notifSistemaTiempoPantalla,
+                            onToggle = { isEnabled ->
+                                notifSistemaTiempoPantalla = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("SISTEMA_TIEMPO_PANTALLA", isEnabled).apply()
+                            }
+                        )
+                    }
+                    item {
+                        OpcionConfiguracionToggle(
+                            icono = null,
+                            titulo = "  Bloqueo de apps",
+                            activado = notifSistemaBloqueo,
+                            onToggle = { isEnabled ->
+                                notifSistemaBloqueo = isEnabled
+                                sharedPrefs
+                                    .edit().putBoolean("SISTEMA_BLOQUEO", isEnabled).apply()
+                            }
+                        )
+                    }
+                }
+
+                item { Spacer(modifier = Modifier.height(12.dp)) }
                 
                 // Cambiar Idioma
                 item {
@@ -215,33 +413,15 @@ cristian-alvarado
                 // Perfil
                 item {
                     OpcionConfiguracion(
- cristian-alvarado
-                        icono = Icons.Default.MoreHoriz,
-                        titulo = "Burbuja",
-                        onClick = { mostrarDialogoBurbuja = true }
-=======
                         icono = Icons.Default.People,
                         titulo = stringResource(R.string.settings_edit_profile),
                         onClick = {
                             context.startActivity(android.content.Intent(context, com.example.rest.features.home.PerfilComposeActivity::class.java))
                         }
-main
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
                 
-                // Seguridad
-                item {
-                    OpcionConfiguracion(
-                        icono = Icons.Default.Security,
-                        titulo = stringResource(R.string.settings_security),
-                        onClick = {
-                            android.widget.Toast.makeText(context, context.getString(R.string.toast_security_warning), android.widget.Toast.LENGTH_LONG).show()
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
                 // Privacidad y Términos
                 item {
                     OpcionConfiguracion(
@@ -323,12 +503,6 @@ fun DialogoConfiguracionBurbuja(onDismiss: () -> Unit) {
     var sonidoExpandido by remember { mutableStateOf(false) }
     var sonidoSeleccionado by remember { mutableStateOf(sharedPrefs.getString("BURBUJA_SONIDO", "Predeterminado") ?: "Predeterminado") }
     val opcionesSonido = listOf("Predeterminado", "Burbuja (Pop)", "Campana Suave", "Silencioso")
-    
-    // Estados de temas de interés
-    val temasDisponibles = listOf("Educación", "Salud y Bienestar", "Tecnología", "Deportes", "Productividad")
-    val temasGuardados = sharedPrefs.getStringSet("BURBUJA_TEMAS", setOf("Salud y Bienestar", "Productividad")) ?: setOf()
-    
-    var temasSeleccionados by remember { mutableStateOf(temasGuardados.toMutableSet()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -345,7 +519,7 @@ fun DialogoConfiguracionBurbuja(onDismiss: () -> Unit) {
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
             ) {
-                // 1. Selector de Sonido
+                // Selector de Sonido
                 Text(
                     text = "Sonido de la Burbuja",
                     fontWeight = FontWeight.SemiBold,
@@ -358,47 +532,6 @@ fun DialogoConfiguracionBurbuja(onDismiss: () -> Unit) {
                     opciones = opcionesSonido,
                     onSeleccion = { sonidoSeleccionado = it }
                 )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // 2. Multiselección de Temas de Interés
-                Text(
-                    text = "Temas de Interés",
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Text(
-                    text = "Selecciona qué tipo de contenido te gustaría ver en los reportes rápidos de las burbujas.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                
-                temasDisponibles.forEach { tema ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val nuevoSet = temasSeleccionados.toMutableSet()
-                                if (nuevoSet.contains(tema)) nuevoSet.remove(tema) else nuevoSet.add(tema)
-                                temasSeleccionados = nuevoSet
-                            }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = temasSeleccionados.contains(tema),
-                            onCheckedChange = { isChecked ->
-                                val nuevoSet = temasSeleccionados.toMutableSet()
-                                if (isChecked) nuevoSet.add(tema) else nuevoSet.remove(tema)
-                                temasSeleccionados = nuevoSet
-                            }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = tema, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
             }
         },
         confirmButton = {
@@ -407,7 +540,6 @@ fun DialogoConfiguracionBurbuja(onDismiss: () -> Unit) {
                     // Guardar preferencias
                     sharedPrefs.edit()
                         .putString("BURBUJA_SONIDO", sonidoSeleccionado)
-                        .putStringSet("BURBUJA_TEMAS", temasSeleccionados)
                         .apply()
                     
                     android.widget.Toast.makeText(context, "Configuración de burbuja guardada", android.widget.Toast.LENGTH_SHORT).show()
@@ -533,7 +665,7 @@ fun OpcionConfiguracion(
 
 @Composable
 fun OpcionConfiguracionToggle(
-    icono: ImageVector,
+    icono: ImageVector?,
     titulo: String,
     activado: Boolean,
     onToggle: (Boolean) -> Unit
@@ -559,12 +691,14 @@ fun OpcionConfiguracionToggle(
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(10.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icono,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
+                if (icono != null) {
+                    Icon(
+                        imageVector = icono,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.width(16.dp))
@@ -619,6 +753,7 @@ fun OpcionConfiguracionDropdown(
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+            if (icono != null) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -632,6 +767,9 @@ fun OpcionConfiguracionDropdown(
                         modifier = Modifier.size(22.dp)
                     )
                 }
+            } else {
+                Spacer(modifier = Modifier.width(8.dp))
+            }
                 
                 Spacer(modifier = Modifier.width(16.dp))
                 

@@ -307,7 +307,7 @@ fun PantallaOlvidoContrasena(
                 onClick = { alClickEnviar(correo) },
                 modifier = Modifier
                     .width(220.dp)
-                    .height(56.dp)
+                    .height(64.dp)
                     .border(
                         width = 1.dp,
                         color = Color.White.copy(alpha = 0.6f),
@@ -327,25 +327,14 @@ fun PantallaOlvidoContrasena(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.buho_background),
-                            contentDescription = stringResource(R.string.recovery_send_button),
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.recovery_send_button),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                            color = Color.White,
-                            fontSize = 14.sp
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.recovery_send_button),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }

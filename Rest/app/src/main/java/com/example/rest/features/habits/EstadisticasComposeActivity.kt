@@ -578,93 +578,63 @@ fun getUsageStats(context: Context, period: Int, offset: Int = 0): List<AppUsage
     val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
     val packageManager = context.packageManager
     
-    val calendar = Calendar.getInstance()
-    var endTime = calendar.timeInMillis // Default to now
-    
+    // Asegurar que startTime sea 00:00:00.000
     val startCalendar = Calendar.getInstance()
+    startCalendar.add(Calendar.DAY_OF_YEAR, offset)
+    
+    when (period) {
+        0 -> { /* Diario */ }
+        1 -> { // Semanal (Lunes a Domingo)
+            startCalendar.firstDayOfWeek = Calendar.MONDAY
+            startCalendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        }
+        else -> { // Mensual (1 al último)
+            startCalendar.set(Calendar.DAY_OF_MONTH, 1)
+        }
+    }
+    
     startCalendar.set(Calendar.HOUR_OF_DAY, 0)
     startCalendar.set(Calendar.MINUTE, 0)
     startCalendar.set(Calendar.SECOND, 0)
     startCalendar.set(Calendar.MILLISECOND, 0)
-    
+    val startTime = startCalendar.timeInMillis
+
+    // Asegurar que endTime sea 23:59:59.999
+    val endCalendar = Calendar.getInstance()
+    endCalendar.timeInMillis = startTime
     when (period) {
-        0 -> { /* Diario - desde las 00:00 de HOY */ 
-            startCalendar.add(Calendar.DAY_OF_YEAR, offset)
-            endTime = startCalendar.timeInMillis + 86400000L - 1 // Final del día (aprox)
-            
-            // Re-ajustar startCalendar para el inicio del día específico
-            val specificStart = Calendar.getInstance()
-            specificStart.timeInMillis = startCalendar.timeInMillis
-            // Ya está en 00:00:00 del día con offset
-            
-            // Ajustar endTime al final de ese día
-            val specificEnd = Calendar.getInstance()
-            specificEnd.timeInMillis = startCalendar.timeInMillis
-            specificEnd.set(Calendar.HOUR_OF_DAY, 23)
-            specificEnd.set(Calendar.MINUTE, 59)
-            specificEnd.set(Calendar.SECOND, 59)
-            endTime = specificEnd.timeInMillis
-        }
-        1 -> { // Semanal
-            startCalendar.firstDayOfWeek = Calendar.MONDAY
-            startCalendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-            startCalendar.add(Calendar.WEEK_OF_YEAR, offset)
-            
-            val endCalendar = Calendar.getInstance()
-            endCalendar.timeInMillis = startCalendar.timeInMillis
-            endCalendar.add(Calendar.DAY_OF_YEAR, 6)
-            endCalendar.set(Calendar.HOUR_OF_DAY, 23)
-            endCalendar.set(Calendar.MINUTE, 59)
-            endCalendar.set(Calendar.SECOND, 59)
-            
-            endTime = endCalendar.timeInMillis
-        }
-        else -> { // Mensual
-            startCalendar.set(Calendar.DAY_OF_MONTH, 1)
-            startCalendar.add(Calendar.MONTH, offset)
-            
-            val endCalendar = Calendar.getInstance()
-            endCalendar.timeInMillis = startCalendar.timeInMillis
+        0 -> { /* Mismo día */ }
+        1 -> endCalendar.add(Calendar.DAY_OF_YEAR, 6)
+        else -> {
             endCalendar.add(Calendar.MONTH, 1)
-            endCalendar.add(Calendar.DAY_OF_YEAR, -1) // Último día del mes
-            endCalendar.set(Calendar.HOUR_OF_DAY, 23)
-            endCalendar.set(Calendar.MINUTE, 59)
-            endCalendar.set(Calendar.SECOND, 59)
-            
-            endTime = endCalendar.timeInMillis
+            endCalendar.add(Calendar.DAY_OF_YEAR, -1)
         }
     }
+    endCalendar.set(Calendar.HOUR_OF_DAY, 23)
+    endCalendar.set(Calendar.MINUTE, 59)
+    endCalendar.set(Calendar.SECOND, 59)
+    endCalendar.set(Calendar.MILLISECOND, 999)
+    val endTime = endCalendar.timeInMillis
     
-    val startTime = startCalendar.timeInMillis
-    
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
     Log.d("EstadisticasDebug", "=== INICIO CONSULTA ===")
-    Log.d("EstadisticasDebug", "Periodo: $period")
+    Log.d("EstadisticasDebug", "Periodo: $period, Offset: $offset")
     Log.d("EstadisticasDebug", "Desde: ${dateFormat.format(startTime)}")
     Log.d("EstadisticasDebug", "Hasta: ${dateFormat.format(endTime)}")
     
     try {
         val usageMap = mutableMapOf<String, Long>()
 
-        Log.d("EstadisticasDebug", "Usando consulta exacta para periodo: $period")
+        // FASE 1: Unificar a queryUsageStats con INTERVAL_DAILY para máxima precisión
+        // Esto evita el desfase de queryAndAggregateUsageStats y la limitación de queryEvents
+        val statsList = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
         
-        if (period == 0) {
-            // Usa el cálculo exacto por eventos para el dia de hoy
-            val statsMap = com.example.rest.utils.UsageStatsHelper.getExactDailyUsageMap(usageStatsManager, startTime, endTime)
-            statsMap.forEach { (packageName, usageTime) ->
-                if (usageTime > 0) {
-                    usageMap[packageName] = usageTime
-                }
-            }
-        } else {
-            // Lógica para periodos Semanal/Mensual para evitar pérdida de datos (queryEvents expira a los 7 días)
-            val aggregatedStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
-            if (aggregatedStats != null) {
-                aggregatedStats.forEach { (packageName, usageStats) ->
-                    val totalTime = usageStats.totalTimeInForeground
-                    if (totalTime > 0) {
-                         usageMap[packageName] = totalTime
-                    }
+        if (statsList != null) {
+            for (stats in statsList) {
+                val packageName = stats.packageName
+                val timeInForeground = stats.totalTimeInForeground
+                if (timeInForeground > 0) {
+                    usageMap[packageName] = (usageMap[packageName] ?: 0L) + timeInForeground
                 }
             }
         }
@@ -686,7 +656,12 @@ fun getUsageStats(context: Context, period: Int, offset: Int = 0): List<AppUsage
                                    packageName.contains("com.whatsapp") || 
                                    packageName.contains("com.facebook") ||
                                    packageName.contains("com.instagram") ||
-                                   packageName.contains("com.twitter")
+                                   packageName.contains("com.twitter") ||
+                                   packageName.contains("com.zhiliaoapp.musically") || // TikTok
+                                   packageName.contains("com.snapchat.android") ||    // Snapchat
+                                   packageName.contains("com.netflix.mediaclient") || // Netflix
+                                   packageName.contains("com.disney.disneyplus") ||   // Disney+
+                                   packageName.contains("com.spotify.music")         // Spotify
                                    
                 val isBlacklisted = packageName.contains("launcher") || 
                                    packageName.contains("systemui") || 
@@ -811,11 +786,11 @@ fun getUsageStatsDiario(context: Context, offset: Int = 0): Map<String, Long> {
     // Configurar al Lunes de la semana seleccionada
     calendar.firstDayOfWeek = Calendar.MONDAY
     calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+    calendar.add(Calendar.WEEK_OF_YEAR, offset)
     calendar.set(Calendar.HOUR_OF_DAY, 0)
     calendar.set(Calendar.MINUTE, 0)
     calendar.set(Calendar.SECOND, 0)
     calendar.set(Calendar.MILLISECOND, 0)
-    calendar.add(Calendar.WEEK_OF_YEAR, offset)
     
     val diasSemana = listOf(
         context.getString(R.string.day_mon), 
@@ -832,8 +807,17 @@ fun getUsageStatsDiario(context: Context, offset: Int = 0): Map<String, Long> {
     val packageManager = context.packageManager
     for (i in 0 until 7) {
         val startDay = calendar.timeInMillis
+        
+        // El fin del día es exactamente 23:59:59.999 del día que acabamos de marcar
+        val endDayCalendar = (calendar.clone() as Calendar)
+        endDayCalendar.set(Calendar.HOUR_OF_DAY, 23)
+        endDayCalendar.set(Calendar.MINUTE, 59)
+        endDayCalendar.set(Calendar.SECOND, 59)
+        endDayCalendar.set(Calendar.MILLISECOND, 999)
+        val endDay = endDayCalendar.timeInMillis
+        
+        // Avanzar el calendario al inicio del siguiente día para la próxima iteración
         calendar.add(Calendar.DAY_OF_YEAR, 1)
-        val endDay = calendar.timeInMillis - 1
         
         // Usar queryAndAggregateUsageStats para mayor precisión
         val statsMap = usageStatsManager.queryAndAggregateUsageStats(startDay, endDay)
@@ -857,7 +841,12 @@ fun getUsageStatsDiario(context: Context, offset: Int = 0): Map<String, Long> {
                                        packageName.contains("com.whatsapp") || 
                                        packageName.contains("com.facebook") ||
                                        packageName.contains("com.instagram") ||
-                                       packageName.contains("com.twitter")
+                                       packageName.contains("com.twitter") ||
+                                       packageName.contains("com.zhiliaoapp.musically") || // TikTok
+                                       packageName.contains("com.snapchat.android") ||    // Snapchat
+                                       packageName.contains("com.netflix.mediaclient") || // Netflix
+                                       packageName.contains("com.disney.disneyplus") ||   // Disney+
+                                       packageName.contains("com.spotify.music")         // Spotify
                                        
                      val isBlacklisted = packageName.contains("launcher") || 
                                        packageName.contains("systemui") || 

@@ -41,5 +41,11 @@ data class AppVinculada(
     val fechaCreacion: String? = null,
     
     @SerializedName("fecha_actualizacion")
-    val fechaActualizacion: String? = null
+    val fechaActualizacion: String? = null,
+    
+    @SerializedName("bloqueada_por")
+    val bloqueadaPor: String = "hijo",
+    
+    @SerializedName("requiere_password")
+    val requierePassword: Boolean = false
 )

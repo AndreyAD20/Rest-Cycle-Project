@@ -636,38 +636,6 @@ fun PantallaLogin(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-
-            // O ingresa por
-            Text(
-                text = stringResource(R.string.login_or_enter_via),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.85f),
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Iconos de redes sociales
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-                modifier = Modifier.padding(bottom = 32.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.face_background),
-                    contentDescription = "Facebook",
-                    modifier = Modifier.size(50.dp)
-                )
-                Image(
-                    painter = painterResource(id = R.drawable.gmail_background),
-                    contentDescription = "Gmail",
-                    modifier = Modifier.size(50.dp)
-                )
-                Image(
-                    painter = painterResource(id = R.drawable.icloud_background),
-                    contentDescription = "iCloud",
-                    modifier = Modifier.size(50.dp)
-                )
-            }
         }
     }
 }

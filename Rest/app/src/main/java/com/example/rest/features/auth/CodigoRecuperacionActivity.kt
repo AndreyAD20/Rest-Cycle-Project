@@ -419,7 +419,7 @@ fun PantallaCodigoRecuperacion(
                 onClick = { alClickConfirmar(codigo) },
                 modifier = Modifier
                     .width(220.dp)
-                    .height(56.dp)
+                    .height(64.dp)
                     .border(
                         width = 1.dp,
                         color = Color.White.copy(alpha = 0.6f),
@@ -443,7 +443,8 @@ fun PantallaCodigoRecuperacion(
                         text = stringResource(R.string.btn_confirm),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                        color = Color.White
+                        color = Color.White,
+                        textAlign = TextAlign.Center
                     )
                 }
             }

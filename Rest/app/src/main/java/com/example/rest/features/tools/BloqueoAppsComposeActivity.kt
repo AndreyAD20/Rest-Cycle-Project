@@ -36,6 +36,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.rest.data.repository.LocalBlockingRepository
 import com.example.rest.network.SupabaseClient
 import com.example.rest.data.models.AppVinculadaInput
+import com.example.rest.data.models.AppInstalada
+import com.example.rest.data.models.AppInstaladaInput
+import com.example.rest.data.models.AppBloqueoInput
+import com.example.rest.ui.components.dialogs.DialogQuitarBloqueoParental
 import com.example.rest.data.models.localTimestamp
 import android.util.Log
 import kotlinx.coroutines.launch
@@ -88,7 +92,8 @@ data class AppBloqueo(
     val limitMinutes: Int = 0,
     val isBlocked: Boolean = false,
     val packageName: String = "",
-    val usageMinutes: Int = 0
+    val usageMinutes: Int = 0,
+    val bloqueadaPor: String = "hijo"  // "hijo" o "padre"
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,6 +101,9 @@ data class AppBloqueo(
 fun PantallaBloqueoApps(onBackClick: () -> Unit) {
     val context = LocalContext.current
     val repository = remember { LocalBlockingRepository(context) }
+    val scope = rememberCoroutineScope()
+    val sharedPref = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
+    val dispositivoId = remember { sharedPref.getInt("ID_DISPOSITIVO", -1) }
 
     // Gradiente de fondo
     val brochaGradiente = Brush.linearGradient(
@@ -108,26 +116,74 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
         end = Offset(1000f, 2000f)
     )
 
-    // Datos reales desde repositorio local
+    // Datos desde Supabase (apps_instaladas + apps_vinculadas)
     val apps = remember { mutableStateListOf<AppBloqueo>() }
-    
-    // Cargar apps bloqueadas al inicio
-    // Cargar apps bloqueadas al inicio
-    LaunchedEffect(Unit) {
-        val loadedApps = repository.getBlockedApps()
-        val appsWithUsage = repository.updateAppsWithUsage(loadedApps)
-        apps.addAll(appsWithUsage)
-    }
+    var isLoading by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
-    val sharedPref = remember { context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE) }
-    val dispositivoId = remember { sharedPref.getInt("ID_DISPOSITIVO", -1) }
+    // Cargar apps desde Supabase
+    LaunchedEffect(dispositivoId) {
+        if (dispositivoId != -1) {
+            isLoading = true
+            try {
+                // 1. Obtener apps_instaladas donde enlazada = true
+                val resEnlazadas = SupabaseClient.api.obtenerAppsInstaladasPorEstado("eq.$dispositivoId", "eq.true")
+                val enlazadas = resEnlazadas.body() ?: emptyList()
+                
+                // 2. Obtener bloqueos de apps_vinculadas
+                val resBloqueos = SupabaseClient.api.obtenerAppsBloqueo("eq.$dispositivoId")
+                val bloqueos = resBloqueos.body() ?: emptyList()
+                
+                // 3. Combinar datos
+                val newAppsList = mutableListOf<AppBloqueo>()
+                for (app in enlazadas) {
+                    val bloqueo = bloqueos.find { it.nombrePaquete == app.nombrePaquete }
+                    val isBlocked = bloqueo?.bloqueada ?: false
+                    val tiempoLimite = bloqueo?.tiempoLimite ?: 0
+                    val bloqueadaPor = bloqueo?.bloqueadaPor ?: "hijo"
+                    
+                    newAppsList.add(
+                        AppBloqueo(
+                            id = app.id ?: 0,
+                            nombre = app.nombre,
+                            iconColor = Color(app.nombrePaquete.hashCode().or(0xFF000000.toInt())),
+                            limitHours = tiempoLimite / 60,
+                            limitMinutes = tiempoLimite % 60,
+                            isBlocked = isBlocked,
+                            packageName = app.nombrePaquete,
+                            usageMinutes = 0,
+                            bloqueadaPor = bloqueadaPor
+                        )
+                    )
+                }
+                
+                // 4. Actualizar con uso
+                val appsWithUsage = repository.updateAppsWithUsage(newAppsList)
+                apps.clear()
+                apps.addAll(appsWithUsage)
+                
+            } catch (e: Exception) {
+                Log.e("BloqueoApps", "Error cargando datos: ${e.message}")
+                val loadedApps = repository.getBlockedApps()
+                val appsWithUsage = repository.updateAppsWithUsage(loadedApps)
+                apps.clear()
+                apps.addAll(appsWithUsage)
+            } finally {
+                isLoading = false
+            }
+        } else {
+            val loadedApps = repository.getBlockedApps()
+            val appsWithUsage = repository.updateAppsWithUsage(loadedApps)
+            apps.clear()
+            apps.addAll(appsWithUsage)
+        }
+    }
 
     var showAddDialog by remember { mutableStateOf(false) }
     var showTimeDialog by remember { mutableStateOf(false) }
     var selectedApp by remember { mutableStateOf<AppBloqueo?>(null) }
-    
-    // Verificar Permiso de Superposición (Overlay) esencial para el bloqueo
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var appToDeleteWithPassword by remember { mutableStateOf<AppBloqueo?>(null) }
+    var appToDelete by remember { mutableStateOf<AppBloqueo?>(null) }
     var showOverlayDialog by remember { mutableStateOf(false) }
     
     LaunchedEffect(Unit) {
@@ -135,10 +191,32 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             showOverlayDialog = true
         }
     }
-    
+
+    // Helper para actualizar en la nube
+    fun updateAppInCloud(app: AppBloqueo) {
+        if (dispositivoId != -1) {
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val updates = mapOf(
+                        "tiempolimite" to (app.limitHours * 60 + app.limitMinutes),
+                        "bloqueada" to app.isBlocked,
+                        "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
+                    )
+                    SupabaseClient.api.actualizarAppVinculadaPorPaquete(
+                        idDispositivo = "eq.$dispositivoId",
+                        nombrePaquete = "eq.${app.packageName}",
+                        app = updates
+                    )
+                } catch (e: Exception) {
+                    Log.e("BloqueoApps", "Error actualizando app: ${e.message}")
+                }
+            }
+        }
+    }
+
     if (showOverlayDialog) {
         AlertDialog(
-            onDismissRequest = { /* Opcional: no permitir cerrar o sí */ },
+            onDismissRequest = { showOverlayDialog = false },
             title = { Text(stringResource(R.string.dialog_overlay_permission_title)) },
             text = { Text(stringResource(R.string.dialog_overlay_permission_text)) },
             confirmButton = {
@@ -167,26 +245,38 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             linkedPackages = apps.map { it.packageName }.toSet(),
             onDismiss = { showAddDialog = false },
             onAppsSelected = { newApps ->
-                // Guardar cada app seleccionada y actualizar lista local
                 newApps.forEach { app ->
                     repository.saveBlockedApp(app)
                     if (!apps.any { it.packageName == app.packageName }) {
                         apps.add(app)
                     }
                 }
-                
-                // Subir a la nube (Solo las seleccionadas)
                 if (dispositivoId != -1) {
                     scope.launch(Dispatchers.IO) {
                         newApps.forEach { app ->
                              try {
-                                 // Verificar si ya existe en la nube para no duplicar (opcional pero recomendado)
-                                 // Por simplicidad y rapidez, confiamos en que el usuario no agregue la misma 2 veces
-                                 // o que la BD maneje ids únicos si hubiera constraints. 
-                                 // Como apps_vinculadas no tiene unique constraint en paquete+dispositivo explicito en el schema dado,
-                                 // podríamos chequear antes. Pero para un fix rápido:
-                                 
                                  val now = localTimestamp()
+                                 
+                                 // 1. Sincronizar con apps_instaladas para que el padre la vea
+                                 // Intentamos actualizar primero por si ya existe
+                                 val updateRes = SupabaseClient.api.actualizarAppInstaladaPorPaquete(
+                                     idDispositivo = "eq.$dispositivoId",
+                                     nombrePaquete = "eq.${app.packageName}",
+                                     update = mapOf("enlazada" to true)
+                                 )
+                                 
+                                 if (!updateRes.isSuccessful || updateRes.body().isNullOrEmpty()) {
+                                     // Si no existe, la creamos
+                                     val instaladaInput = AppInstaladaInput(
+                                         idDispositivo = dispositivoId,
+                                         nombre = app.nombre,
+                                         nombrePaquete = app.packageName,
+                                         enlazada = true
+                                     )
+                                     SupabaseClient.api.crearAppInstalada(instaladaInput)
+                                 }
+
+                                 // 2. Guardar en apps_bloqueo (vinculadas)
                                  val input = AppVinculadaInput(
                                      idDispositivo = dispositivoId,
                                      nombre = app.nombre,
@@ -198,44 +288,16 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                                      fechaCreacion = now,
                                      fechaActualizacion = now
                                  )
-                                 val res = SupabaseClient.api.crearAppVinculada(input)
-                                 if (res.isSuccessful) {
-                                     Log.d("BloqueoApps", "App vinculada subida: ${app.nombre}")
-                                 } else {
-                                     Log.e("BloqueoApps", "Error API: ${res.code()}")
-                                 }
+                                 SupabaseClient.api.crearAppVinculada(input)
                              } catch(e: Exception) {
-                                 Log.e("BloqueoApps", "Error subiendo app ${app.nombre}: ${e.message}")
+                                 Log.e("BloqueoApps", "Error subiendo app sync: ${e.message}")
                              }
                         }
                     }
                 }
-                
                 showAddDialog = false
             }
         )
-    }
-
-    // Helper para actualizar en la nube
-    fun updateAppInCloud(app: AppBloqueo) {
-        if (dispositivoId != -1) {
-            scope.launch(Dispatchers.IO) {
-                try {
-                    val updates = mapOf(
-                        "tiempolimite" to (app.limitHours * 60 + app.limitMinutes),
-                        "bloqueada" to app.isBlocked,
-                        "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
-                    )
-                    SupabaseClient.api.actualizarAppVinculadaPorPaquete(
-                        idDispositivo = "eq.$dispositivoId",
-                        nombrePaquete = "eq.${app.packageName}",
-                        app = updates
-                    )
-                } catch (e: Exception) {
-                    Log.e("BloqueoApps", "Error actualizando app: ${e.message}")
-                }
-            }
-        }
     }
 
     if (showTimeDialog && selectedApp != null) {
@@ -244,7 +306,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             currentMinutes = selectedApp!!.limitMinutes,
             onDismiss = { showTimeDialog = false },
             onConfirm = { hours, minutes ->
-                val index = apps.indexOfFirst { it.id == selectedApp!!.id }
+                val index = apps.indexOfFirst { it.packageName == selectedApp!!.packageName }
                 if (index != -1) {
                     val updatedApp = apps[index].copy(
                         limitHours = hours,
@@ -260,15 +322,51 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
         )
     }
 
+    if (appToDelete != null) {
+        DeleteConfirmDialog(
+            appName = appToDelete!!.nombre,
+            onDismiss = { appToDelete = null },
+            onConfirm = {
+                val app = appToDelete!!
+                repository.removeBlockedApp(app.packageName)
+                apps.remove(app)
+                if (dispositivoId != -1) {
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            SupabaseClient.api.eliminarAppVinculada(
+                                idDispositivo = "eq.$dispositivoId",
+                                nombrePaquete = "eq.${app.packageName}"
+                            )
+                        } catch (e: Exception) {
+                            Log.e("BloqueoApps", "Error al eliminar: ${e.message}")
+                        }
+                    }
+                }
+                appToDelete = null
+            }
+        )
+    }
+
+    if (showPasswordDialog && appToDeleteWithPassword != null) {
+        DialogQuitarBloqueoParental(
+            context = context,
+            appName = appToDeleteWithPassword!!.nombre,
+            onConfirm = {
+                appToDelete = appToDeleteWithPassword
+                showPasswordDialog = false
+                appToDeleteWithPassword = null
+            },
+            onDismiss = {
+                showPasswordDialog = false
+                appToDeleteWithPassword = null
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        stringResource(R.string.blocking_title),
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                },
+                title = { Text(stringResource(R.string.blocking_title), style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, stringResource(R.string.content_desc_back), tint = Negro)
@@ -293,7 +391,6 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Encabezado descriptivo
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.8f)),
                     shape = RoundedCornerShape(24.dp),
@@ -305,17 +402,12 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                     ) {
                         Text(
                             text = stringResource(R.string.blocking_desc),
-                            style = MaterialTheme.typography.bodyMedium, // Istok Web has Medium weight, this is fine or remove if needed. bodyMedium is Istok.
+                            style = MaterialTheme.typography.bodyMedium,
                             color = Negro,
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = "Icono Bloqueo",
-                            modifier = Modifier.size(40.dp),
-                            tint = Negro
-                        )
+                        Icon(Icons.Default.Lock, "Icono Bloqueo", modifier = Modifier.size(40.dp), tint = Negro)
                     }
                 }
 
@@ -326,87 +418,55 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        stringResource(R.string.blocking_your_apps),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Negro
-                    )
-                    
+                    Text(stringResource(R.string.blocking_your_apps), style = MaterialTheme.typography.titleMedium, color = Negro)
                     FloatingActionButton(
                         onClick = { showAddDialog = true },
-                        containerColor = Color(0xFF00BCD4),
-                        contentColor = Negro,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .border(1.dp, Negro, CircleShape)
+                        containerColor = Primario,
+                        contentColor = Blanco,
+                        modifier = Modifier.size(56.dp),
+                        shape = CircleShape,
+                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
                     ) {
-                        Icon(Icons.Default.Add, stringResource(R.string.blocking_add_btn))
+                        Icon(Icons.Default.Add, stringResource(R.string.blocking_add_btn), modifier = Modifier.size(28.dp))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-    var appToDelete by remember { mutableStateOf<AppBloqueo?>(null) }
-    
-    if (appToDelete != null) {
-        DeleteConfirmDialog(
-            appName = appToDelete!!.nombre,
-            onDismiss = { appToDelete = null },
-            onConfirm = {
-                val app = appToDelete!!
-                // 1. Eliminar localmente
-                repository.removeBlockedApp(app.packageName)
-                apps.remove(app)
-                
-                // 2. Eliminar de la nube
-                if (dispositivoId != -1) {
-                    scope.launch(Dispatchers.IO) {
-                        try {
-                            val res = SupabaseClient.api.eliminarAppVinculada(
-                                idDispositivo = "eq.$dispositivoId",
-                                nombrePaquete = "eq.${app.packageName}"
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Negro)
+                    }
+                } else if (apps.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.blocking_no_apps_found), color = Negro.copy(alpha = 0.6f))
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(apps) { app ->
+                            AppBloqueoItem(
+                                app = app,
+                                onClick = {
+                                    selectedApp = app
+                                    showTimeDialog = true
+                                },
+                                onDelete = { appToDelete = app },
+                                onDeleteWithPassword = {
+                                    appToDeleteWithPassword = app
+                                    showPasswordDialog = true
+                                }
                             )
-                            if (res.isSuccessful) {
-                                Log.d("BloqueoApps", "App eliminada de nube: ${app.nombre}")
-                            } else {
-                                Log.e("BloqueoApps", "Error eliminando app: ${res.code()}")
-                            }
-                        } catch (e: Exception) {
-                            Log.e("BloqueoApps", "Excepción al eliminar: ${e.message}")
                         }
                     }
                 }
-                appToDelete = null
-            }
-        )
-    }
-
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-                    items(apps) { app ->
-                        AppBloqueoItem(
-                            app = app,
-                            onClick = {
-                                selectedApp = app
-                                showTimeDialog = true
-                            },
-                            onDelete = { 
-                                appToDelete = app
-                            }
-                        )
-                    }
-        item {
-            Spacer(modifier = Modifier.height(80.dp))
-        }
-    }
             }
         }
     }
 }
-
-// ... (Existing AppBloqueoItem and TimeLimitDialog) ...
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -664,7 +724,8 @@ fun AppSelectionDialog(
 fun AppBloqueoItem(
     app: AppBloqueo,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onDeleteWithPassword: () -> Unit = onDelete
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Blanco.copy(alpha = 0.9f)),
@@ -680,7 +741,7 @@ fun AppBloqueoItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 // Icono Real
                 Box(
                     modifier = Modifier
@@ -693,11 +754,23 @@ fun AppBloqueoItem(
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text(
-                        app.nombre,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Negro
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            app.nombre,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Negro
+                        )
+                        // Mostrar candado si el bloqueo es del padre
+                        if (app.bloqueadaPor == "padre") {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Bloqueado por padres",
+                                tint = Color.Red,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                     // Mostrar estado actual
                     if (app.isBlocked) {
                         Text(
@@ -738,23 +811,49 @@ fun AppBloqueoItem(
                             color = Color.Gray
                         )
                     }
+                    
+                    // Mensaje adicional si es bloqueo parental
+                    if (app.bloqueadaPor == "padre") {
+                        Text(
+                            "Bloqueado por tus padres",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Red.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
 
             // Acciones (Editar y Eliminar)
             Row {
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier
-                        .padding(end = 4.dp)
-                        .size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.blocking_remove_btn),
-                        tint = Color.Red, // mismo color que "Bloqueado"
-                        modifier = Modifier.size(20.dp)
-                    )
+                // Si el bloqueo es del padre, mostrar botón diferente
+                if (app.bloqueadaPor == "padre") {
+                    IconButton(
+                        onClick = onDeleteWithPassword,
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Quitar bloqueo parental",
+                            tint = Color.Red,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                } else {
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.blocking_remove_btn),
+                            tint = Color.Red,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 IconButton(
@@ -864,8 +963,6 @@ fun TimeLimitDialog(
 
 /**
  * Picker tipo tambor deslizable.
- * Muestra 3 elementos visibles; el del centro es el seleccionado.
- * Se puede hacer scroll y hace snap al valor más cercano.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -893,18 +990,16 @@ fun WheelPicker(
     }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        // Contenedor con líneas de selección
         Box(
             modifier = Modifier
                 .width(72.dp)
                 .height(itemHeightDp * visibleItems)
         ) {
-            // Lista desplazable
             LazyColumn(
                 state = listState,
                 flingBehavior = flingBehavior,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = itemHeightDp) // padding para que el primero/último queden centrados
+                contentPadding = PaddingValues(vertical = itemHeightDp)
             ) {
                 items(items) { item ->
                     val idx = items.indexOf(item)
@@ -927,7 +1022,6 @@ fun WheelPicker(
                 }
             }
 
-            // Línea superior de selección
             HorizontalDivider(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -935,7 +1029,6 @@ fun WheelPicker(
                 color = Primario,
                 thickness = 2.dp
             )
-            // Línea inferior de selección
             HorizontalDivider(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -953,8 +1046,6 @@ fun WheelPicker(
         )
     }
 }
-
-
 
 @Composable
 fun DeleteConfirmDialog(
@@ -1019,12 +1110,6 @@ fun AppIcon(packageName: String, modifier: Modifier = Modifier) {
             modifier = modifier
         )
     } else {
-        // Fallback
         Box(modifier = modifier.background(Color.Gray))
     }
 }
-
-
-
-
-

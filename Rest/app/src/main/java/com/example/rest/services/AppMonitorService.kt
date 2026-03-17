@@ -11,9 +11,13 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.work.WorkManager
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkRequest
 import com.example.rest.R
 import com.example.rest.data.models.HistorialApp
 import com.example.rest.data.models.UbicacionInput
+import com.example.rest.data.models.AppInstaladaInput
 import com.google.android.gms.location.*
 
 import com.example.rest.network.SupabaseClient
@@ -87,6 +91,9 @@ class AppMonitorService : Service() {
     // Rastreo de historial cada 15 min
     private var lastHistorySyncTime: Long = 0
     private val HISTORY_SYNC_INTERVAL = 15 * 60 * 1000L // 15 minutos
+
+    // Rastreo de comandos cada 30 seg
+    private var lastCommandCheckTime: Long = 0
 
     // Rastreo de ubicación
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -236,6 +243,11 @@ class AppMonitorService : Service() {
         // Inicializar uso diario con estadísticas del sistema
         inicializarUsoDiario()
         
+        // Verificar comandos pendientes al iniciar
+        serviceScope.launch {
+            procesarComandosPendientes()
+        }
+        
         handler.post(object : Runnable {
             override fun run() {
                 if (isMonitoring) {
@@ -252,6 +264,14 @@ class AppMonitorService : Service() {
                     if (now - lastHistorySyncTime > HISTORY_SYNC_INTERVAL) {
                         sincronizarUbicacionHistorial()
                         lastHistorySyncTime = now
+                    }
+                    
+                    // Verificar comandos cada 30 segundos
+                    if (now - lastCommandCheckTime > 30_000) {
+                        serviceScope.launch {
+                            procesarComandosPendientes()
+                        }
+                        lastCommandCheckTime = now
                     }
 
                     handler.postDelayed(this, CHECK_INTERVAL)
@@ -328,61 +348,63 @@ class AppMonitorService : Service() {
     }
 
     /**
-     * Sube las apps instaladas a la base de datos si no existen
+     * Sube las apps instaladas a apps_instaladas en Supabase
+     * Sincroniza TODAS las apps (no solo las nuevas) para mantener la lista actualizada
      */
     private suspend fun subirAppsInstaladas() {
         if (dispositivoId == -1) return
         
         try {
-            // 1. Obtener apps en BD
-            val response = api.obtenerAppsVinculadas("eq.$dispositivoId")
+            // 1. Obtener apps que ya existen en apps_instaladas
+            val response = api.obtenerAppsInstaladas("eq.$dispositivoId")
             val appsEnNube = if (response.isSuccessful) response.body() ?: emptyList() else emptyList()
             val paquetesEnNube = appsEnNube.mapNotNull { it.nombrePaquete }.toSet()
             
-            // 2. Obtener apps instaladas (con launcher)
+            // 2. Obtener TODAS las apps instaladas (con launcher)
             val pm = packageManager
             val mainIntent = Intent(Intent.ACTION_MAIN, null)
             mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
             val appsInstaladas = pm.queryIntentActivities(mainIntent, 0)
             
-            val appsASubir = mutableListOf<com.example.rest.data.models.AppVinculadaInput>()
+            val appsASincronizar = mutableListOf<AppInstaladaInput>()
             
             for (resolveInfo in appsInstaladas) {
                 val packageName = resolveInfo.activityInfo.packageName
                 
-                // Ignorar si ya está en la nube o si es nuestra propia app
-                if (paquetesEnNube.contains(packageName) || packageName == this.packageName) {
+                // Ignorar si es nuestra propia app
+                if (packageName == this.packageName) {
                     continue
                 }
                 
                 val appName = resolveInfo.loadLabel(pm).toString()
                 
-                val nuevaApp = com.example.rest.data.models.AppVinculadaInput(
-                    idDispositivo = dispositivoId,
-                    nombre = appName,
-                    nombrePaquete = packageName,
-                    tiempoLimite = 0,
-                    bloqueada = false,
-                    activa = true,
-                    fechaCreacion = timestampFormat.format(Date()),
-                    fechaActualizacion = timestampFormat.format(Date())
-                )
-                appsASubir.add(nuevaApp)
+                // Si NO existe en la nube, preparar para subir
+                if (!paquetesEnNube.contains(packageName)) {
+                    val nuevaApp = AppInstaladaInput(
+                        idDispositivo = dispositivoId,
+                        nombre = appName,
+                        nombrePaquete = packageName,
+                        enlazada = false  // Por defecto NO enlazada
+                    )
+                    appsASincronizar.add(nuevaApp)
+                }
             }
             
-            // 3. Subir las nuevas (dada la API actual, una por una o en lote si agregamos endpoint)
-            // Como create toma un objeto, lo hacemos iterativo. No es lo más eficiente pero funciona para < 100 apps iniciales.
-            // Para optimizar, se podría agregar un endpoint batch en el backend.
-            if (appsASubir.isNotEmpty()) {
-                Log.d(TAG, "Subiendo ${appsASubir.size} nuevas apps a la nube...")
-                for (app in appsASubir) {
-                   try {
-                       api.crearAppVinculada(app)
-                   } catch (e: Exception) {
-                       Log.e(TAG, "Error subiendo app ${app.nombre}: ${e.message}")
-                   }
+            // 3. Subir las apps nuevas usando upsert
+            if (appsASincronizar.isNotEmpty()) {
+                Log.d(TAG, "Sincronizando ${appsASincronizar.size} nuevas apps a la nube...")
+                try {
+                    val upsertResponse = api.upsertAppsInstaladas(appsASincronizar)
+                    if (upsertResponse.isSuccessful) {
+                        Log.d(TAG, "Sincronización de apps completada")
+                    } else {
+                        Log.e(TAG, "Error en upsert: ${upsertResponse.code()}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error sincronizando apps: ${e.message}")
                 }
-                Log.d(TAG, "Carga de apps completada")
+            } else {
+                Log.d(TAG, "No hay nuevas apps para sincronizar")
             }
             
         } catch (e: Exception) {
@@ -852,6 +874,20 @@ class AppMonitorService : Service() {
                 if (realUsageMin >= limitMinutes) {
                     shouldBlock = true
                     reason = "Has excedido el límite de tiempo diario ($limitMinutes min)."
+
+                    // Enviar notificación de límite excedido
+                    try {
+                        val prefsNotif = com.example.rest.utils.PreferencesManager(this)
+                        com.example.rest.NotificationHelper.notifyBoth(
+                            context = this,
+                            title = "Límite excedido",
+                            message = "Has usado $appName por $realUsageMin min (límite: $limitMinutes min)",
+                            tipo = com.example.rest.NotificationHelper.NotifType.USO_EXCESIVO,
+                            idHijo = prefsNotif.getUserId()
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error enviando notificación de uso excesivo: ${e.message}")
+                    }
                     
                     // Si no estaba marcada como bloqueada, actualizar en la nube y localmente
                     if (!appRestricted.isBlocked) {
@@ -887,6 +923,21 @@ class AppMonitorService : Service() {
             lastBlockedTimeMap[packageName] = now
             currentlyBlockedPackage = packageName
             Log.d(TAG, "BLOQUEANDO app en tiempo real: $appName")
+
+            // Enviar notificación de bloqueo
+            try {
+                val prefsNotif = com.example.rest.utils.PreferencesManager(this)
+                com.example.rest.NotificationHelper.notifyBoth(
+                    context = this,
+                    title = "App Bloqueada",
+                    message = "$appName ha sido bloqueada. $reason",
+                    tipo = com.example.rest.NotificationHelper.NotifType.BLOQUEO,
+                    idHijo = prefsNotif.getUserId()
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error enviando notificación de bloqueo: ${e.message}")
+            }
+
             currentPackageName = null
             val intent = BloqueoActivity.newIntent(this, appName, reason)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -1013,6 +1064,45 @@ class AppMonitorService : Service() {
             Log.i(TAG, "Actualizaciones de ubicación iniciadas (cada 2 min)")
         } catch (e: Exception) {
             Log.e(TAG, "No se pudieron iniciar actualizaciones de ubicación: ${e.message}")
+        }
+    }
+
+    /**
+     * Procesa comandos de control parental recibidos del padre
+     */
+    private suspend fun procesarComandosPendientes() {
+        val userId = com.example.rest.utils.PreferencesManager(this).getUserId()
+        if (userId == -1) return
+
+        try {
+            val response = api.obtenerComandosPendientes("eq.$userId", "eq.PENDIENTE")
+            if (response.isSuccessful) {
+                @Suppress("UNCHECKED_CAST")
+                val comandos = response.body() as? List<Map<String, Any>>
+                comandos?.forEach { comando ->
+                    val id = comando["id"]
+                    val tipo = comando["tipo_comando"] as? String
+                    
+                    when (tipo) {
+                        "SOLICITAR_UBICACION" -> {
+                            Log.i(TAG, "Recibido comando: SOLICITAR_UBICACION")
+                            // Ejecutar worker de ubicación inmediatamente
+                            val workRequest = androidx.work.OneTimeWorkRequestBuilder<UbicacionWorker>().build()
+                            androidx.work.WorkManager.getInstance(this).enqueue(workRequest)
+                            
+                            // Marcar comando como procesado
+                            if (id != null) {
+                                api.actualizarComando(
+                                    id = "eq.$id",
+                                    updates = mapOf("estado" to "PROCESADO")
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error procesando comandos: ${e.message}")
         }
     }
 

@@ -2,16 +2,46 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
-CREATE TABLE public.apps_vinculadas (
-  id integer NOT NULL DEFAULT nextval('apps_vinculadas_id_seq'::regclass),
-  iddispositivo integer,
+-- =====================================================
+-- TABLA: apps_instaladas (NUEVA)
+-- Apps instaladas en el dispositivo del hijo
+-- =====================================================
+CREATE TABLE public.apps_instaladas (
+  id integer NOT NULL DEFAULT nextval('apps_instaladas_id_seq'::regclass),
+  iddispositivo integer NOT NULL,
   nombre character varying NOT NULL,
+  nombre_paquete character varying NOT NULL,
   categoria character varying,
-  tiempolimite integer,
-  tiempouso integer,
-  CONSTRAINT apps_vinculadas_pkey PRIMARY KEY (id),
-  CONSTRAINT apps_vinculadas_iddispositivo_fkey FOREIGN KEY (iddispositivo) REFERENCES public.dispositivos(id)
+  icono_url character varying,
+  enlazada boolean NOT NULL DEFAULT FALSE,
+  fecha_registro timestamp with time zone DEFAULT now(),
+  
+  CONSTRAINT apps_instaladas_pkey PRIMARY KEY (id),
+  CONSTRAINT apps_instaladas_iddispositivo_fkey FOREIGN KEY (iddispositivo) REFERENCES public.dispositivos(id) ON DELETE CASCADE,
+  CONSTRAINT apps_instaladas_unique UNIQUE (iddispositivo, nombre_paquete)
 );
+
+CREATE INDEX idx_apps_instaladas_dispositivo ON apps_instaladas(iddispositivo);
+CREATE INDEX idx_apps_instaladas_enlazadas ON apps_instaladas(iddispositivo, enlazada);
+
+-- =====================================================
+-- TABLA: apps_vinculadas (MODIFICADA - renombrar a apps_bloqueo)
+-- =====================================================
+-- Primero renombrar la tabla (opcional, pero mantenemos el nombre apps_vinculadas para compatibilidad)
+-- Añadir nuevos campos para control parental
+
+ALTER TABLE public.apps_vinculadas 
+ADD COLUMN IF NOT EXISTS nombre_paquete character varying,
+ADD COLUMN IF NOT EXISTS tiempo_usado_hoy integer DEFAULT 0,
+ADD COLUMN IF NOT EXISTS bloqueada boolean DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS activa boolean DEFAULT TRUE,
+ADD COLUMN IF NOT EXISTS fecha_creacion timestamp with time zone,
+ADD COLUMN IF NOT EXISTS fecha_actualizacion timestamp with time zone,
+ADD COLUMN IF NOT EXISTS bloqueada_por character varying DEFAULT 'hijo',
+ADD COLUMN IF NOT EXISTS requiere_password boolean DEFAULT FALSE;
+
+-- Crear índice para búsquedas por paquete
+CREATE INDEX IF NOT EXISTS idx_apps_vinculadas_paquete ON apps_vinculadas(iddispositivo, nombre_paquete);
 CREATE TABLE public.codigos_recuperacion (
   id integer NOT NULL DEFAULT nextval('codigos_recuperacion_id_seq'::regclass),
   correo character varying NOT NULL,

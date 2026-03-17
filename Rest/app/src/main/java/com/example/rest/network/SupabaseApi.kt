@@ -474,13 +474,91 @@ interface SupabaseApi {
         @Query("iddispositivo") idDispositivo: String,
         @Query("nombre_paquete") nombrePaquete: String
     ): Response<Void>
-    
+
+    // ==================== APPS INSTALADAS ====================
+
     /**
-     * Upsert app vinculada (Insertar o Actualizar si conflicto en ID)
-     * Nota: Supabase requiere header Prefer: resolution=merge-duplicates para UPSERT real, 
-     * pero Retrofit lo maneja mejor con lógica en repositorio.
-     * Aquí definimos endpoints básicos.
+     * Obtener apps instaladas de un dispositivo
      */
+    @GET("apps_instaladas")
+    suspend fun obtenerAppsInstaladas(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("select") select: String = "*"
+    ): Response<List<AppInstalada>>
+
+    /**
+     * Obtener apps instaladas por estado de enlazada
+     */
+    @GET("apps_instaladas")
+    suspend fun obtenerAppsInstaladasPorEstado(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("enlazada") enlazada: String,
+        @Query("select") select: String = "*"
+    ): Response<List<AppInstalada>>
+
+    /**
+     * Crear app instalada
+     */
+    @POST("apps_instaladas")
+    suspend fun crearAppInstalada(
+        @Body app: AppInstaladaInput
+    ): Response<List<AppInstalada>>
+
+    /**
+     * Actualizar app instalada (para marcar enlazada)
+     */
+    @PATCH("apps_instaladas")
+    suspend fun actualizarAppInstalada(
+        @Query("id") id: String,
+        @Body update: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<AppInstalada>>
+
+    /**
+     * Actualizar app instalada por paquete
+     */
+    @PATCH("apps_instaladas")
+    suspend fun actualizarAppInstaladaPorPaquete(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("nombre_paquete") nombrePaquete: String,
+        @Body update: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<AppInstalada>>
+
+    /**
+     * Upsert apps instaladas (bulk insert/update)
+     */
+    @POST("apps_instaladas")
+    suspend fun upsertAppsInstaladas(
+        @Body apps: List<AppInstaladaInput>
+    ): Response<List<AppInstalada>>
+
+    // ==================== APPS BLOQUEO ====================
+
+    /**
+     * Obtener bloqueos de un dispositivo
+     */
+    @GET("apps_vinculadas")
+    suspend fun obtenerAppsBloqueo(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("select") select: String = "*"
+    ): Response<List<AppVinculada>>
+
+    /**
+     * Crear app en bloqueo
+     */
+    @POST("apps_vinculadas")
+    suspend fun crearAppBloqueo(
+        @Body app: AppBloqueoInput
+    ): Response<List<AppVinculada>>
+
+    /**
+     * Obtener app bloqueo por paquete
+     */
+    @GET("apps_vinculadas")
+    suspend fun obtenerAppBloqueoPorPaquete(
+        @Query("iddispositivo") idDispositivo: String,
+        @Query("nombre_paquete") nombrePaquete: String,
+        @Query("select") select: String = "*"
+    ): Response<List<AppVinculada>>
     
     // ==================== HISTORIAL APPS (ESTADÍSTICAS) ====================
     
@@ -563,7 +641,7 @@ interface SupabaseApi {
     @GET("ubicaciones")
     suspend fun obtenerUltimaUbicacion(
         @Query("id_usuario") idUsuario: String,
-        @Query("order") order: String = "timestamp.desc",
+        @Query("order") order: String = "timestamp.desc.nullsfirst",
         @Query("limit") limit: String = "1",
         @Query("select") select: String = "*"
     ): Response<List<Ubicacion>>
@@ -577,4 +655,34 @@ interface SupabaseApi {
         @Query("order") order: String = "fecha.desc,hora.desc",
         @Query("select") select: String = "*"
     ): Response<List<HistorialUbicacion>>
+
+    // ==================== COMANDOS CONTROL PARENTAL ====================
+
+    /**
+     * Crear un comando de control (ej: solicitar ubicación)
+     */
+    @POST("comandos_control")
+    suspend fun crearComandoControl(
+        @Body comando: Map<String, Any>
+    ): Response<Any>
+
+    /**
+     * Obtener comandos pendientes para el hijo
+     */
+    @GET("comandos_control")
+    suspend fun obtenerComandosPendientes(
+        @Query("id_hijo") idHijo: String,
+        @Query("estado") estado: String = "eq.PENDIENTE",
+        @Query("order") order: String = "fecha_creacion.desc",
+        @Query("limit") limit: String = "10"
+    ): Response<Any>
+
+    /**
+     * Actualizar estado de un comando
+     */
+    @PATCH("comandos_control")
+    suspend fun actualizarComando(
+        @Query("id") id: String,
+        @Body updates: Map<String, Any>
+    ): Response<Any>
 }

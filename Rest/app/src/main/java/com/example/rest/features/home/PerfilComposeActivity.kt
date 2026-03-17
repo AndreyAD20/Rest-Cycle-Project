@@ -639,9 +639,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                 com.example.rest.ui.components.inputs.CampoFechaAutoFormato(
                                     value = fechaText,
                                     onValueChange = { fechaText = it },
+                                    iconTint = Primario,
                                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-                                    // Nota: Para que el icono y forma entren aquí, CampoFechaAutoFormato tendría que exponer esas propiedades o tendríamos que modificar dicho componente. 
-                                    // De lo contrario aplicará su diseño original.
                                 )
 
                                 // Campo Correo
@@ -772,7 +771,7 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Primario),
                             border = BorderStroke(1.dp, Primario)
                         ) {
-                            Icon(Icons.Default.LockReset, contentDescription = null, tint = Primario)
+                            Icon(Icons.Default.Lock, contentDescription = null, tint = Primario)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(stringResource(R.string.change_password_title), color = Primario, fontWeight = FontWeight.Bold, fontSize = TextUnit(18f, TextUnitType.Sp))
                         }

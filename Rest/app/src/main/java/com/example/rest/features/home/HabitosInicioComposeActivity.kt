@@ -87,6 +87,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
+    var mostrarDialogoCerrarSesion by remember { mutableStateOf(false) }
     
     // Estados para Widgets
     var ultimaNota by remember { mutableStateOf<Nota?>(null) }
@@ -504,6 +505,14 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                             label = { Text(stringResource(R.string.menu_parental_control), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,
                             onClick = {
+                                val prefs = com.example.rest.utils.PreferencesManager(context)
+                                val esMayor = prefs.getMayorEdad()
+                                val intent = if (!esMayor) {
+                                    android.content.Intent(context, com.example.rest.features.hijo.EnlaceHijoComposeActivity::class.java)
+                                } else {
+                                    android.content.Intent(context, com.example.rest.features.parental.GestionHijosComposeActivity::class.java)
+                                }
+                                context.startActivity(intent)
                             },
                             icon = { Icon(Icons.Default.Person, null, tint = Negro, modifier = Modifier.size(28.dp)) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
@@ -522,24 +531,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                             label = { Text(stringResource(R.string.menu_logout), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,
                             onClick = {
-                                // Limpiar fotos de perfil locales
-                                try {
-                                    context.filesDir.listFiles()?.forEach { file ->
-                                        if (file.name.startsWith("profile_image_")) {
-                                            file.delete()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("PerfilDebug", "Error al limpiar fotos: ${e.message}")
-                                }
-                                
-                                // Borrar sesión y volver al login
-                                val preferencesManager = com.example.rest.utils.PreferencesManager(context)
-                                preferencesManager.clearPreferences()
-                                val intent = android.content.Intent(context, com.example.rest.features.auth.LoginComposeActivity::class.java)
-                                intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                context.startActivity(intent)
-                                (context as? android.app.Activity)?.finish()
+                                mostrarDialogoCerrarSesion = true
                             },
                             icon = { Icon(Icons.Default.ExitToApp, null, tint = Negro, modifier = Modifier.size(28.dp)) },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding).padding(bottom = 16.dp),
@@ -553,6 +545,47 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
             }
         }
     ) {
+        // Diálogo de confirmación para cerrar sesión
+        if (mostrarDialogoCerrarSesion) {
+            AlertDialog(
+                onDismissRequest = { mostrarDialogoCerrarSesion = false },
+                title = { Text(stringResource(R.string.dialog_logout_title)) },
+                text = { Text(stringResource(R.string.dialog_logout_text)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            mostrarDialogoCerrarSesion = false
+                            
+                            // Limpiar fotos de perfil locales
+                            try {
+                                context.filesDir.listFiles()?.forEach { file ->
+                                    if (file.name.startsWith("profile_image_")) {
+                                        file.delete()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PerfilDebug", "Error al limpiar fotos: ${e.message}")
+                            }
+                            
+                            // Borrar sesión y volver al login
+                            val preferencesManager = com.example.rest.utils.PreferencesManager(context)
+                            preferencesManager.clearPreferences()
+                            val intent = android.content.Intent(context, com.example.rest.features.auth.LoginComposeActivity::class.java)
+                            intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            context.startActivity(intent)
+                            (context as? android.app.Activity)?.finish()
+                        }
+                    ) {
+                        Text(stringResource(R.string.btn_logout))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { mostrarDialogoCerrarSesion = false }) {
+                        Text(stringResource(R.string.btn_cancel))
+                    }
+                }
+            )
+        }
         Scaffold(
             topBar = {
                CenterAlignedTopAppBar(

@@ -15,8 +15,17 @@ object ChatHeadManager {
      * pero debido a bloqueos silenciosos de fabricantes (OEMs) se usa explícitamente el Overlay para todas las APIs garantizando el 100% de éxito.
      */
     fun showChat(context: Context, chatId: String, titulo: String) {
+        if (!isBubbleEnabled(context)) {
+            android.util.Log.d("ChatHeadManager", "Burbuja desactivada por configuración del usuario.")
+            return
+        }
         android.util.Log.d("ChatHeadManager", "Forzando Overlay Custom (Chat Heads Clásico) en todas las versiones.")
         launchOverlayService(context)
+    }
+
+    private fun isBubbleEnabled(context: Context): Boolean {
+        val sharedPrefs = context.getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
+        return sharedPrefs.getBoolean("BURBUJA_ACTIVA", false)
     }
 
     /**
@@ -24,6 +33,8 @@ object ChatHeadManager {
      * Si no lo tiene, lanza la pantalla de ajustes de Android para solicitarlo.
      */
     fun launchOverlayService(context: Context) {
+        if (!isBubbleEnabled(context)) return
+
         // En Android 6.0 (API 23)+ se requiere pedir permiso explícito para Overlay
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
             val intent = Intent(
