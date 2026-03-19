@@ -350,7 +350,7 @@ fun PantallaVincularHijo(
                                     )
                                     cargando = false
                                     when (result) {
-                                        is UsuarioRepository.Result.Success -> onVinculacionExitosa()
+                                        is UsuarioRepository.Result.Success<*> -> onVinculacionExitosa()
                                         is UsuarioRepository.Result.Error -> onError(result.message)
                                         else -> {}
                                     }

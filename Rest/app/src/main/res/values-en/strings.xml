@@ -480,4 +480,41 @@
     <string name="panel_linked_title">You are linked!</string>
     <string name="panel_linked_msg">Your family can see and manage your activities from their application.</string>
     <string name="panel_linked_supervision_msg">Your device is being supervised. Act responsibly.</string>
+
+    <!-- Enable Bubbles Dialog (Calendar) -->
+    <string name="dialog_bubbles_title">🫧 Enable Bubbles</string>
+    <string name="dialog_bubbles_text">To receive event alerts as floating bubbles (Messenger-style), enable bubbles for Rest Cycle in Settings.\n\nSettings → Notifications → Rest Cycle → Bubbles → All</string>
+    <string name="dialog_bubbles_go_settings">Go to Settings</string>
+    <string name="dialog_bubbles_not_now">Not Now</string>
+
+    <!-- Bubble Configuration -->
+    <string name="dialog_bubble_config_title">Bubble Settings</string>
+    <string name="dialog_bubble_sound_label">Bubble Sound</string>
+    <string name="dialog_bubble_config_saved">Bubble settings saved</string>
+    <string name="bubble_sound_default">Default</string>
+    <string name="bubble_sound_pop">Bubble (Pop)</string>
+    <string name="bubble_sound_bell">Soft Bell</string>
+    <string name="bubble_sound_silent">Silent</string>
+
+    <!-- Floating Notifications (Settings) -->
+    <string name="notif_section_floating">Floating Notifications</string>
+    <string name="notif_flotante_enable">Enable floating</string>
+    <string name="notif_flotante_excessive_use">  Excessive app use</string>
+    <string name="notif_flotante_tasks">  Tasks</string>
+    <string name="notif_flotante_events">  Events</string>
+    <string name="notif_flotante_screen_time">  Screen time</string>
+    <string name="notif_flotante_app_block">  App blocking</string>
+
+    <!-- System Notifications (Settings) -->
+    <string name="notif_section_system">System Notifications</string>
+    <string name="notif_system_enable">Enable system</string>
+    <string name="notif_system_excessive_use">  Excessive app use</string>
+    <string name="notif_system_tasks">  Tasks</string>
+    <string name="notif_system_events">  Events</string>
+    <string name="notif_system_screen_time">  Screen time</string>
+    <string name="notif_system_app_block">  App blocking</string>
+
+    <!-- Persistent notification / bubble channel -->
+    <string name="notif_bubble_channel_desc">Rest Cycle floating bubbles</string>
+    <string name="notif_bubble_content_text">Tap the bubble to see your alerts</string>
 </resources>

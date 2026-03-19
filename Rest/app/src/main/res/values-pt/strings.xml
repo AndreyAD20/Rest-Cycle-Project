@@ -480,4 +480,41 @@
     <string name="panel_linked_title">Você está vinculado!</string>
     <string name="panel_linked_msg">Sua família pode ver e gerenciar suas atividades pelo aplicativo deles.</string>
     <string name="panel_linked_supervision_msg">Seu dispositivo está sendo supervisionado. Atue com responsabilidade.</string>
+
+    <!-- Diálogo Ativar Bolhas (Calendário) -->
+    <string name="dialog_bubbles_title">🫧 Ativar Bolhas</string>
+    <string name="dialog_bubbles_text">Para receber alertas de eventos como bolhas flutuantes (estilo Messenger), ative as bolhas para o Rest Cycle nas Configurações.\n\nConfigurações → Notificações → Rest Cycle → Bolhas → Todos</string>
+    <string name="dialog_bubbles_go_settings">Ir para Configurações</string>
+    <string name="dialog_bubbles_not_now">Agora Não</string>
+
+    <!-- Configuração de Bolha -->
+    <string name="dialog_bubble_config_title">Configurações de Bolha</string>
+    <string name="dialog_bubble_sound_label">Som da Bolha</string>
+    <string name="dialog_bubble_config_saved">Configurações de bolha salvas</string>
+    <string name="bubble_sound_default">Padrão</string>
+    <string name="bubble_sound_pop">Bolha (Pop)</string>
+    <string name="bubble_sound_bell">Sino Suave</string>
+    <string name="bubble_sound_silent">Silencioso</string>
+
+    <!-- Notificações Flutuantes (Configurações) -->
+    <string name="notif_section_floating">Notificações Flutuantes</string>
+    <string name="notif_flotante_enable">Ativar flutuantes</string>
+    <string name="notif_flotante_excessive_use">  Uso excessivo de apps</string>
+    <string name="notif_flotante_tasks">  Tarefas</string>
+    <string name="notif_flotante_events">  Eventos</string>
+    <string name="notif_flotante_screen_time">  Tempo de tela</string>
+    <string name="notif_flotante_app_block">  Bloqueio de apps</string>
+
+    <!-- Notificações do Sistema (Configurações) -->
+    <string name="notif_section_system">Notificações do Sistema</string>
+    <string name="notif_system_enable">Ativar sistema</string>
+    <string name="notif_system_excessive_use">  Uso excessivo de apps</string>
+    <string name="notif_system_tasks">  Tarefas</string>
+    <string name="notif_system_events">  Eventos</string>
+    <string name="notif_system_screen_time">  Tempo de tela</string>
+    <string name="notif_system_app_block">  Bloqueio de apps</string>
+
+    <!-- Notificação persistente / canal de bolha -->
+    <string name="notif_bubble_channel_desc">Bolhas flutuantes do Rest Cycle</string>
+    <string name="notif_bubble_content_text">Toque na bolha para ver seus alertas</string>
 </resources>

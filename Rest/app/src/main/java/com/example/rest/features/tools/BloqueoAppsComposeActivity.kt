@@ -198,7 +198,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             scope.launch(Dispatchers.IO) {
                 try {
                     val updates = mapOf(
-                        "tiempolimite" to (app.limitHours * 60 + app.limitMinutes),
+                        "tiempo_limite" to (app.limitHours * 60 + app.limitMinutes),
                         "bloqueada" to app.isBlocked,
                         "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
                     )

@@ -29,6 +29,8 @@ import com.example.rest.R
 import com.example.rest.ui.theme.*
 import com.example.rest.utils.SecurityUtils
 import kotlinx.coroutines.launch
+import com.example.rest.data.repository.UsuarioRepository
+import com.example.rest.data.models.Usuario
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -57,7 +59,7 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
     var nuevaPwdVisible by remember { mutableStateOf(false) }
     var confirmarPwdVisible by remember { mutableStateOf(false) }
     var isSaving by remember { mutableStateOf(false) }
-    val usuarioRepository = remember { com.example.rest.data.repository.UsuarioRepository() }
+    val usuarioRepository = remember { UsuarioRepository() }
     val prefs = com.example.rest.utils.PreferencesManager(context)
     val userId = prefs.getUserId()
 
@@ -223,8 +225,8 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                             try {
                                 // Verificar contraseña actual
                                 val userRes = usuarioRepository.obtenerUsuarioPorId(context, userId)
-                                if (userRes is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
-                                    val user = userRes.data
+                                if (userRes is UsuarioRepository.Result.Success<*>) {
+                                    val user = userRes.data as Usuario
                                     val hashedActual = SecurityUtils.hashPassword(actualPwd)
                                     // Comprobar si la contraseña coincide (si es bcrypt hay que usar verify, depende de SecurityUtils)
                                     val isValid = SecurityUtils.verifyPassword(actualPwd, user.contraseña)
@@ -244,11 +246,11 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                                     val nuevaHash = SecurityUtils.hashPassword(nuevaPwd)
                                     val updated = user.copy(contraseña = nuevaHash)
                                     when (val updRes = usuarioRepository.actualizarUsuario(context, userId, updated)) {
-                                        is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
+                                        is UsuarioRepository.Result.Success<*> -> {
                                             Toast.makeText(context, context.getString(R.string.toast_password_updated), Toast.LENGTH_SHORT).show()
                                             onBackClick() // finaliza
                                         }
-                                        is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
+                                        is UsuarioRepository.Result.Error -> {
                                             Toast.makeText(context, context.getString(R.string.toast_password_update_error, updRes.message), Toast.LENGTH_SHORT).show()
                                         }
                                         else -> {}

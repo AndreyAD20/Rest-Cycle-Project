@@ -205,7 +205,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                 // ========== NOTIFICACIONES FLOTANTES ==========
                 item {
                     Text(
-                        text = "Notificaciones Flotantes",
+                        text = stringResource(R.string.notif_section_floating),
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White.copy(alpha = 0.9f),
                         modifier = Modifier.padding(vertical = 8.dp)
@@ -215,7 +215,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                 item {
                     OpcionConfiguracionToggle(
                         icono = Icons.Default.NotificationsActive,
-                        titulo = "Activar flotantes",
+                        titulo = stringResource(R.string.notif_flotante_enable),
                         activado = notifFlotanteEnabled,
                         onToggle = { isEnabled ->
                             notifFlotanteEnabled = isEnabled
@@ -230,7 +230,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Uso excesivo de apps",
+                            titulo = stringResource(R.string.notif_flotante_excessive_use),
                             activado = notifFlotanteUsoExcesivo,
                             onToggle = { isEnabled ->
                                 notifFlotanteUsoExcesivo = isEnabled
@@ -242,7 +242,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Tareas",
+                            titulo = stringResource(R.string.notif_flotante_tasks),
                             activado = notifFlotanteTareas,
                             onToggle = { isEnabled ->
                                 notifFlotanteTareas = isEnabled
@@ -254,7 +254,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Eventos",
+                            titulo = stringResource(R.string.notif_flotante_events),
                             activado = notifFlotanteEventos,
                             onToggle = { isEnabled ->
                                 notifFlotanteEventos = isEnabled
@@ -266,7 +266,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Tiempo de pantalla",
+                            titulo = stringResource(R.string.notif_flotante_screen_time),
                             activado = notifFlotanteTiempoPantalla,
                             onToggle = { isEnabled ->
                                 notifFlotanteTiempoPantalla = isEnabled
@@ -278,7 +278,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Bloqueo de apps",
+                            titulo = stringResource(R.string.notif_flotante_app_block),
                             activado = notifFlotanteBloqueo,
                             onToggle = { isEnabled ->
                                 notifFlotanteBloqueo = isEnabled
@@ -294,7 +294,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                 // ========== NOTIFICACIONES DEL SISTEMA ==========
                 item {
                     Text(
-                        text = "Notificaciones del Sistema",
+                        text = stringResource(R.string.notif_section_system),
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White.copy(alpha = 0.9f),
                         modifier = Modifier.padding(vertical = 8.dp)
@@ -304,7 +304,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                 item {
                     OpcionConfiguracionToggle(
                         icono = Icons.Default.Notifications,
-                        titulo = "Activar sistema",
+                        titulo = stringResource(R.string.notif_system_enable),
                         activado = notifSistemaEnabled,
                         onToggle = { isEnabled ->
                             notifSistemaEnabled = isEnabled
@@ -319,7 +319,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Uso excesivo de apps",
+                            titulo = stringResource(R.string.notif_system_excessive_use),
                             activado = notifSistemaUsoExcesivo,
                             onToggle = { isEnabled ->
                                 notifSistemaUsoExcesivo = isEnabled
@@ -331,7 +331,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Tareas",
+                            titulo = stringResource(R.string.notif_system_tasks),
                             activado = notifSistemaTareas,
                             onToggle = { isEnabled ->
                                 notifSistemaTareas = isEnabled
@@ -343,7 +343,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Eventos",
+                            titulo = stringResource(R.string.notif_system_events),
                             activado = notifSistemaEventos,
                             onToggle = { isEnabled ->
                                 notifSistemaEventos = isEnabled
@@ -355,7 +355,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Tiempo de pantalla",
+                            titulo = stringResource(R.string.notif_system_screen_time),
                             activado = notifSistemaTiempoPantalla,
                             onToggle = { isEnabled ->
                                 notifSistemaTiempoPantalla = isEnabled
@@ -367,7 +367,7 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     item {
                         OpcionConfiguracionToggle(
                             icono = null,
-                            titulo = "  Bloqueo de apps",
+                            titulo = stringResource(R.string.notif_system_app_block),
                             activado = notifSistemaBloqueo,
                             onToggle = { isEnabled ->
                                 notifSistemaBloqueo = isEnabled
@@ -508,7 +508,7 @@ fun DialogoConfiguracionBurbuja(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Configuración de Burbuja",
+                text = stringResource(R.string.dialog_bubble_config_title),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -521,7 +521,7 @@ fun DialogoConfiguracionBurbuja(onDismiss: () -> Unit) {
             ) {
                 // Selector de Sonido
                 Text(
-                    text = "Sonido de la Burbuja",
+                    text = stringResource(R.string.dialog_bubble_sound_label),
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -542,16 +542,16 @@ fun DialogoConfiguracionBurbuja(onDismiss: () -> Unit) {
                         .putString("BURBUJA_SONIDO", sonidoSeleccionado)
                         .apply()
                     
-                    android.widget.Toast.makeText(context, "Configuración de burbuja guardada", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(context, context.getString(R.string.dialog_bubble_config_saved), android.widget.Toast.LENGTH_SHORT).show()
                     onDismiss()
                 }
             ) {
-                Text("Guardar")
+                Text(stringResource(R.string.btn_save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar")
+                Text(stringResource(R.string.btn_cancel))
             }
         }
     )

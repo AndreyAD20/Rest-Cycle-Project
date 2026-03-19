@@ -115,7 +115,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
         lifecycleScope.launch {
             try {
                 when (val resultado = recuperacionRepository.solicitarCodigo(correo)) {
-                    is RecuperacionRepository.Result.Success -> {
+                    is RecuperacionRepository.Result.Success<*> -> {
                         runOnUiThread {
                             Toast.makeText(
                                 this@CodigoRecuperacionActivity,
@@ -155,8 +155,8 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
         lifecycleScope.launch {
             try {
                 when (val resultado = recuperacionRepository.verificarCodigo(correo, codigo)) {
-                    is RecuperacionRepository.Result.Success -> {
-                        val codigoId = resultado.data
+                    is RecuperacionRepository.Result.Success<*> -> {
+                        val codigoId = resultado.data as Int
                         runOnUiThread {
                             Toast.makeText(
                                 this@CodigoRecuperacionActivity,

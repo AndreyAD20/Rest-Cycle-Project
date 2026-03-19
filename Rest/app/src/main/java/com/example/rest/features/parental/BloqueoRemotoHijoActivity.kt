@@ -1,4 +1,4 @@
-﻿package com.example.rest.features.parental
+package com.example.rest.features.parental
 
 import android.content.Intent
 import android.os.Bundle
@@ -180,7 +180,7 @@ fun PantallaBloqueoRemoto(
                         if (bloqueo != null) {
                             // Actualizar existente
                             val updates = mapOf(
-                                "tiempolimite" to newLimit,
+                                "tiempo_limite" to newLimit,
                                 "bloqueada_por" to "padre",
                                 "requiere_password" to (newLimit > 0),
                                 "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())

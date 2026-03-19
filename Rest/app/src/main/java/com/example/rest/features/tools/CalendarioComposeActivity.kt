@@ -152,13 +152,9 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
     if (mostrarDialogoBurbujas) {
         AlertDialog(
             onDismissRequest = { mostrarDialogoBurbujas = false },
-            title = { Text("🫧 Activa las Burbujas") },
+            title = { Text(stringResource(R.string.dialog_bubbles_title)) },
             text = {
-                Text(
-                    "Para recibir alertas de eventos como burbujas flotantes (estilo Messenger), " +
-                    "activa las burbujas para Rest Cycle en Ajustes.\n\n" +
-                    "Ajustes → Notificaciones → Rest Cycle → Burbujas → Todos"
-                )
+                Text(stringResource(R.string.dialog_bubbles_text))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -176,10 +172,10 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                         }
                         context.startActivity(i)
                     }
-                }) { Text("Ir a Ajustes") }
+                }) { Text(stringResource(R.string.dialog_bubbles_go_settings)) }
             },
             dismissButton = {
-                TextButton(onClick = { mostrarDialogoBurbujas = false }) { Text("Ahora no") }
+                TextButton(onClick = { mostrarDialogoBurbujas = false }) { Text(stringResource(R.string.dialog_bubbles_not_now)) }
             }
         )
     }

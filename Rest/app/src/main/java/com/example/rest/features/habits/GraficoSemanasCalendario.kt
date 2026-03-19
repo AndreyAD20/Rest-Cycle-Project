@@ -41,8 +41,8 @@ fun GraficoSemanasCalendario(context: Context) {
                         val dispositivoId = response.body()!![0].id ?: return@launch
                         
                         when (val statsResult = historialRepo.obtenerEstadisticasPorSemanas(dispositivoId, 3)) {
-                            is com.example.rest.data.repository.HistorialAppsRepository.Result.Success -> {
-                                estadisticas = statsResult.data
+                            is com.example.rest.data.repository.HistorialAppsRepository.Result.Success<*> -> {
+                                estadisticas = statsResult.data as Map<String, Pair<String, Int>>
                                 isLoading = false
                             }
                             else -> {

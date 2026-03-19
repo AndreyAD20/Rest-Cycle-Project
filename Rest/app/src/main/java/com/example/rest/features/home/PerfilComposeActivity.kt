@@ -60,6 +60,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import com.example.rest.utils.*
+import com.example.rest.data.repository.UsuarioRepository
+import com.example.rest.data.models.Usuario
+import com.example.rest.data.repository.RecuperacionRepository
 
 class PerfilComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -293,8 +296,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
     var pendienteGuardar by remember { mutableStateOf(false) } // Bandera: guardar después de verificar
     var mostrarContraseña by remember { mutableStateOf(false) } // Toggle visibilidad contraseña
 
-    val recuperacionRepository = remember { com.example.rest.data.repository.RecuperacionRepository() }
-    val usuarioRepository = remember { com.example.rest.data.repository.UsuarioRepository() }
+    val recuperacionRepository = remember { RecuperacionRepository() }
+    val usuarioRepository = remember { UsuarioRepository() }
 
     // Función de validación de formato de correo
     fun esCorreoValido(correo: String): Boolean {
@@ -312,8 +315,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
         scope.launch {
             try {
                 val getRes = usuarioRepository.obtenerUsuarioPorId(context, userId)
-                if (getRes is com.example.rest.data.repository.UsuarioRepository.Result.Success<*>) {
-                    val currentUsuario = getRes.data as com.example.rest.data.models.Usuario
+                if (getRes is UsuarioRepository.Result.Success<*>) {
+                    val currentUsuario = getRes.data as Usuario
 
                     if (!com.example.rest.utils.SecurityUtils.verifyPassword(confirmarContraseña, currentUsuario.contraseña)) {
                         Toast.makeText(context, context.getString(R.string.err_password_mismatch), Toast.LENGTH_SHORT).show()
@@ -335,14 +338,14 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                     )
 
                     when (val updateRes = usuarioRepository.actualizarUsuario(context, userId, updatedUsuario)) {
-                        is com.example.rest.data.repository.UsuarioRepository.Result.Success<*> -> {
+                        is UsuarioRepository.Result.Success<*> -> {
                             Toast.makeText(context, context.getString(R.string.toast_profile_updated), Toast.LENGTH_SHORT).show()
                             val prefs = com.example.rest.utils.PreferencesManager(context)
                             prefs.saveUserName(nombreText)
                             prefs.saveUserEmail(correoText)
                             correoOriginal = correoText // Actualizar el correo original
                         }
-                        is com.example.rest.data.repository.UsuarioRepository.Result.Error -> {
+                        is UsuarioRepository.Result.Error -> {
                             Toast.makeText(context, context.getString(R.string.toast_error_saving_changes, updateRes.message), Toast.LENGTH_SHORT).show()
                         }
                         else -> {}
@@ -364,8 +367,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
         userId = prefs.getUserId()
         if (userId != -1) {
             when (val res = usuarioRepository.obtenerUsuarioPorId(context, userId)) {
-                is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
-                    val usuario = res.data
+                is UsuarioRepository.Result.Success<*> -> {
+                    val usuario = res.data as Usuario
                     nombreText = usuario.nombre
                     apellidoText = usuario.apellido ?: ""
                     correoText = usuario.correo
@@ -724,8 +727,8 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                                         val resultado = recuperacionRepository.enviarCodigoVerificacionCorreo(correoText.trim())
                                         enviandoCodigo = false
                                         when (resultado) {
-                                            is com.example.rest.data.repository.RecuperacionRepository.Result.Success -> {
-                                                codigoGenerado = resultado.data
+                                            is com.example.rest.data.repository.RecuperacionRepository.Result.Success<*> -> {
+                                                codigoGenerado = resultado.data as String
                                                 mostrarDialogoVerificacion = true
                                                 Toast.makeText(context, context.getString(R.string.toast_code_sent_to, correoText), Toast.LENGTH_SHORT).show()
                                             }
@@ -896,8 +899,8 @@ suspend fun descargarFotoDeSupabase(context: Context, userId: Int): Bitmap? {
             val result = repository.obtenerUsuarioPorId(context, userId)
             
             when (result) {
-                is com.example.rest.data.repository.UsuarioRepository.Result.Success -> {
-                    val usuario = result.data
+                is com.example.rest.data.repository.UsuarioRepository.Result.Success<*> -> {
+                    val usuario = result.data as Usuario
                     val fotoBase64 = usuario.fotoPerfil
                     
                     if (!fotoBase64.isNullOrBlank()) {

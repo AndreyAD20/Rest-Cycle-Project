@@ -146,14 +146,14 @@ fun PantallaEnlaceHijo(
         if (idHijo != -1) {
             // Verificar si ya está vinculado
             val vinculadoResult = repository.estaVinculado(context, idHijo)
-            if (vinculadoResult is UsuarioRepository.Result.Success && vinculadoResult.data) {
+            if (vinculadoResult is UsuarioRepository.Result.Success<*> && vinculadoResult.data == true) {
                 vinculado = true
                 cargando = false
                 return@LaunchedEffect
             }
             // Obtener o generar código de vinculación
             when (val result = repository.obtenerYGenerarCodigoVinculacion(context, idHijo)) {
-                is UsuarioRepository.Result.Success -> codigoVinculacion = result.data
+                is UsuarioRepository.Result.Success<*> -> codigoVinculacion = result.data as String
                 is UsuarioRepository.Result.Error -> codigoVinculacion = "ERROR"
                 else -> {}
             }
@@ -330,11 +330,12 @@ fun PantallaEnlaceHijo(
                             val result = repository.estaVinculado(context, idHijo)
                             delay(600)
                             verificando = false
-                            if (result is UsuarioRepository.Result.Success) {
-                                if (result.data) {
+                            if (result is UsuarioRepository.Result.Success<*>) {
+                                val isLinked = result.data == true
+                                if (isLinked) {
                                     vinculado = true
                                 }
-                                onVerificarVinculacion(result.data)
+                                onVerificarVinculacion(isLinked)
                             }
                         }
                     },

@@ -92,7 +92,7 @@ fun PantallaGestionHijos(
     suspend fun cargarHijos() {
         cargando = true
         when (val result = repository.obtenerHijosVinculados(context, idPadre)) {
-            is UsuarioRepository.Result.Success -> hijos = result.data
+            is UsuarioRepository.Result.Success<*> -> hijos = result.data as List<Usuario>
             is UsuarioRepository.Result.Error -> onError(result.message)
             else -> {}
         }

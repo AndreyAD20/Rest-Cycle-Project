@@ -2,6 +2,7 @@ package com.example.rest.features.home
 
 import android.os.Bundle
 import com.example.rest.BaseComposeActivity
+import com.example.rest.data.repository.UsuarioRepository
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -81,6 +82,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val usuarioRepository = UsuarioRepository()
     
     // Estado para la imagen de perfil
     var profileImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -552,32 +554,50 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                 title = { Text(stringResource(R.string.dialog_logout_title)) },
                 text = { Text(stringResource(R.string.dialog_logout_text)) },
                 confirmButton = {
-                    TextButton(
-                        onClick = {
-                            mostrarDialogoCerrarSesion = false
-                            
-                            // Limpiar fotos de perfil locales
-                            try {
-                                context.filesDir.listFiles()?.forEach { file ->
-                                    if (file.name.startsWith("profile_image_")) {
-                                        file.delete()
+                        TextButton(
+                            onClick = {
+                                mostrarDialogoCerrarSesion = false
+                                
+                                scope.launch {
+                                    try {
+                                        // Cerrar sesión en Supabase Auth
+                                        val resultado = usuarioRepository.cerrarSesion(context)
+                                        when (resultado) {
+                                            is UsuarioRepository.Result.Success<*> -> {
+                                                android.util.Log.d("LogoutDebug", "Sesión cerrada en Supabase")
+                                            }
+                                            is UsuarioRepository.Result.Error -> {
+                                                android.util.Log.e("LogoutDebug", "Error al cerrar sesión: ${resultado.message}")
+                                            }
+                                            else -> {}
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("LogoutDebug", "Excepción al cerrar sesión: ${e.message}")
                                     }
+                                    
+                                    // Limpiar fotos de perfil locales
+                                    try {
+                                        context.filesDir.listFiles()?.forEach { file ->
+                                            if (file.name.startsWith("profile_image_")) {
+                                                file.delete()
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("PerfilDebug", "Error al limpiar fotos: ${e.message}")
+                                    }
+                                    
+                                    // Borrar preferencias locales y volver al login
+                                    val preferencesManager = com.example.rest.utils.PreferencesManager(context)
+                                    preferencesManager.clearPreferences()
+                                    val intent = android.content.Intent(context, com.example.rest.features.auth.LoginComposeActivity::class.java)
+                                    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    context.startActivity(intent)
+                                    (context as? android.app.Activity)?.finish()
                                 }
-                            } catch (e: Exception) {
-                                Log.e("PerfilDebug", "Error al limpiar fotos: ${e.message}")
                             }
-                            
-                            // Borrar sesión y volver al login
-                            val preferencesManager = com.example.rest.utils.PreferencesManager(context)
-                            preferencesManager.clearPreferences()
-                            val intent = android.content.Intent(context, com.example.rest.features.auth.LoginComposeActivity::class.java)
-                            intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            context.startActivity(intent)
-                            (context as? android.app.Activity)?.finish()
+                        ) {
+                            Text(stringResource(R.string.btn_logout))
                         }
-                    ) {
-                        Text(stringResource(R.string.btn_logout))
-                    }
                 },
                 dismissButton = {
                     TextButton(onClick = { mostrarDialogoCerrarSesion = false }) {

@@ -34,13 +34,14 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
-import com.example.rest.data.repository.RecuperacionRepository
+import com.example.rest.data.repository.UsuarioRepository
+import com.example.rest.network.SupabaseAuthClient
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.launch
 
 class OlvidoContrasenaActivity : BaseComposeActivity() {
     
-    private val recuperacionRepository = RecuperacionRepository()
+    private val usuarioRepository = UsuarioRepository()
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,34 +76,22 @@ class OlvidoContrasenaActivity : BaseComposeActivity() {
     private fun enviarCodigo(correo: String, onComplete: () -> Unit) {
         lifecycleScope.launch {
             try {
-                when (val resultado = recuperacionRepository.solicitarCodigo(correo)) {
-                    is RecuperacionRepository.Result.Success<*> -> {
-                        runOnUiThread {
-                            Toast.makeText(
-                                this@OlvidoContrasenaActivity,
-                                getString(R.string.toast_code_sent, correo),
-                                Toast.LENGTH_LONG
-                            ).show()
-                            
-                            // Navegar a pantalla de código
-                            val intent = Intent(this@OlvidoContrasenaActivity, CodigoRecuperacionActivity::class.java)
-                            intent.putExtra("correo", correo)
-                            startActivity(intent)
-                            finish()
-                        }
-                    }
-                    is RecuperacionRepository.Result.Error -> {
-                        runOnUiThread {
-                            Toast.makeText(
-                                this@OlvidoContrasenaActivity,
-                                resultado.message,
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-                    is RecuperacionRepository.Result.Loading -> {
-                        // Ya manejado
-                    }
+                // Usar resetPasswordForEmail de Supabase Auth (flujo estándar)
+                SupabaseAuthClient.auth.resetPasswordForEmail(
+                    email = correo,
+                    redirectUrl = "com.example.rest://login"
+                )
+                
+                runOnUiThread {
+                    Toast.makeText(
+                        this@OlvidoContrasenaActivity,
+                        getString(R.string.recovery_check_email_msg),
+                        Toast.LENGTH_LONG
+                    ).show()
+                    
+                    // No navegar a CodigoRecuperacionActivity
+                    // El usuario recibirá email con link de Supabase
+                    finish()
                 }
             } catch (e: Exception) {
                 runOnUiThread {

@@ -93,21 +93,17 @@ class RegistroComposeActivity : BaseComposeActivity() {
         
         lifecycleScope.launch {
             try {
-                when (val resultado = usuarioRepository.registrarConVerificacion(this@RegistroComposeActivity, request)) {
-                    is UsuarioRepository.Result.Success -> {
-                        val mensaje = resultado.data
+                when (val resultado = usuarioRepository.registrar(this@RegistroComposeActivity, request)) {
+                    is UsuarioRepository.Result.Success<*> -> {
                         runOnUiThread {
+                            // Mostrar mensaje de éxito real de Supabase Auth
                             Toast.makeText(
                                 this@RegistroComposeActivity,
-                                mensaje,
+                                getString(R.string.register_check_email_msg), // "Registro exitoso. Revisa tu email para confirmar tu cuenta."
                                 Toast.LENGTH_LONG
                             ).show()
                             
-                            // Navegar a pantalla de verificación
-                            val intent = Intent(this@RegistroComposeActivity, VerificacionCodigoActivity::class.java)
-                            intent.putExtra("correo", request.correo)
-                            intent.putExtra("contraseña", pin)
-                            startActivity(intent)
+                            // Volver al login
                             finish()
                         }
                     }
@@ -717,7 +713,7 @@ fun PantallaRegistro(
                                 apellido = apellido.ifBlank { null },
                                 correo = correo,
                                 fechaNacimiento = fechaFormateada,
-                                contraseña = com.example.rest.utils.SecurityUtils.hashPassword(pin),
+                                contraseña = pin, // Pass the plain password, repository will hash/protect it
                                 mayorEdad = mayorEdad
                             )
                             alClickRegistrar(request, pin)

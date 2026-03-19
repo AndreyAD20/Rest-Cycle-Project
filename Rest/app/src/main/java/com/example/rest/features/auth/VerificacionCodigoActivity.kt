@@ -38,6 +38,7 @@ import com.example.rest.data.repository.UsuarioRepository
 import com.example.rest.features.home.InicioComposeActivity
 import com.example.rest.ui.theme.*
 import kotlinx.coroutines.launch
+import com.example.rest.data.models.Usuario
 
 /**
  * Actividad para verificar el código de verificación enviado por email
@@ -87,7 +88,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
         lifecycleScope.launch {
             try {
                 when (val resultado = usuarioRepository.verificarCodigo(this@VerificacionCodigoActivity, correo, codigo)) {
-                    is UsuarioRepository.Result.Success -> {
+                    is UsuarioRepository.Result.Success<*> -> {
                         runOnUiThread {
                             Toast.makeText(
                                 this@VerificacionCodigoActivity,
@@ -109,8 +110,8 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
                         } else if (!contraseña.isNullOrBlank()) {
                             // Auto-login con las credenciales del registro
                             when (val loginResult = usuarioRepository.login(this@VerificacionCodigoActivity, correo, contraseña)) {
-                                is UsuarioRepository.Result.Success -> {
-                                    val usuario = loginResult.data
+                                is UsuarioRepository.Result.Success<*> -> {
+                                    val usuario = loginResult.data as Usuario
                                     runOnUiThread {
                                         val preferencesManager = com.example.rest.utils.PreferencesManager(this@VerificacionCodigoActivity)
                                         preferencesManager.saveUserName(usuario.nombre)
@@ -179,7 +180,7 @@ class VerificacionCodigoActivity : BaseComposeActivity() {
         lifecycleScope.launch {
             try {
                 when (val resultado = usuarioRepository.reenviarCodigo(this@VerificacionCodigoActivity, correo)) {
-                    is UsuarioRepository.Result.Success -> {
+                    is UsuarioRepository.Result.Success<*> -> {
                         runOnUiThread {
                             Toast.makeText(
                                 this@VerificacionCodigoActivity,

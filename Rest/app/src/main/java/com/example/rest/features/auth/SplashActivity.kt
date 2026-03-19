@@ -21,10 +21,28 @@ import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import com.example.rest.ui.theme.TemaRest
 import kotlinx.coroutines.delay
+import com.example.rest.data.repository.UsuarioRepository
+import com.example.rest.data.models.Usuario
 
 class SplashActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Verificar si es un deep link de recuperación de contraseña
+        val intentData = intent.data
+        val typeParam = intentData?.getQueryParameter("type")
+        android.util.Log.d("SplashActivity", "Deep link detected: ${intentData?.toString()}, type: $typeParam")
+        
+        if (intentData != null && typeParam == "recovery") {
+            android.util.Log.d("SplashActivity", "Passing deep link to LoginComposeActivity")
+            // Pasar el deep link original a LoginComposeActivity y terminar
+            val deepLinkIntent = Intent(this, LoginComposeActivity::class.java)
+            deepLinkIntent.data = intentData
+            deepLinkIntent.putExtras(intent)
+            startActivity(deepLinkIntent)
+            finish()
+            return
+        }
         
         setContent {
             TemaRest {
@@ -63,11 +81,12 @@ fun SplashScreen(onTimeout: () -> Unit) {
             if (idUsuario != -1) {
                 // Hay sesión local, vamos a verificar el token en Supabase
                 // Podríamos usar el repositorio, pero hacemos directo para evitar dependencias circulares si es complejo
-                val repository = com.example.rest.data.repository.UsuarioRepository()
+                val repository = UsuarioRepository()
                 val response = repository.obtenerUsuarioPorId(context, idUsuario)
                 
-                if (response is com.example.rest.data.repository.UsuarioRepository.Result.Success) {
-                    val tokenServidor = response.data.ultimoTokenSesion
+                if (response is UsuarioRepository.Result.Success<*>) {
+                    val userData = response.data as Usuario
+                    val tokenServidor = userData.ultimoTokenSesion
                     
                     if (tokenLocal != null && tokenLocal == tokenServidor) {
                         // El token coincide, la sesión es válida

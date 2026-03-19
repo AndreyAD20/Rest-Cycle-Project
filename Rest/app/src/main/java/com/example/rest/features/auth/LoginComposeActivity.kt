@@ -36,31 +36,78 @@ import com.example.rest.data.repository.UsuarioRepository
 import com.example.rest.data.models.Usuario
 import com.example.rest.features.home.InicioComposeActivity
 import com.example.rest.ui.theme.*
+import com.example.rest.network.SupabaseAuthClient
+import io.github.jan.supabase.auth.handleDeeplinks
+import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.launch
 
 class LoginComposeActivity : BaseComposeActivity() {
     
     private val usuarioRepository = UsuarioRepository()
     
+    // Flag que evita que el colector de sesión navegue al home
+    // cuando estamos en medio de un flujo de recuperación de contraseña.
+    private var isRecoveryFlow = false
+    
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Detectar si viene un deep link de recovery ANTES de que handleDeeplinks cree la sesión
+        isRecoveryFlow = isRecoveryIntent(intent)
+        SupabaseAuthClient.client.handleDeeplinks(intent)
+        
         super.onCreate(savedInstanceState)
 
         setContent {
             TemaRest {
                 var cargando by remember { mutableStateOf(false) }
-                var showVerificationDialog by remember { mutableStateOf(false) }
-                var show2FADialog by remember { mutableStateOf(false) }
-                var code2FA by remember { mutableStateOf("") }
-                var unverifiedEmail by remember { mutableStateOf("") }
-                var tiempoRestante by remember { mutableStateOf(0) }
 
-                LaunchedEffect(tiempoRestante) {
-                    if (tiempoRestante > 0) {
-                        kotlinx.coroutines.delay(1000L)
-                        tiempoRestante -= 1
+
+                // Manejar deep links y escuchar eventos de sesión
+                LaunchedEffect(Unit) {
+                    android.util.Log.d("LoginComposeActivity", "onCreate LaunchedEffect, isRecoveryFlow=$isRecoveryFlow")
+
+                    // Si es flujo de recovery, navegar a NuevaContrasenaActivity
+                    // (handleDeeplinks ya fue llamado en onCreate antes de setContent)
+                    if (isRecoveryFlow) {
+                        val tokenHash = extractTokenHash(intent)
+                        android.util.Log.d("LoginComposeActivity", "Recovery desde onCreate, navigating to NuevaContrasenaActivity")
+                        val intencion = Intent(this@LoginComposeActivity, NuevaContrasenaActivity::class.java)
+                        intencion.putExtra("token_hash", tokenHash)
+                        startActivity(intencion)
+                    }
+
+                    // Escuchar eventos de sesión
+                    // El colector internamente revisa isRecoveryFlow para no navegar al home durante recovery
+                    SupabaseAuthClient.sessionStatus.collect { status ->
+                        when (status) {
+                            is SessionStatus.Authenticated -> {
+                                // Si estamos en recuperación de contraseña, ignorar la sesión aquí.
+                                // NuevaContrasenaActivity se encarga de ese flujo.
+                                if (isRecoveryFlow) return@collect
+                                
+                                val userAuth = status.session.user
+                                if (userAuth != null) {
+                                    cargando = true
+                                    val correo = userAuth.email ?: ""
+                                    val resultado = usuarioRepository.obtenerUsuarioPorCorreo(correo)
+                                    if (resultado is UsuarioRepository.Result.Success<*>) {
+                                        val usuario = resultado.data as Usuario
+                                        val preferencesManager = com.example.rest.utils.PreferencesManager(this@LoginComposeActivity)
+                                        preferencesManager.saveUserName(usuario.nombre)
+                                        preferencesManager.saveUserId(usuario.id ?: -1)
+                                        preferencesManager.saveUserEmail(correo)
+                                        preferencesManager.saveMayorEdad(usuario.mayorEdad)
+                                        
+                                        val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
+                                        startActivity(intencion)
+                                        finish()
+                                    }
+                                    cargando = false
+                                }
+                            }
+                            else -> {}
+                        }
                     }
                 }
-                var unverifiedPassword by remember { mutableStateOf("") }
                 
                 PantallaLogin(
                     alClickIniciarSesion = { correo, contraseña ->
@@ -75,18 +122,9 @@ class LoginComposeActivity : BaseComposeActivity() {
                             else -> {
                                 // Realizar login
                                 cargando = true
-                                realizarLogin(correo, contraseña) { result ->
-                                    cargando = false
-                                    if (result is UsuarioRepository.Result.Requires2FA) {
-                                        unverifiedEmail = result.correo
-                                        unverifiedPassword = result.contrasena
-                                        show2FADialog = true
-                                    } else if (result is UsuarioRepository.Result.NotVerified) {
-                                        unverifiedEmail = result.correo
-                                        unverifiedPassword = contraseña
-                                        showVerificationDialog = true
-                                    }
-                                }
+                                 realizarLogin(correo, contraseña) { 
+                                     cargando = false
+                                 }
                             }
                         }
                     },
@@ -103,140 +141,51 @@ class LoginComposeActivity : BaseComposeActivity() {
                     cargando = cargando
                 )
 
-                if (showVerificationDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showVerificationDialog = false },
-                        title = { Text(stringResource(R.string.verify_email_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
-                        text = { Text(stringResource(R.string.login_unverified_account_msg)) },
-                        confirmButton = {
-                            Button(
-                                onClick = {
-                                    showVerificationDialog = false
-                                    val intent = Intent(this@LoginComposeActivity, VerificacionCodigoActivity::class.java).apply {
-                                        putExtra("correo", unverifiedEmail)
-                                        putExtra("contraseña", unverifiedPassword)
-                                    }
-                                    startActivity(intent)
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = Primario)
-                            ) {
-                                Text(stringResource(R.string.login_verify_now))
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showVerificationDialog = false }) {
-                                Text(stringResource(R.string.btn_cancel))
-                            }
-                        }
-                    )
-                }
-
-                if (show2FADialog) {
-                    AlertDialog(
-                        onDismissRequest = { 
-                            show2FADialog = false 
-                            code2FA = ""
-                        },
-                        title = { Text(stringResource(R.string.two_factor_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
-                        text = {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(stringResource(R.string.two_factor_msg))
-                                Spacer(modifier = Modifier.height(16.dp))
-                                OtpInputField(
-                                    otpValue = code2FA,
-                                    onOtpChange = { code2FA = it }
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                val resendText = if (tiempoRestante > 0) {
-                                    stringResource(R.string.two_factor_resend_countdown, tiempoRestante)
-                                } else {
-                                    stringResource(R.string.btn_resend_code)
-                                }
-
-                                Text(
-                                    text = resendText,
-                                    color = if (tiempoRestante > 0) Color.Gray else Primario,
-                                    style = androidx.compose.ui.text.TextStyle(
-                                        textDecoration = if (tiempoRestante > 0) androidx.compose.ui.text.style.TextDecoration.None else androidx.compose.ui.text.style.TextDecoration.Underline,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                                    ),
-                                    modifier = Modifier.clickable(enabled = tiempoRestante == 0) {
-                                        cargando = true
-                                        tiempoRestante = 30
-                                        lifecycleScope.launch {
-                                            when (val resendResult = usuarioRepository.reenviarCodigo2FA(this@LoginComposeActivity, unverifiedEmail)) {
-                                                is UsuarioRepository.Result.Success -> {
-                                                    Toast.makeText(this@LoginComposeActivity, resendResult.data, Toast.LENGTH_SHORT).show()
-                                                }
-                                                is UsuarioRepository.Result.Error -> {
-                                                    Toast.makeText(this@LoginComposeActivity, resendResult.message, Toast.LENGTH_SHORT).show()
-                                                }
-                                                else -> {}
-                                            }
-                                            cargando = false
-                                        }
-                                    }
-                                )
-                            }
-                        },
-                        confirmButton = {
-                            Button(
-                                onClick = {
-                                    if (code2FA.length == 6) {
-                                        cargando = true
-                                        lifecycleScope.launch {
-                                            val verifyResult = usuarioRepository.verificarCodigo2FA(this@LoginComposeActivity, unverifiedEmail, code2FA)
-                                            cargando = false
-                                            when (verifyResult) {
-                                                is UsuarioRepository.Result.Success -> {
-                                                    show2FADialog = false
-                                                    val usuario = verifyResult.data
-                                                    Toast.makeText(
-                                                        this@LoginComposeActivity,
-                                                        getString(R.string.toast_welcome, usuario.nombre),
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-
-                                                    val preferencesManager = com.example.rest.utils.PreferencesManager(this@LoginComposeActivity)
-                                                    preferencesManager.saveUserName(usuario.nombre)
-                                                    preferencesManager.saveUserId(usuario.id ?: -1)
-                                                    preferencesManager.saveUserEmail(unverifiedEmail)
-                                                    preferencesManager.saveMayorEdad(usuario.mayorEdad)
-
-                                                    val intencion = Intent(this@LoginComposeActivity, InicioComposeActivity::class.java)
-                                                    startActivity(intencion)
-                                                    finish()
-                                                }
-                                                is UsuarioRepository.Result.Error -> {
-                                                    Toast.makeText(this@LoginComposeActivity, verifyResult.message, Toast.LENGTH_LONG).show()
-                                                }
-                                                else -> {}
-                                            }
-                                        }
-                                    } else {
-                                        Toast.makeText(this@LoginComposeActivity, getString(R.string.err_enter_6_digits), Toast.LENGTH_SHORT).show()
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = Primario)
-                            ) {
-                                Text(stringResource(R.string.btn_verify))
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { 
-                                show2FADialog = false 
-                                code2FA = ""
-                            }) {
-                                Text(stringResource(R.string.btn_cancel))
-                            }
-                        }
-                    )
-                }
             }
         }
     }
     
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        android.util.Log.d("LoginComposeActivity", "onNewIntent: ${intent.data}")
+        
+        // 1. Detectar si es recovery ANTES de handleDeeplinks (que creará la sesión)
+        isRecoveryFlow = isRecoveryIntent(intent)
+        
+        // 2. Procesar el deep link con el SDK de Supabase
+        SupabaseAuthClient.client.handleDeeplinks(intent)
+        
+        // 3. Si es recovery, navegar a NuevaContrasenaActivity
+        if (isRecoveryFlow) {
+            val tokenHash = extractTokenHash(intent)
+            android.util.Log.d("LoginComposeActivity", "onNewIntent recovery, token_hash presente: ${tokenHash != null}")
+            val intencion = Intent(this, NuevaContrasenaActivity::class.java)
+            intencion.putExtra("token_hash", tokenHash)
+            startActivity(intencion)
+        }
+    }
+
+    /**
+     * Detecta si un intent corresponde a un flujo de recuperación de contraseña.
+     * Revisa tanto query parameters como fragment del URI.
+     */
+    private fun isRecoveryIntent(intent: Intent?): Boolean {
+        val uri = intent?.data ?: return false
+        if (uri.scheme != "com.example.rest" || uri.host != "login") return false
+        val type = uri.getQueryParameter("type")
+            ?: uri.fragment?.let { android.net.Uri.parse("dummy://x?$it").getQueryParameter("type") }
+        return type == "recovery"
+    }
+
+    /**
+     * Extrae el token_hash de un intent de recovery (query o fragment).
+     */
+    private fun extractTokenHash(intent: Intent?): String? {
+        val uri = intent?.data ?: return null
+        return uri.getQueryParameter("token_hash")
+            ?: uri.fragment?.let { android.net.Uri.parse("dummy://x?$it").getQueryParameter("token_hash") }
+    }
+
     private fun realizarLogin(
         correo: String,
         contraseña: String,
@@ -259,8 +208,8 @@ class LoginComposeActivity : BaseComposeActivity() {
             try {
                 val resultado = usuarioRepository.login(this@LoginComposeActivity, correo, contraseña)
                 when (resultado) {
-                    is UsuarioRepository.Result.Success -> {
-                        val usuario = resultado.data
+                    is UsuarioRepository.Result.Success<*> -> {
+                        val usuario = resultado.data as Usuario
                         runOnUiThread {
                             Toast.makeText(
                                 this@LoginComposeActivity,

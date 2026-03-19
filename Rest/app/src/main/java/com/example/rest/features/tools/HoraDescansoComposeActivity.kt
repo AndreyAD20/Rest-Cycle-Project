@@ -380,15 +380,15 @@ class HoraDescansoComposeActivity : BaseComposeActivity() {
     ) {
         lifecycleScope.launch {       // Inicia una coroutine (hilo ligero)
             val dias = when (val r = horarioRepository.obtenerDias()) {
-                is HorarioRepository.Result.Success -> r.data
+                is HorarioRepository.Result.Success<*> -> r.data as List<Dia>
                 else -> emptyList()   // Si hay error de red, usamos lista vacía
             }
             val medidas = when (val r = horarioRepository.obtenerMedidas()) {
-                is HorarioRepository.Result.Success -> r.data
+                is HorarioRepository.Result.Success<*> -> r.data as List<Medida>
                 else -> emptyList()
             }
             val dispositivos = when (val r = horarioRepository.obtenerDispositivosPorUsuario(idUsuarioActual)) {
-                is HorarioRepository.Result.Success -> r.data
+                is HorarioRepository.Result.Success<*> -> r.data as List<Dispositivo>
                 else -> emptyList()
             }
             // Los horarios se obtienen por dispositivo (relación 1 usuario → N dispositivos)
@@ -396,7 +396,7 @@ class HoraDescansoComposeActivity : BaseComposeActivity() {
             dispositivos.forEach { dispositivo ->
                 dispositivo.id?.let { idDisp ->         // "?.let" protege contra null
                     when (val r = horarioRepository.obtenerHorariosPorDispositivo(idDisp)) {
-                        is HorarioRepository.Result.Success -> todosLosHorarios.addAll(r.data)
+                        is HorarioRepository.Result.Success<*> -> todosLosHorarios.addAll(r.data as List<Horario>)
                         else -> {}
                     }
                 }
@@ -406,8 +406,8 @@ class HoraDescansoComposeActivity : BaseComposeActivity() {
             todosLosHorarios.forEach { horario ->
                 horario.id?.let { idHorario ->
                     when (val r = horarioRepository.obtenerDiasDeHorario(idHorario)) {
-                        is HorarioRepository.Result.Success ->
-                            diasPorHorario[idHorario] = r.data.mapNotNull { it.idDia }
+                        is HorarioRepository.Result.Success<*> ->
+                            diasPorHorario[idHorario] = (r.data as List<DiasHorario>).mapNotNull { it.idDia }
                         else -> {}
                     }
                 }
@@ -463,8 +463,8 @@ class HoraDescansoComposeActivity : BaseComposeActivity() {
                     horaFin = horaFin
                 )
                 when (val resultado = horarioRepository.crearHorario(nuevoHorario)) {
-                    is HorarioRepository.Result.Success -> {
-                        resultado.data.id?.let { idHorario ->
+                    is HorarioRepository.Result.Success<*> -> {
+                        (resultado.data as Horario).id?.let { idHorario ->
                             // Convertir booleanos a IDs de Supabase (1=Lun, 2=Mar, ..., 7=Dom)
                             val diasIds = diasActivos.mapIndexedNotNull { idx, activo ->
                                 if (activo) idx + 1 else null
@@ -496,7 +496,7 @@ class HoraDescansoComposeActivity : BaseComposeActivity() {
         lifecycleScope.launch {
             horario.id?.let { idHorario ->
                 when (val resultado = horarioRepository.eliminarHorario(idHorario)) {
-                    is HorarioRepository.Result.Success -> {
+                    is HorarioRepository.Result.Success<*> -> {
                         Toast.makeText(this@HoraDescansoComposeActivity, "Horario eliminado", Toast.LENGTH_SHORT).show()
                         onComplete()
                     }

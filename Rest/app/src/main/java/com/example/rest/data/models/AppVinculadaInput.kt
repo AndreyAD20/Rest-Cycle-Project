@@ -25,7 +25,7 @@ data class AppVinculadaInput(
     @SerializedName("icono_url")
     val iconoUrl: String? = null,
     
-    @SerializedName("tiempolimite")
+    @SerializedName("tiempo_limite")
     val tiempoLimite: Int, // Obligatorio en minutos
     
     @SerializedName("tiempo_usado_hoy")

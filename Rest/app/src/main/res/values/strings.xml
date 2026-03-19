@@ -139,6 +139,8 @@
     <string name="change_password_title_speech">Cambia tu contraseña\nque no se te olvide</string>
     <string name="change_password_new_placeholder">Nueva Contraseña</string>
     <string name="toast_password_changed">¡Contraseña cambiada exitosamente!</string>
+    <string name="register_check_email_msg">✅ Registro exitoso. Por favor, revisa tu correo electrónico para confirmar tu cuenta.</string>
+    <string name="recovery_check_email_msg">✅ Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.</string>
 
     <!-- Pantalla de Perfil y Menu -->
     <string name="settings_edit_profile">Editar Perfil</string>
@@ -480,4 +482,41 @@
     <string name="panel_linked_title">¡Estás vinculado!</string>
     <string name="panel_linked_msg">Tu familia puede ver y gestionar tus actividades desde su aplicación.</string>
     <string name="panel_linked_supervision_msg">Tu dispositivo está siendo supervisado. Actúa con responsabilidad.</string>
+
+    <!-- Diálogo Activar Burbujas (Calendario) -->
+    <string name="dialog_bubbles_title">🫧 Activa las Burbujas</string>
+    <string name="dialog_bubbles_text">Para recibir alertas de eventos como burbujas flotantes (estilo Messenger), activa las burbujas para Rest Cycle en Ajustes.\n\nAjustes → Notificaciones → Rest Cycle → Burbujas → Todos</string>
+    <string name="dialog_bubbles_go_settings">Ir a Ajustes</string>
+    <string name="dialog_bubbles_not_now">Ahora no</string>
+
+    <!-- Configuración de Burbuja -->
+    <string name="dialog_bubble_config_title">Configuración de Burbuja</string>
+    <string name="dialog_bubble_sound_label">Sonido de la Burbuja</string>
+    <string name="dialog_bubble_config_saved">Configuración de burbuja guardada</string>
+    <string name="bubble_sound_default">Predeterminado</string>
+    <string name="bubble_sound_pop">Burbuja (Pop)</string>
+    <string name="bubble_sound_bell">Campana Suave</string>
+    <string name="bubble_sound_silent">Silencioso</string>
+
+    <!-- Notificaciones Flotantes (Configuración) -->
+    <string name="notif_section_floating">Notificaciones Flotantes</string>
+    <string name="notif_flotante_enable">Activar flotantes</string>
+    <string name="notif_flotante_excessive_use">  Uso excesivo de apps</string>
+    <string name="notif_flotante_tasks">  Tareas</string>
+    <string name="notif_flotante_events">  Eventos</string>
+    <string name="notif_flotante_screen_time">  Tiempo de pantalla</string>
+    <string name="notif_flotante_app_block">  Bloqueo de apps</string>
+
+    <!-- Notificaciones del Sistema (Configuración) -->
+    <string name="notif_section_system">Notificaciones del Sistema</string>
+    <string name="notif_system_enable">Activar sistema</string>
+    <string name="notif_system_excessive_use">  Uso excesivo de apps</string>
+    <string name="notif_system_tasks">  Tareas</string>
+    <string name="notif_system_events">  Eventos</string>
+    <string name="notif_system_screen_time">  Tiempo de pantalla</string>
+    <string name="notif_system_app_block">  Bloqueo de apps</string>
+
+    <!-- Notificación persistente / canal de burbuja -->
+    <string name="notif_bubble_channel_desc">Burbujas flotantes de Rest Cycle</string>
+    <string name="notif_bubble_content_text">Toca la burbuja para ver tus alertas</string>
 </resources>

@@ -14,15 +14,33 @@ import java.util.concurrent.TimeUnit
 object SupabaseClient {
     
     /**
-     * Interceptor que agrega los headers requeridos por Supabase a cada request
+     * Interceptor que agrega headers y JWT token
+     * Para endpoints de Auth, siempre usamos anon key (nunca JWT de usuario)
+     * Para otros endpoints, usamos JWT de usuario si existe sesión, sino anon key
      */
     private val authInterceptor = Interceptor { chain ->
         val originalRequest = chain.request()
         val requestBuilder = originalRequest.newBuilder()
             .header(SupabaseConfig.HEADER_API_KEY, SupabaseConfig.SUPABASE_ANON_KEY)
-            .header(SupabaseConfig.HEADER_AUTHORIZATION, "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
             .header("Content-Type", "application/json")
             .header("Prefer", "return=representation")
+        
+        val url = originalRequest.url
+        val path = url.encodedPath
+        val isAuthEndpoint = path.startsWith("/auth/v1/")
+        
+        if (isAuthEndpoint) {
+            // Para endpoints de Auth, SIEMPRE usar anon key (nunca JWT de usuario)
+            requestBuilder.header(SupabaseConfig.HEADER_AUTHORIZATION, "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
+        } else {
+            // Para otros endpoints, usar JWT de usuario si existe sesión, sino anon key
+            SupabaseAuthClient.getAccessToken()?.let { token ->
+                requestBuilder.header(SupabaseConfig.HEADER_AUTHORIZATION, "Bearer $token")
+            } ?: run {
+                // Si no hay token, usar anon key
+                requestBuilder.header(SupabaseConfig.HEADER_AUTHORIZATION, "Bearer ${SupabaseConfig.SUPABASE_ANON_KEY}")
+            }
+        }
         
         val request = requestBuilder.build()
         chain.proceed(request)

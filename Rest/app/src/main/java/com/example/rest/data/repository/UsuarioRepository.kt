@@ -1,15 +1,19 @@
 package com.example.rest.data.repository
 
-import com.example.rest.data.models.LoginRequest
-import com.example.rest.data.models.RegistroRequest
+import com.example.rest.R
 import com.example.rest.data.models.Usuario
+import com.example.rest.data.models.RegistroRequest
+import com.example.rest.network.SupabaseAuthClient
 import com.example.rest.network.SupabaseClient
 import com.example.rest.utils.CodeGenerator
 import com.example.rest.utils.EmailService
-
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import com.example.rest.R
 
 /**
  * Repositorio para operaciones relacionadas con usuarios
@@ -31,7 +35,7 @@ class UsuarioRepository {
     }
     
     /**
-     * Realizar login
+     * Realizar login usando Supabase Auth
      * @param context Contexto de la aplicación para guardar preferencias
      * @param correo Correo electrónico del usuario
      * @param contraseña Contraseña del usuario en texto plano
@@ -40,7 +44,13 @@ class UsuarioRepository {
     suspend fun login(context: android.content.Context, correo: String, contraseña: String): Result<Usuario> {
         return withContext(Dispatchers.IO) {
             try {
-                // Paso 1: Buscar al usuario solo por correo
+                // Paso 1: Login con Supabase Auth
+                val session = SupabaseAuthClient.auth.signInWith(Email) {
+                    email = correo
+                    password = contraseña
+                }
+                
+                // Paso 2: Buscar al usuario en nuestra tabla personalizada para obtener sus datos (id, nombre, etc)
                 val response = api.verificarCorreo(
                     correo = "eq.$correo",
                     select = "*"
@@ -51,33 +61,24 @@ class UsuarioRepository {
                     if (!usuarios.isNullOrEmpty()) {
                         val usuario = usuarios[0]
                         
-                        // Verificar si el correo electrónico ha sido verificado antes de permitir login
-                        if (!usuario.emailVerificado) {
-                            return@withContext Result.NotVerified(usuario.correo)
-                        }
-
-                        // Paso 2: Verificar el hash de la contraseña devuelta por BD
-                        val esValida = com.example.rest.utils.SecurityUtils.verifyPassword(contraseña, usuario.contraseña)
+                        // Guardar datos en preferencias
+                        val prefs = com.example.rest.utils.PreferencesManager(context)
+                        prefs.saveUserId(usuario.id ?: -1)
+                        prefs.saveUserEmail(usuario.correo)
+                        prefs.saveUserName(usuario.nombre)
+                        prefs.saveMayorEdad(usuario.mayorEdad)
                         
-                        if (esValida) {
-                            // En lugar de iniciar sesión, generamos y enviamos código 2FA
-                            val envioResult = enviarCodigo2FA(context, usuario.correo, usuario.nombre)
-                            if (envioResult is Result.Success) {
-                                return@withContext Result.Requires2FA(correo, contraseña)
-                            } else {
-                                return@withContext Result.Error(context.getString(R.string.err_email_send_failure))
-                            }
-                        } else {
-                            Result.Error(context.getString(R.string.err_invalid_credentials))
-                        }
+                        Result.Success(usuario)
                     } else {
-                        Result.Error(context.getString(R.string.err_invalid_credentials))
+                        // Si no existe en la tabla, algo falló en la sincronización del registro
+                        Result.Error(context.getString(R.string.err_user_not_found))
                     }
                 } else {
                     Result.Error(context.getString(R.string.err_server_error_code, response.code()))
                 }
             } catch (e: Exception) {
-                Result.Error(context.getString(R.string.err_network_error_msg, e.message ?: ""))
+                android.util.Log.e("UsuarioRepository", "Error en login para $correo", e)
+                Result.Error(e.message ?: context.getString(R.string.err_invalid_credentials))
             }
         }
     }
@@ -338,36 +339,54 @@ class UsuarioRepository {
     }
 
     /**
-     * Registrar nuevo usuario
+     * Registrar nuevo usuario usando Supabase Auth
+     * El trigger crea automáticamente el usuario en la tabla public.usuario
      * @param request Datos del usuario a registrar
      * @return Result con el usuario creado
      */
     suspend fun registrar(context: android.content.Context, request: RegistroRequest): Result<Usuario> {
         return withContext(Dispatchers.IO) {
             try {
-                // Primero verificar si el correo ya existe
+                // 1. Verificar si el correo ya existe en Supabase Auth
                 val verificacion = api.verificarCorreo(correo = "eq.${request.correo}")
                 if (verificacion.isSuccessful && !verificacion.body().isNullOrEmpty()) {
                     return@withContext Result.Error(context.getString(R.string.err_email_already_registered))
                 }
                 
-                // Crear el usuario
-                val response = api.crearUsuario(request)
-                
-                if (response.isSuccessful) {
-                    val usuarios = response.body()
-                    if (!usuarios.isNullOrEmpty()) {
-                        Result.Success(usuarios[0])
-                    } else {
-                        Result.Error(context.getString(R.string.err_create_user_failure))
+                // 2. Crear usuario en Supabase Auth
+                // Si no lanza excepción, el correo fue enviado correctamente.
+                // El trigger de BD crea la fila en tabla `usuario` DESPUÉS de que
+                // el usuario confirme el enlace del correo — no intentar leer la
+                // tabla aquí porque siempre estará vacía en este punto.
+                SupabaseAuthClient.auth.signUpWith(Email) {
+                    email = request.correo
+                    password = request.contraseña
+                    data = buildJsonObject {
+                        put("nombre", JsonPrimitive(request.nombre))
+                        put("apellido", JsonPrimitive(request.apellido ?: ""))
+                        put("fechanacimiento", JsonPrimitive(request.fechaNacimiento))
+                        put("mayor_edad", JsonPrimitive(request.mayorEdad))
                     }
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    android.util.Log.e("UsuarioRepository", "Ocurrió un error (400) al registrar: $errorBody")
-                    Result.Error(context.getString(R.string.err_server_error_code, response.code()))
                 }
+
+                // 3. signUpWith sin excepción = registro exitoso (pendiente de confirmación).
+                //    Devolvemos un objeto Usuario mínimo con los datos del formulario.
+                //    RegistroComposeActivity solo necesita saber que fue exitoso para
+                //    mostrar el mensaje y volver al login — no usa los campos del objeto.
+                Result.Success(
+                    Usuario(
+                        nombre = request.nombre,
+                        apellido = request.apellido,
+                        correo = request.correo,
+                        fechaNacimiento = request.fechaNacimiento,
+                        contraseña = "",          // nunca se persiste desde aquí
+                        mayorEdad = request.mayorEdad,
+                        emailVerificado = false   // pendiente de confirmación
+                    )
+                )
             } catch (e: Exception) {
-                Result.Error(context.getString(R.string.err_network_error_msg, e.message ?: ""))
+                android.util.Log.e("UsuarioRepository", "Error en registro para ${request.correo}", e)
+                Result.Error(e.message ?: context.getString(R.string.err_network_error_msg, ""))
             }
         }
     }
@@ -568,34 +587,25 @@ class UsuarioRepository {
     }
     
     /**
-     * Reenviar código de verificación
-     * @param correo Correo del usuario
-     * @return Result con mensaje de éxito
+     * Reenviar código de verificación de email
      */
     suspend fun reenviarCodigo(context: android.content.Context, correo: String): Result<String> {
         return withContext(Dispatchers.IO) {
             try {
                 // 1. Verificar que el usuario existe
                 val response = api.verificarCorreo(correo = "eq.$correo", select = "*")
-                
                 if (!response.isSuccessful || response.body().isNullOrEmpty()) {
                     return@withContext Result.Error(context.getString(R.string.err_user_not_found))
                 }
-                
                 val usuario = response.body()!![0]
                 
-                // 2. Verificar que no esté ya verificado
-                if (usuario.emailVerificado) {
-                    return@withContext Result.Error(context.getString(R.string.err_user_already_verified))
-                }
-                
-                // 3. Generar nuevo código
-                val nuevoCodigoVerificacion = CodeGenerator.generateVerificationCode()
+                // 2. Generar nuevo código
+                val nuevoCodigo = CodeGenerator.generateVerificationCode()
                 val nuevaExpiracion = CodeGenerator.getExpirationTime()
                 
-                // 4. Actualizar código en la base de datos
+                // 3. Actualizar en DB
                 val updateData: Map<String, @JvmSuppressWildcards Any> = mapOf(
-                    "codigo_verificacion" to nuevoCodigoVerificacion,
+                    "codigo_verificacion" to nuevoCodigo,
                     "codigo_expiracion" to nuevaExpiracion
                 )
                 
@@ -608,20 +618,55 @@ class UsuarioRepository {
                     return@withContext Result.Error(context.getString(R.string.err_code_generation_failure))
                 }
                 
-                // 5. Enviar email con nuevo código
+                // 4. Enviar email
                 val envioExitoso = EmailService.enviarCodigoVerificacion(
                     correo = correo,
-                    codigo = nuevoCodigoVerificacion,
+                    codigo = nuevoCodigo,
                     nombre = usuario.nombre
                 )
                 
-                if (!envioExitoso) {
-                    return@withContext Result.Error(context.getString(R.string.err_email_send_failure))
+                if (envioExitoso) {
+                    Result.Success(context.getString(R.string.toast_code_resent_success))
+                } else {
+                    Result.Error(context.getString(R.string.err_email_send_detailed))
                 }
-                
-                Result.Success(context.getString(R.string.toast_code_resent_success))
             } catch (e: Exception) {
                 Result.Error(context.getString(R.string.err_network_error_msg, e.message ?: ""))
+            }
+        }
+    }
+    
+    /**
+     * Enviar email de recuperación de contraseña de Supabase
+     */
+    suspend fun recuperarContrasena(context: android.content.Context, correo: String): Result<String> {
+        return withContext(Dispatchers.IO) {
+            try {
+                SupabaseAuthClient.auth.resetPasswordForEmail(
+                    email = correo,
+                    redirectUrl = "com.example.rest://login"
+                )
+                Result.Success(context.getString(R.string.recovery_check_email_msg))
+            } catch (e: Exception) {
+                Result.Error(e.message ?: context.getString(R.string.err_network_error_msg, ""))
+            }
+        }
+    }
+    
+    /**
+     * Cerrar sesión en Supabase y limpiar preferencias locales
+     */
+    suspend fun cerrarSesion(context: android.content.Context): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                SupabaseAuthClient.logout()
+                val prefs = com.example.rest.utils.PreferencesManager(context)
+                prefs.clearPreferences()
+                Result.Success(Unit)
+            } catch (e: Exception) {
+                // Limpiar preferencias aunque falle la red
+                com.example.rest.utils.PreferencesManager(context).clearPreferences()
+                Result.Success(Unit)
             }
         }
     }
@@ -772,6 +817,23 @@ class UsuarioRepository {
                 }
             } catch (e: Exception) {
                 Result.Error(context.getString(R.string.err_network_error_msg, e.message ?: ""))
+            }
+        }
+    }
+    /**
+     * Obtener usuario por correo electrónico (usado en Deep Links)
+     */
+    suspend fun obtenerUsuarioPorCorreo(correo: String): Result<Usuario> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = api.verificarCorreo(correo = "eq.$correo", select = "*")
+                if (response.isSuccessful && !response.body().isNullOrEmpty()) {
+                    Result.Success(response.body()!![0])
+                } else {
+                    Result.Error("Usuario no encontrado")
+                }
+            } catch (e: Exception) {
+                Result.Error(e.message ?: "Error de conexión")
             }
         }
     }

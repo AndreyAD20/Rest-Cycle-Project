@@ -78,8 +78,18 @@
 
         <!-- ===== AUTH ===== -->
         <activity android:name=".features.auth.LoginComposeActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="login"
+                    android:scheme="com.example.rest" />
+            </intent-filter>
+        </activity>
         <activity android:name=".features.auth.RegistroComposeActivity"
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
@@ -93,6 +103,9 @@
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
         <activity android:name=".features.auth.CambioContrasenaActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity android:name=".features.auth.NuevaContrasenaActivity"
             android:exported="false"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 

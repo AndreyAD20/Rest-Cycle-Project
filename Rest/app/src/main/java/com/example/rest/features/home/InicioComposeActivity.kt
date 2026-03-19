@@ -34,6 +34,10 @@ import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import androidx.compose.ui.platform.LocalContext
 import com.example.rest.ui.theme.*
+import com.example.rest.data.repository.UsuarioRepository
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import android.util.Log
 
 class InicioComposeActivity : BaseComposeActivity() {
     
@@ -109,18 +113,37 @@ class InicioComposeActivity : BaseComposeActivity() {
                                 onClick = {
                                     mostrarDialogoCerrarSesion = false
                                     
-                                    // Detener servicio de monitoreo
-                                    com.example.rest.services.AppMonitorService.stopService(this@InicioComposeActivity)
-                                    
-                                    // Borrar sesión
-                                    val preferencesManager = com.example.rest.utils.PreferencesManager(this@InicioComposeActivity)
-                                    preferencesManager.clearPreferences()
-                                    
-                                    // Ir a Login
-                                    val intent = Intent(this@InicioComposeActivity, com.example.rest.features.auth.LoginComposeActivity::class.java)
-                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                    startActivity(intent)
-                                    finish()
+                                    lifecycleScope.launch {
+                                        // Cerrar sesión en Supabase Auth
+                                        try {
+                                            val usuarioRepository = UsuarioRepository()
+                                            val resultado = usuarioRepository.cerrarSesion(this@InicioComposeActivity)
+                                            when (resultado) {
+                                                is UsuarioRepository.Result.Success<*> -> {
+                                                    Log.d("LogoutDebug", "Sesión cerrada en Supabase")
+                                                }
+                                                is UsuarioRepository.Result.Error -> {
+                                                    Log.e("LogoutDebug", "Error al cerrar sesión: ${resultado.message}")
+                                                }
+                                                else -> {}
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e("LogoutDebug", "Excepción al cerrar sesión: ${e.message}")
+                                        }
+                                        
+                                        // Detener servicio de monitoreo
+                                        com.example.rest.services.AppMonitorService.stopService(this@InicioComposeActivity)
+                                        
+                                        // Borrar sesión
+                                        val preferencesManager = com.example.rest.utils.PreferencesManager(this@InicioComposeActivity)
+                                        preferencesManager.clearPreferences()
+                                        
+                                        // Ir a Login
+                                        val intent = Intent(this@InicioComposeActivity, com.example.rest.features.auth.LoginComposeActivity::class.java)
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                        startActivity(intent)
+                                        finish()
+                                    }
                                 }
                             ) {
                                 Text(stringResource(R.string.btn_logout))
