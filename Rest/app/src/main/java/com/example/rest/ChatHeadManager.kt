@@ -1,7 +1,9 @@
 package com.example.rest
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -31,6 +33,7 @@ object ChatHeadManager {
     /**
      * Verifica si tiene el permiso de Overlay y lanza el servicio.
      * Si no lo tiene, lanza la pantalla de ajustes de Android para solicitarlo.
+     * Evita lanzar el servicio múltiples veces innecesariamente.
      */
     fun launchOverlayService(context: Context) {
         if (!isBubbleEnabled(context)) return
@@ -47,12 +50,28 @@ object ChatHeadManager {
             return
         }
 
-        // Si ya tiene el permiso (o es < API 23), iniciamos el Foreground Service
+        // Si ya tiene el permiso (o es < API 23), verificamos si el servicio ya está corriendo
+        // antes de intentar iniciarlo nuevamente para evitar diálogos de permiso repetitivos
+        if (isOverlayServiceRunning(context)) {
+            return
+        }
+
+        // Si no está corriendo, iniciamos el Foreground Service
         val serviceIntent = Intent(context, ChatHeadOverlayService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(serviceIntent)
         } else {
             context.startService(serviceIntent)
+        }
+    }
+
+    /**
+     * Verifica si el servicio de superposición está actualmente en ejecución.
+     */
+    private fun isOverlayServiceRunning(context: Context): Boolean {
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        return manager.getRunningServices(Int.MAX_VALUE).any { service ->
+            service.service.className == ChatHeadOverlayService::class.java.name
         }
     }
 

@@ -79,6 +79,67 @@ fun PantallaUbicacion(
     var timestamp by remember { mutableStateOf<String?>(null) }
     var cargando by remember { mutableStateOf(true) }
     var sinUbicacion by remember { mutableStateOf(false) }
+    var esHistorica by remember { mutableStateOf(false) }
+
+    // Función para solicitar y cargar ubicación
+    val recargarUbicacion: () -> Unit = {
+        scope.launch(Dispatchers.IO) {
+            cargando = true
+            try {
+                // Sincronización proactiva
+                try {
+                    val comando = mapOf(
+                        "id_hijo" to idHijo,
+                        "tipo_comando" to "SOLICITAR_UBICACION",
+                        "estado" to "PENDIENTE"
+                    )
+                    SupabaseClient.api.crearComandoControl(comando)
+                    android.util.Log.i("Ubicacion", "Solicitud de ubicación proactiva enviada")
+                } catch (e: Exception) {
+                    android.util.Log.e("Ubicacion", "Error solicitando ubicación: ${e.message}")
+                }
+
+                // Intentar cargar ubicación en tiempo real
+                val response = SupabaseClient.api.obtenerUltimaUbicacion(idUsuario = "eq.$idHijo")
+                var encontroUbicacion = false
+
+                if (response.isSuccessful) {
+                    val ubicaciones = response.body()
+                    if (!ubicaciones.isNullOrEmpty()) {
+                        latitud = ubicaciones[0].latitud
+                        longitud = ubicaciones[0].longitud
+                        timestamp = ubicaciones[0].timestamp
+                        esHistorica = false
+                        encontroUbicacion = true
+                    }
+                }
+
+                // Fallback al historial si no hay ubicación viva
+                if (!encontroUbicacion) {
+                    val responseHistorial = SupabaseClient.api.obtenerHistorialUbicacion(
+                        idUsuario = "eq.$idHijo",
+                        limit = "1"
+                    )
+                    if (responseHistorial.isSuccessful) {
+                        val historial = responseHistorial.body()
+                        if (!historial.isNullOrEmpty()) {
+                            latitud = historial[0].latitud
+                            longitud = historial[0].longitud
+                            timestamp = "${historial[0].fecha}T${historial[0].hora}Z"
+                            esHistorica = true
+                            encontroUbicacion = true
+                        }
+                    }
+                }
+
+                sinUbicacion = !encontroUbicacion
+            } catch (e: Exception) {
+                sinUbicacion = true
+            } finally {
+                cargando = false
+            }
+        }
+    }
 
     // Cargar última ubicación del hijo
     LaunchedEffect(idHijo) {
@@ -87,29 +148,7 @@ fun PantallaUbicacion(
             sinUbicacion = true
             return@LaunchedEffect
         }
-        withContext(Dispatchers.IO) {
-            try {
-                val response = SupabaseClient.api.obtenerUltimaUbicacion(
-                    idUsuario = "eq.$idHijo"
-                )
-                if (response.isSuccessful) {
-                    val ubicaciones = response.body()
-                    if (!ubicaciones.isNullOrEmpty()) {
-                        latitud = ubicaciones[0].latitud
-                        longitud = ubicaciones[0].longitud
-                        timestamp = ubicaciones[0].timestamp
-                    } else {
-                        sinUbicacion = true
-                    }
-                } else {
-                    sinUbicacion = true
-                }
-            } catch (e: Exception) {
-                sinUbicacion = true
-            } finally {
-                cargando = false
-            }
-        }
+        recargarUbicacion()
     }
 
     // Estado de la cámara del mapa
@@ -189,43 +228,7 @@ fun PantallaUbicacion(
                     val context = androidx.compose.ui.platform.LocalContext.current
                     
                     // Botón actualizar ubicación
-                    IconButton(onClick = {
-                        // Necesitamos usar GlobalScope o un nuevo scope
-                        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                            try {
-                                // Crear comando de solicitud de ubicación
-                                val comando = mapOf(
-                                    "id_hijo" to idHijo,
-                                    "tipo_comando" to "SOLICITAR_UBICACION",
-                                    "estado" to "PENDIENTE"
-                                )
-                                SupabaseClient.api.crearComandoControl(comando)
-                                android.util.Log.i("Ubicacion", "Solicitud de ubicación enviada al hijo")
-                            } catch (e: Exception) {
-                                android.util.Log.e("Ubicacion", "Error solicitando ubicación: ${e.message}")
-                            }
-                        }
-                        // Recargar ubicación
-                        cargando = true
-                        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                            try {
-                                val response = SupabaseClient.api.obtenerUltimaUbicacion(idUsuario = "eq.$idHijo")
-                                if (response.isSuccessful) {
-                                    val ubicaciones = response.body()
-                                    if (!ubicaciones.isNullOrEmpty()) {
-                                        latitud = ubicaciones[0].latitud
-                                        longitud = ubicaciones[0].longitud
-                                        timestamp = ubicaciones[0].timestamp
-                                        sinUbicacion = false
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                android.util.Log.e("Ubicacion", "Error recargando: ${e.message}")
-                            } finally {
-                                cargando = false
-                            }
-                        }
-                    }) {
+                    IconButton(onClick = recargarUbicacion) {
                         Icon(Icons.Default.MyLocation, "Actualizar Ubicación", tint = Color.White)
                     }
                     
@@ -342,9 +345,10 @@ fun PantallaUbicacion(
                                 )
                                 Column {
                                     Text(
-                                        "Última actualización",
-                                        color = Color.White.copy(alpha = 0.7f),
-                                        fontSize = 12.sp
+                                        if (esHistorica) "Última ubicación disponible (Historial)" else "Ubicación en tiempo real",
+                                        color = if (esHistorica) Color(0xFFFFA726) else Color.White.copy(alpha = 0.7f),
+                                        fontSize = 12.sp,
+                                        fontWeight = if (esHistorica) FontWeight.Bold else FontWeight.Normal
                                     )
                                     Text(
                                         timestampFormateado ?: "Desconocida",

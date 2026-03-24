@@ -202,32 +202,74 @@ class EstadisticasRepository {
 
     private suspend fun obtenerOregistrarDispositivo(userId: Int, nombre: String): Int? {
         return try {
-            // Buscar dispositivos de este usuario
-            val response = api.obtenerDispositivosPorUsuario("eq.$userId")
-            if (response.isSuccessful) {
-                val dispositivos = response.body() ?: emptyList()
-                
-                // Intentar encontrar uno con el mismo nombre (simplificación)
-                // En producción usaríamos un Android ID único o UUID guardado localmente
-                val dispositivoExistente = dispositivos.find { it.nombre == nombre }
-                
-                if (dispositivoExistente != null) {
-                    return dispositivoExistente.id
-                } else {
-                    // Crear nuevo
-                    val nuevoDispositivo = com.example.rest.data.models.DispositivoInput(
-                        idUsuario = userId,
-                        nombre = nombre,
-                        ip = "127.0.0.1", // Placeholder, o obtener real
-                        estado = "activo"
-                    )
-                    val createResponse = api.crearDispositivo(nuevoDispositivo)
-                    if (createResponse.isSuccessful && !createResponse.body().isNullOrEmpty()) {
-                        return createResponse.body()!![0].id
-                    }
+            // Obtener dispositivos existentes del usuario
+            val respuesta = api.obtenerDispositivosPorUsuario("eq.$userId")
+            if (!respuesta.isSuccessful || respuesta.body().isNullOrEmpty()) {
+                // No hay dispositivos, crear uno nuevo
+                val nuevoDispositivo = com.example.rest.data.models.DispositivoInput(
+                    idUsuario = userId,
+                    nombre = nombre,
+                    ip = "",  // IP vacía
+                    estado = "activo"
+                )
+                val crearRespuesta = api.crearDispositivo(nuevoDispositivo)
+                if (crearRespuesta.isSuccessful && !crearRespuesta.body().isNullOrEmpty()) {
+                    return crearRespuesta.body()!![0].id
                 }
+                return null
             }
-            null
+            
+            // Hay dispositivos existentes
+            val dispositivos = respuesta.body() ?: emptyList()
+            
+            // Intentar encontrar uno con el mismo nombre (mejoramiento de la lógica actual)
+            val dispositivoExistente = dispositivos.find { it.nombre == nombre }
+            
+            if (dispositivoExistente != null) {
+                // Dispositivo encontrado con mismo nombre - ACTUALIZARLO en lugar de ignorarlo
+                 // Asegurarnos de que esté activo
+                 if (dispositivoExistente.estado != "activo") {
+                     val dispositivoActualizado = dispositivoExistente.copy(estado = "activo", nombre = nombre)
+                     val actualizarRespuesta = api.actualizarDispositivo("eq.${dispositivoExistente.id}", dispositivoActualizado)
+                     if (actualizarRespuesta.isSuccessful) {
+                         return dispositivoExistente.id
+                     }
+                     // Si falla la actualización, aún devolvemos el ID por si acaso
+                     return dispositivoExistente.id
+                 }
+                return dispositivoExistente.id
+            } else {
+                // No hay dispositivo con ese nombre exactamente
+                // Estrategia: actualizar el dispositivo más apropiado con el nombre proporcionado
+                val dispositivoAActualizar = dispositivos
+                    // Primero buscar uno activo
+                    .firstOrNull { it.estado == "activo" }
+                    // Si no hay activo, tomar el más recientemente actualizado/creado
+                    ?: dispositivos.maxByOrNull { it.id ?: Int.MIN_VALUE }
+                
+                if (dispositivoAActualizar != null) {
+                 // ACTUALIZAR el dispositivo existente con el nuevo nombre y estado activo
+                     val dispositivoActualizado = dispositivoAActualizar.copy(nombre = nombre, estado = "activo")
+                     val actualizarRespuesta = api.actualizarDispositivo("eq.${dispositivoAActualizar.id}", dispositivoActualizado)
+                     if (actualizarRespuesta.isSuccessful) {
+                         return dispositivoAActualizar.id
+                     }
+                    // Si falla, intentar crear nuevo como último recurso
+                }
+                
+                // Como último recurso, crear nuevo dispositivo
+                val nuevoDispositivo = com.example.rest.data.models.DispositivoInput(
+                    idUsuario = userId,
+                    nombre = nombre,
+                    ip = "",
+                    estado = "activo"
+                )
+                val crearRespuesta = api.crearDispositivo(nuevoDispositivo)
+                if (crearRespuesta.isSuccessful && !crearRespuesta.body().isNullOrEmpty()) {
+                    return crearRespuesta.body()!![0].id
+                }
+                return null
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error gestionando dispositivo: ${e.message}")
             null

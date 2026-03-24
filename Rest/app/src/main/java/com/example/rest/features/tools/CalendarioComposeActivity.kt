@@ -60,6 +60,25 @@ import android.net.Uri
 import android.provider.Settings
 import android.os.Build
 import com.example.rest.ChatHeadManager
+import java.time.ZonedDateTime
+import java.time.ZoneId
+
+// Helper global para parsear fechas UTC desde la API a Hora Local
+fun parseSupabaseDate(dateStr: String): LocalDateTime {
+    return try {
+        if (dateStr.endsWith("Z") || dateStr.contains("+")) {
+            ZonedDateTime.parse(dateStr).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
+        } else {
+            LocalDateTime.parse(dateStr.substringBefore(".")).atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
+        }
+    } catch (e: Exception) {
+        try {
+            LocalDateTime.parse(dateStr.substringBefore("."))
+        } catch (e2: Exception) {
+            LocalDateTime.now()
+        }
+    }
+}
 
 class CalendarioComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -319,7 +338,7 @@ fun PantallaCalendario(onBackClick: () -> Unit) {
                                         // ── CREAR nuevo evento ───────────────────────────────────
                                         // Validar fecha futura o actual
                                         val fechaInicio = try {
-                                            LocalDateTime.parse(inicioIso.replace("Z", ""))
+                                            parseSupabaseDate(inicioIso)
                                         } catch (e: Exception) {
                                             LocalDateTime.now()
                                         }
@@ -543,10 +562,9 @@ fun VistaCalendarioDia(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Filtrar eventos por fecha seleccionada
                 val eventosDia = eventos.filter { 
                     try {
-                        it.fechaInicio.take(10) == selectedDate.toString()
+                        parseSupabaseDate(it.fechaInicio).toLocalDate() == selectedDate
                     } catch (e: Exception) { false }
                 }
                 
@@ -582,14 +600,7 @@ fun VistaListaEventosFuturos(
         val ahora = LocalDateTime.now()
         eventos.filter { evento ->
             try {
-                // Manejar diferentes formatos de fecha ISO
-                val fechaStr = evento.fechaInicio
-                    .replace("Z", "")
-                    .replace("+00:00", "")
-                    .substringBefore("+")
-                    .substringBefore(".")
-                
-                val fechaEvento = LocalDateTime.parse(fechaStr)
+                val fechaEvento = parseSupabaseDate(evento.fechaInicio)
                 fechaEvento.isAfter(ahora)
             } catch (e: Exception) {
                 // Log para debugging (opcional)
@@ -652,7 +663,7 @@ fun VistaListaEventosFuturos(
 fun EventoItem(evento: Evento, onClick: () -> Unit = {}) {
     // Formatear fecha y hora
     val (fechaTexto, horaTexto) = try {
-        val fecha = LocalDateTime.parse(evento.fechaInicio.replace("Z", ""))
+        val fecha = parseSupabaseDate(evento.fechaInicio)
         val fmtFecha = DateTimeFormatter.ofPattern("dd MMM")
         val fmtHora = DateTimeFormatter.ofPattern("hh:mm a")
         Pair(fecha.format(fmtFecha), fecha.format(fmtHora))
@@ -739,7 +750,7 @@ fun EventoItem(evento: Evento, onClick: () -> Unit = {}) {
 fun EventoItemConFecha(evento: Evento, onClick: () -> Unit = {}) {
     // Formatear fecha y hora completa
     val (fechaTexto, horaTexto) = try {
-        val fecha = LocalDateTime.parse(evento.fechaInicio.replace("Z", ""))
+        val fecha = parseSupabaseDate(evento.fechaInicio)
         val fmtFecha = DateTimeFormatter.ofPattern("dd MMM yyyy")
         val fmtHora = DateTimeFormatter.ofPattern("hh:mm a")
         Pair(fecha.format(fmtFecha), fecha.format(fmtHora))
@@ -850,7 +861,7 @@ fun CalendarGrid(
             val isSelected = date == selectedDate
             val isToday = date == today
             val hasEvent = eventos.any { 
-                 try { it.fechaInicio.take(10) == date.toString() } catch (e: Exception) { false }
+                 try { parseSupabaseDate(it.fechaInicio).toLocalDate() == date } catch (e: Exception) { false }
             }
 
             Card(
@@ -915,7 +926,8 @@ fun CalendarGrid(
 @Composable
 fun EventoItem(evento: Evento) {
     val horaTexto = try {
-        evento.fechaInicio.substring(11, 16)
+        val fecha = parseSupabaseDate(evento.fechaInicio)
+        fecha.format(DateTimeFormatter.ofPattern("hh:mm a"))
     } catch (e: Exception) { "??" }
 
     Card(

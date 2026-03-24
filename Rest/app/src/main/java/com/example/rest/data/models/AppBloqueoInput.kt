@@ -12,7 +12,7 @@ data class AppBloqueoInput(
     @SerializedName("nombre_paquete")
     val nombrePaquete: String,
     
-    @SerializedName("tiempo_limite")
+    @SerializedName("tiempolimite")
     val tiempoLimite: Int = 0,
     
     @SerializedName("tiempo_usado_hoy")

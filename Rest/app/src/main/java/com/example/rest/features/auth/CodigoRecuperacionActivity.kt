@@ -164,7 +164,7 @@ class CodigoRecuperacionActivity : BaseComposeActivity() {
                                 Toast.LENGTH_SHORT
                             ).show()
                             
-                            // Navegar a pantalla de cambio de contraseÃ±a
+                            // Navegar a pantalla de cambio de contraseña
                             val intent = Intent(this@CodigoRecuperacionActivity, CambioContrasenaActivity::class.java)
                             intent.putExtra("correo", correo)
                             intent.putExtra("codigoId", codigoId)

@@ -227,11 +227,12 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                                 val userRes = usuarioRepository.obtenerUsuarioPorId(context, userId)
                                 if (userRes is UsuarioRepository.Result.Success<*>) {
                                     val user = userRes.data as Usuario
-                                    val hashedActual = SecurityUtils.hashPassword(actualPwd)
-                                    // Comprobar si la contraseña coincide (si es bcrypt hay que usar verify, depende de SecurityUtils)
-                                    val isValid = SecurityUtils.verifyPassword(actualPwd, user.contraseña)
-                                    
-                                    if (!isValid) {
+                                    try {
+                                        com.example.rest.network.SupabaseAuthClient.auth.signInWith(io.github.jan.supabase.auth.providers.builtin.Email) {
+                                            email = user.correo
+                                            password = actualPwd
+                                        }
+                                    } catch (e: Exception) {
                                         Toast.makeText(context, context.getString(R.string.toast_password_incorrect), Toast.LENGTH_SHORT).show()
                                         return@launch
                                     }
@@ -242,18 +243,15 @@ fun PantallaCambiarContrasena(onBackClick: () -> Unit) {
                                         return@launch
                                     }
 
-                                    // Actualizar con nueva contraseña
-                                    val nuevaHash = SecurityUtils.hashPassword(nuevaPwd)
-                                    val updated = user.copy(contraseña = nuevaHash)
-                                    when (val updRes = usuarioRepository.actualizarUsuario(context, userId, updated)) {
-                                        is UsuarioRepository.Result.Success<*> -> {
-                                            Toast.makeText(context, context.getString(R.string.toast_password_updated), Toast.LENGTH_SHORT).show()
-                                            onBackClick() // finaliza
+                                    // Actualizar con nueva contraseña en Supabase Auth
+                                    try {
+                                        com.example.rest.network.SupabaseAuthClient.auth.updateUser {
+                                            password = nuevaPwd
                                         }
-                                        is UsuarioRepository.Result.Error -> {
-                                            Toast.makeText(context, context.getString(R.string.toast_password_update_error, updRes.message), Toast.LENGTH_SHORT).show()
-                                        }
-                                        else -> {}
+                                        Toast.makeText(context, context.getString(R.string.toast_password_updated), Toast.LENGTH_SHORT).show()
+                                        onBackClick() // finaliza
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, context.getString(R.string.toast_password_update_error, e.message ?: ""), Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             } catch (e: Exception) {

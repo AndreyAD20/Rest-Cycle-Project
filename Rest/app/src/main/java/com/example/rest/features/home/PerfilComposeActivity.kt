@@ -318,7 +318,12 @@ fun PantallaPerfil(onBackClick: () -> Unit) {
                 if (getRes is UsuarioRepository.Result.Success<*>) {
                     val currentUsuario = getRes.data as Usuario
 
-                    if (!com.example.rest.utils.SecurityUtils.verifyPassword(confirmarContraseña, currentUsuario.contraseña)) {
+                    try {
+                        com.example.rest.network.SupabaseAuthClient.auth.signInWith(io.github.jan.supabase.auth.providers.builtin.Email) {
+                            email = currentUsuario.correo
+                            password = confirmarContraseña
+                        }
+                    } catch (e: Exception) {
                         Toast.makeText(context, context.getString(R.string.err_password_mismatch), Toast.LENGTH_SHORT).show()
                         isSavingUser = false
                         return@launch

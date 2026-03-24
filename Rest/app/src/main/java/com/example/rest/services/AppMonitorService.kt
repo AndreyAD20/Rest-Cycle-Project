@@ -3,8 +3,14 @@ package com.example.rest.services
 import android.app.*
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
+import android.bluetooth.BluetoothA2dp
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -40,8 +46,9 @@ class AppMonitorService : Service() {
         private const val TAG = "AppMonitorService"
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "app_monitoring_channel_silent"
+        private const val ALERT_CHANNEL_ID = "app_monitoring_alerts_channel"
         private const val CHECK_INTERVAL = 3000L // 3 segundos
-        private const val SYNC_INTERVAL = 60000L // 1 minuto
+        private const val SYNC_INTERVAL = 300000L // 5 minutos
         
         // Acción para iniciar el servicio
         fun startService(context: Context) {
@@ -95,6 +102,37 @@ class AppMonitorService : Service() {
     // Rastreo de comandos cada 30 seg
     private var lastCommandCheckTime: Long = 0
 
+// Actualización periódica del tiempo de uso en BD
+private var lastUsageTimeUpdate: Long = 0
+private val USAGE_TIME_UPDATE_INTERVAL = 300000L // 5 minutos
+
+// Mapa para evitar duplicar avisos de "10 minutos restantes", valor es el timestamp del último aviso
+private val warningNotifiedMap: MutableMap<String, Long> = mutableMapOf()
+
+    // ===== AUDÍFONOS (cable + Bluetooth) =====
+    /** Timestamp en ms de cuando se conectaron audífonos (-1 = no conectados) */
+    private var headphoneConnectedSince: Long = -1L
+    /** Evita spam: true una vez disparada la notificación en la sesión actual */
+    private var headphoneWarningFired: Boolean = false
+    /** Tiempo mínimo de uso continuo de audífonos antes de notificar (60 min) */
+    private val HEADPHONE_ALERT_MS = 60 * 60 * 1000L
+
+    private val headphoneReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_HEADSET_PLUG -> {
+                    val state = intent.getIntExtra("state", -1)
+                    if (state == 1) onHeadphonesConnected() else if (state == 0) onHeadphonesDisconnected()
+                }
+                BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED -> {
+                    val newState = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1)
+                    if (newState == BluetoothProfile.STATE_CONNECTED) onHeadphonesConnected()
+                    else if (newState == BluetoothProfile.STATE_DISCONNECTED) onHeadphonesDisconnected()
+                }
+            }
+        }
+    }
+
     // Rastreo de ubicación
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var locationCallback: LocationCallback? = null
@@ -119,40 +157,51 @@ class AppMonitorService : Service() {
         val sharedPref = getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
         dispositivoId = sharedPref.getInt("ID_DISPOSITIVO", -1)
         
-        // Si no está guardado, obtenerlo/crearlo desde la API
-        if (dispositivoId == -1) {
-            serviceScope.launch {
-                try {
-                    val response = api.obtenerDispositivosPorUsuario("eq.$userId")
-                    if (response.isSuccessful && response.body() != null && response.body()!!.isNotEmpty()) {
-                        dispositivoId = response.body()!![0].id ?: -1
+        // Siempre intentar obtener/actualizar el dispositivo correcto desde Supabase
+        serviceScope.launch {
+            try {
+                val response = api.obtenerDispositivosPorUsuario("eq.$userId")
+                if (response.isSuccessful && response.body() != null && response.body()!!.isNotEmpty()) {
+                    val dispositivos = response.body() ?: emptyList()
+                    
+                    // SELECCIONAR EL DISPOSITIVO MÁS APROPIADO
+                    val dispositivoAUsar = dispositivos
+                        // Primero buscar uno marcado como activo
+                        .firstOrNull { it.estado == "activo" }
+                        // Si no hay activo, tomar el más recientemente actualizado/creado (mayor ID)
+                        ?: dispositivos.maxByOrNull { it.id ?: Int.MIN_VALUE } 
                         
-                        // Guardar en SharedPreferences
+if (dispositivoAUsar != null) {
+    dispositivoId = dispositivoAUsar.id ?: -1
+                         // Asegurar que esté marcado como activo
+                         if (dispositivoAUsar.estado != "activo") {
+                             val dispositivoActualizado = dispositivoAUsar.copy(estado = "activo")
+                             api.actualizarDispositivo("eq.${dispositivoAUsar.id}", dispositivoActualizado)
+                         }
+                        // Actualizar el ID local para próximas veces
                         with(sharedPref.edit()) {
                             putInt("ID_DISPOSITIVO", dispositivoId)
                             apply()
                         }
-                        
-                        Log.d(TAG, "ID de dispositivo obtenido: $dispositivoId")
+                        Log.d(TAG, "ID de dispositivo obtenido/actualizado: $dispositivoId (estado: activo)")
                     } else {
-                        // Crear nuevo dispositivo
+                        // No hay dispositivos en absoluto, crear uno nuevo
+                        val dispositivoNombre = "Android Device"  // O obtener nombre real
                         val nuevoDispositivo = com.example.rest.data.models.DispositivoInput(
                             idUsuario = userId,
-                            nombre = "Android Device",
-                            ip = "0.0.0.0", // IP por defecto
+                            nombre = dispositivoNombre,
+                            ip = "",  // IP vacía (ya corregida anteriormente)
                             estado = "activo"
                         )
                         
-                        val createResponse = api.crearDispositivo(nuevoDispositivo)
-                        if (createResponse.isSuccessful && createResponse.body() != null && createResponse.body()!!.isNotEmpty()) {
-                            dispositivoId = createResponse.body()!![0].id ?: -1
-                            
+                        val crearRespuesta = api.crearDispositivo(nuevoDispositivo)
+                        if (crearRespuesta.isSuccessful && !crearRespuesta.body().isNullOrEmpty()) {
+                            dispositivoId = crearRespuesta.body()!![0].id ?: -1
                             // Guardar en SharedPreferences
                             with(sharedPref.edit()) {
                                 putInt("ID_DISPOSITIVO", dispositivoId)
                                 apply()
                             }
-                            
                             Log.d(TAG, "Dispositivo creado con ID: $dispositivoId")
                         } else {
                             Log.e(TAG, "Error creando dispositivo, deteniendo servicio")
@@ -160,15 +209,52 @@ class AppMonitorService : Service() {
                             return@launch
                         }
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error obteniendo dispositivo: ${e.message}")
-                    stopSelf()
-                    return@launch
+                } else {
+                    // Error en consulta o sin dispositivos, crear uno nuevo
+                    val dispositivoNombre = "Android Device"
+                    val nuevoDispositivo = com.example.rest.data.models.DispositivoInput(
+                        idUsuario = userId,
+                        nombre = dispositivoNombre,
+                        ip = "",
+                        estado = "activo"
+                    )
+                    
+                    val crearRespuesta = api.crearDispositivo(nuevoDispositivo)
+                    if (crearRespuesta.isSuccessful && !crearRespuesta.body().isNullOrEmpty()) {
+                        dispositivoId = crearRespuesta.body()!![0].id ?: -1
+                        // Guardar en SharedPreferences
+                        with(sharedPref.edit()) {
+                            putInt("ID_DISPOSITIVO", dispositivoId)
+                            apply()
+                        }
+                        Log.d(TAG, "Dispositivo creado con ID: $dispositivoId")
+                    } else {
+                        Log.e(TAG, "Error creando dispositivo, deteniendo servicio")
+                        stopSelf()
+                        return@launch
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error obteniendo dispositivo: ${e.message}")
+                stopSelf()
+                return@launch
             }
         }
         
         createNotificationChannel()
+
+        // Registrar receiver de audífonos (cable + Bluetooth)
+        val headphoneFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_HEADSET_PLUG)
+            addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
+        }
+        registerReceiver(headphoneReceiver, headphoneFilter)
+
+        // Verificar si ya hay audífonos conectados al arrancar
+        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        if (audioManager.isWiredHeadsetOn || audioManager.isBluetoothA2dpOn) {
+            onHeadphonesConnected()
+        }
         
         if (Build.VERSION.SDK_INT >= 34) { // Android 14+
             startForeground(
@@ -210,6 +296,7 @@ class AppMonitorService : Service() {
         isMonitoring = false
         handler.removeCallbacksAndMessages(null)
         stopLocationUpdates()
+        try { unregisterReceiver(headphoneReceiver) } catch (e: Exception) { }
         
         // Guardar última sesión pendiente si es válida
         currentPackageName?.let { packageName ->
@@ -259,11 +346,20 @@ class AppMonitorService : Service() {
                     
                     actualizarListaRestricciones()
                     checkForegroundApp()
+
+                    // Verificar uso de audífonos cada tick
+                    checkHeadphoneUsage()
                     
                     // Verificar si toca enviar al historial (cada 15 min)
                     if (now - lastHistorySyncTime > HISTORY_SYNC_INTERVAL) {
                         sincronizarUbicacionHistorial()
                         lastHistorySyncTime = now
+                    }
+                    
+                    // Actualizar tiempo de uso en BD cada 30 segundos
+                    if (now - lastUsageTimeUpdate > USAGE_TIME_UPDATE_INTERVAL) {
+                        actualizarTiempoUsadoHoyEnBD()
+                        lastUsageTimeUpdate = now
                     }
                     
                     // Verificar comandos cada 30 segundos
@@ -291,7 +387,7 @@ class AppMonitorService : Service() {
                 // Subir inventario completo de apps instaladas para que el padre pueda verlas
                 subirAppsInstaladas()
                 
-                val response = api.obtenerAppsVinculadas("eq.$dispositivoId")
+                  val response = api.obtenerAppsBloqueo("eq.$dispositivoId")
                 if (response.isSuccessful) {
                     val appsVinculadas = response.body() ?: emptyList()
                     
@@ -546,6 +642,7 @@ class AppMonitorService : Service() {
                 // Así cuando BloqueoActivity está en pantalla, com.example.rest aparece
                 // como más reciente y la app bloqueada deja de ser detectada como activa
                 .filter { it.packageName != packageName &&
+                        it.packageName != this.packageName &&
                         !it.packageName.contains("launcher", ignoreCase = true) &&
                         !it.packageName.contains("nexuslauncher", ignoreCase = true) &&
                         it.packageName != "com.android.systemui" &&
@@ -554,7 +651,7 @@ class AppMonitorService : Service() {
                 .maxByOrNull { it.lastTimeUsed }
 
             // Si otra app fue usada más recientemente, la nuestra ya no está en frente
-            if (moreRecentApp != null && moreRecentApp.lastTimeUsed > targetStat.lastTimeUsed + 3000) {
+            if (moreRecentApp != null && moreRecentApp.lastTimeUsed > targetStat.lastTimeUsed + 90000) {
                 return false
             }
             true
@@ -603,66 +700,69 @@ class AppMonitorService : Service() {
      * Registra una sesión completa en la base de datos
      */
     /**
-     * Asegura que tenemos un ID de dispositivo válido
+     * Asegura que tenemos un ID de dispositivo válido, actualizando desde Supabase si es necesario
      */
     private suspend fun ensureDeviceId(): Int {
-        if (dispositivoId != -1) return dispositivoId
-        
-        val prefs = com.example.rest.utils.PreferencesManager(this)
-        val storedId = prefs.getUserId() // Hack temporal, normalmente esto será getDeviceId pero como no está en PreferencesManager lo ignoraremos o usaremos sharedPreferences normal...
-        
-        // Wait, I should just use ordinary shared prefs for ID_DISPOSITIVO since I didn't add it to PreferencesManager, or I can add it to PreferencesManager. Let me add it.
-        // Actually I can just do:
-        val sharedPref = getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
-        val storedId2 = sharedPref.getInt("ID_DISPOSITIVO", -1)
-        if (storedId2 != -1) {
-            dispositivoId = storedId2
-            return storedId2
+        // Si ya tenemos un ID válido, verificamos que siga siendo correcto
+        if (dispositivoId != -1) {
+            return try {
+                val response = api.obtenerDispositivoPorId("$dispositivoId")
+                if (response.isSuccessful && response.body() != null && response.body()!!.isNotEmpty()) {
+                    val dispositivo = response.body()!![0]
+                     // Asegurar que esté marcado como activo
+                     if (dispositivo.estado != "activo") {
+                         val dispositivoActualizado = dispositivo.copy(estado = "activo")
+                         api.actualizarDispositivo("eq.$dispositivoId", dispositivoActualizado)
+                     }
+                    dispositivoId
+                } else {
+                    -1  // Dispositivo ya no existe
+                }
+            } catch (e: Exception) {
+                -1  // Error en consulta
+            }
         }
         
+        // No tenemos ID válido, intentar obtenerlo de Supabase
+        val prefs = com.example.rest.utils.PreferencesManager(this)
         val userId = prefs.getUserId()
         if (userId == -1) return -1
         
-        try {
-            // Intentar obtener de API
+        return try {
             val response = api.obtenerDispositivosPorUsuario("eq.$userId")
             if (response.isSuccessful && response.body() != null && response.body()!!.isNotEmpty()) {
-                val id = response.body()!![0].id ?: -1
-                if (id != -1) {
-                    dispositivoId = id
+                val dispositivos = response.body() ?: emptyList()
+                
+                // SELECCIONAR EL DISPOSITIVO MÁS APROPIADO
+                val dispositivoAUsar = dispositivos
+                    // Primero buscar uno marcado como activo
+                    .firstOrNull { it.estado == "activo" }
+                    // Si no hay activo, tomar el más recientemente actualizado/creado (mayor ID)
+                    ?: dispositivos.maxByOrNull { it.id ?: Int.MIN_VALUE }
+                    
+                if (dispositivoAUsar != null) {
+                    // Actualizar ID local y asegurar estado activo
+                    dispositivoId = dispositivoAUsar.id ?: -1
+                     if (dispositivoAUsar.estado != "activo") {
+                         val dispositivoActualizado = dispositivoAUsar.copy(estado = "activo")
+                         api.actualizarDispositivo("eq.$dispositivoId", dispositivoActualizado)
+                     }
+                    // Guardar en SharedPreferences
+                    val sharedPref = getSharedPreferences("RestCyclePrefs", Context.MODE_PRIVATE)
                     with(sharedPref.edit()) {
-                        putInt("ID_DISPOSITIVO", id)
+                        putInt("ID_DISPOSITIVO", dispositivoId)
                         apply()
                     }
-                    return id
+                    dispositivoId
+                } else {
+                    -1  // No hay dispositivos
                 }
-            }
-            
-            // Crear si no existe
-            val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}"
-            val nuevoDispositivo = com.example.rest.data.models.DispositivoInput(
-                idUsuario = userId,
-                nombre = deviceName,
-                ip = "0.0.0.0",
-                estado = "activo"
-            )
-             
-            val createResponse = api.crearDispositivo(nuevoDispositivo)
-            if (createResponse.isSuccessful && createResponse.body() != null && createResponse.body()!!.isNotEmpty()) {
-                val id = createResponse.body()!![0].id ?: -1
-                if (id != -1) {
-                    dispositivoId = id
-                    with(sharedPref.edit()) {
-                        putInt("ID_DISPOSITIVO", id)
-                        apply()
-                    }
-                    return id
-                }
+            } else {
+                -1  // Error en consulta
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error ensuring device ID: ${e.message}")
+            -1
         }
-        return -1
     }
 
     /**
@@ -758,6 +858,58 @@ class AppMonitorService : Service() {
     
     // Métodos iniciarSesion y finalizarSesion eliminados al simplificar la lógica
 
+    // ===== AUDÍFONOS =====
+
+    private fun onHeadphonesConnected() {
+        if (headphoneConnectedSince == -1L) {
+            headphoneConnectedSince = System.currentTimeMillis()
+            headphoneWarningFired = false
+            Log.d(TAG, "Audífonos conectados — iniciando contador")
+        }
+    }
+
+    private fun onHeadphonesDisconnected() {
+        headphoneConnectedSince = -1L
+        headphoneWarningFired = false
+        Log.d(TAG, "Audífonos desconectados — contador reiniciado")
+    }
+
+    /**
+     * Llamado en cada tick del loop; si se alcanza 60 min continuos con audífonos,
+     * dispara la notificación (solo una vez por sesión conectada).
+     */
+    private fun checkHeadphoneUsage() {
+        if (headphoneConnectedSince == -1L || headphoneWarningFired) return
+        val elapsed = System.currentTimeMillis() - headphoneConnectedSince
+        if (elapsed >= HEADPHONE_ALERT_MS) {
+            headphoneWarningFired = true
+            enviarNotificacionAudifonos()
+        }
+    }
+
+    /**
+     * Envía la notificación de descanso de oídos.
+     */
+    private fun enviarNotificacionAudifonos() {
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        val intent = Intent(this, com.example.rest.features.home.InicioComposeActivity::class.java)
+            .apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+            .setContentTitle(getString(R.string.notif_headphone_title))
+            .setContentText(getString(R.string.notif_headphone_body))
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+        notificationManager.notify("HEADPHONE_REST".hashCode(), notification)
+        Log.d(TAG, "Notificación de audífonos enviada (60 min alcanzados)")
+    }
+
     /**
      * Obtiene el nombre de la app desde el package name
      */
@@ -787,6 +939,16 @@ class AppMonitorService : Service() {
             
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
+            
+            // Canal para Alertas
+            val alertChannel = NotificationChannel(
+                ALERT_CHANNEL_ID,
+                "Alertas de Tiempo de Pantalla",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notificaciones cuando una aplicación está por alcanzar su límite de tiempo"
+            }
+            notificationManager.createNotificationChannel(alertChannel)
         }
     }
 
@@ -871,6 +1033,19 @@ class AppMonitorService : Service() {
                 
                 Log.d(TAG, "verificarBloqueo: $packageName uso=$realUsageMin min / límite=$limitMinutes min")
                 
+                val tiempoRestante = limitMinutes - realUsageMin
+                if (tiempoRestante in 1..10) {
+                    val ahora = System.currentTimeMillis()
+                    val ultimoAviso = warningNotifiedMap[packageName] ?: 0L
+                    
+                    // Si ha pasado más de 12 horas (43,200,000 ms) desde el último aviso
+                    // Asumimos que es un día nuevo o se reseteó el uso
+                    if (ahora - ultimoAviso > 12 * 60 * 60 * 1000L) {
+                        warningNotifiedMap[packageName] = ahora
+                        enviarNotificacionPreBloqueo(appName, tiempoRestante)
+                    }
+                }
+                
                 if (realUsageMin >= limitMinutes) {
                     shouldBlock = true
                     reason = "Has excedido el límite de tiempo diario ($limitMinutes min)."
@@ -893,6 +1068,24 @@ class AppMonitorService : Service() {
                     if (!appRestricted.isBlocked) {
                         Log.d(TAG, "Límite excedido para $packageName. Bloqueando en nube...")
                         updateAppBlockedStatusInCloud(packageName, true)
+                        // Actualizar tiempo de uso en BD al bloquear por límite de tiempo
+                        serviceScope.launch {
+                            try {
+                                val currentUsageMin = getRealDailyUsageMinutes(packageName)
+                                val usageUpdates = mapOf(
+                                    "tiempo_usado_hoy" to currentUsageMin,
+                                    "fecha_actualizacion" to timestampFormat.format(Date())
+                                )
+                                api.actualizarAppVinculadaPorPaquete(
+                                    idDispositivo = "eq.$dispositivoId",
+                                    nombrePaquete = "eq.$packageName",
+                                    app = usageUpdates
+                                )
+                                Log.d(TAG, "tiempo_usado_hoy actualizado en BD al bloquear: $packageName = $currentUsageMin min")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error actualizando tiempo_usado_hoy en BD al bloquear: ${e.message}")
+                            }
+                        }
                         val updatedApp = appRestricted.copy(isBlocked = true)
                         localRepository.saveBlockedApp(updatedApp)
                         restrictedApps = restrictedApps.map { 
@@ -951,6 +1144,40 @@ class AppMonitorService : Service() {
     }
 
     /**
+     * Actualiza el tiempo de uso diario en la tabla apps_bloqueo para todas las apps restringidas
+     */
+    private fun actualizarTiempoUsadoHoyEnBD() {
+        if (dispositivoId == -1 || restrictedApps.isEmpty()) return
+
+        serviceScope.launch {
+            try {
+                val validDeviceId = ensureDeviceId()
+                if (validDeviceId == -1) return@launch
+
+                for (app in restrictedApps) {
+                    val packageName = app.packageName
+                    // Obtener el tiempo real de uso del día (incluyendo sesión actual)
+                    val tiempoUsadoMin = getRealDailyUsageMinutes(packageName)
+                    
+                    // Actualizar en la tabla apps_bloqueo
+                    val updates = mapOf(
+                        "tiempo_usado_hoy" to tiempoUsadoMin,
+                        "fecha_actualizacion" to timestampFormat.format(Date())
+                    )
+                    api.actualizarAppVinculadaPorPaquete(
+                        idDispositivo = "eq.$validDeviceId",
+                        nombrePaquete = "eq.$packageName",
+                        app = updates
+                    )
+                }
+                Log.d(TAG, "Actualizado tiempo_usado_hoy en BD para ${restrictedApps.size} apps")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error actualizando tiempo_usado_hoy en BD: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Obtiene los minutos reales de uso del dia de hoy usando UsageStats
      */
     private fun getRealDailyUsageMinutes(packageName: String): Int {
@@ -980,7 +1207,8 @@ class AppMonitorService : Service() {
                 }
             }
             
-            (baseMs / 60000).toInt()
+            val minutos = (baseMs / 60000).toInt()
+            if (minutos == 0 && baseMs > 5000) 1 else minutos
         } catch (e: Exception) {
             Log.e(TAG, "Error leyendo UsageStats para $packageName: ${e.message}")
             // Fallback al mapa en memoria
@@ -1015,6 +1243,39 @@ class AppMonitorService : Service() {
     }
 
     /**
+     * Envía la notificación de aviso de que se acaba el tiempo (10 minutos o menos)
+     */
+    private fun enviarNotificacionPreBloqueo(appName: String, minutosRestantes: Int) {
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        
+        val intent = Intent(this, com.example.rest.features.home.InicioComposeActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val title = getString(R.string.notif_time_warning_title)
+        val body = getString(R.string.notif_time_warning_body, minutosRestantes, appName)
+
+        val builder = NotificationCompat.Builder(this, ALERT_CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+
+        // Usamos un ID único por app basado en su hashcode
+        val notifyId = "PREBLOCK_${appName}".hashCode()
+        notificationManager.notify(notifyId, builder.build())
+        Log.d(TAG, "Notificación de pre-bloqueo enviada para $appName ($minutosRestantes min restantes)")
+    }
+
+    /**
      * Actualiza la notificación
      */
     private fun updateNotification(contentText: String) {
@@ -1043,7 +1304,8 @@ class AppMonitorService : Service() {
                                 UbicacionInput(
                                     idUsuario = userId,
                                     latitud = location.latitude,
-                                    longitud = location.longitude
+                                    longitud = location.longitude,
+                                    timestamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault()).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.format(java.util.Date())
                                 )
                             )
                             Log.d(TAG, "Ubicación en tiempo real enviada desde el servicio: ${location.latitude}, ${location.longitude}")

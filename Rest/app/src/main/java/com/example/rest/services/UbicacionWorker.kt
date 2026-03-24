@@ -58,11 +58,15 @@ class UbicacionWorker(
 
             // 1. Guardar ubicación actual (para consulta en tiempo real desde control parental)
             try {
+                val sdfIso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.getDefault()).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }
                 val responseUbicacion = SupabaseClient.api.guardarUbicacion(
                     UbicacionInput(
                         idUsuario = idUsuario,
                         latitud = ubicacion.first,
-                        longitud = ubicacion.second
+                        longitud = ubicacion.second,
+                        timestamp = sdfIso.format(ahora)
                     )
                 )
                 if (responseUbicacion.isSuccessful) {

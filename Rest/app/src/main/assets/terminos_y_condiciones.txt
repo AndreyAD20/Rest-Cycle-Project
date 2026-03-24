@@ -1,0 +1,17 @@
+Bienvenido a Rest Cycle.
+
+Al aceptar estos términos y condiciones, confirmas que eres de los responsables para usar esta aplicación en dispositivos móviles. Nos regimos bajo las siguientes normas de uso:
+
+1. Recolección de Datos
+Recopilamos datos de ubicación de dispositivos de hijos o administrados sólo cuando el servicio de ubicación es activado deliberadamente y aprobado por la configuración de rastreo que establece la cuenta paterna.
+
+2. Uso de la Aplicación en Segundo Plano
+Para asegurar el correcto funcionamiento, la aplicación opera servicios que funcionan en segundo plano (Always-On) con el objetivo de monitorizar el tiempo de pantalla y notificar sobre el cumplimiento de horarios. Tu permiso para estos servicios es crucial y está bajo tu control desde los ajustes.
+
+3. Restricciones Técnicas
+Aceptas que Rest Cycle puede imponer un bloqueo temporal sobre otras aplicaciones del dispositivo para asegurar los límites de tiempo requeridos. Eres responsable de usar esto de manera prudencial.
+
+4. Retención de Información
+Retendremos tus eventos e historiales hasta por 30 días, transcurridos cuales podrán ser borrados para mantener saludable la base de datos de nuestro sistema central.
+
+Gracias por confiar en Rest Cycle.

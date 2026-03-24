@@ -85,7 +85,7 @@ class NuevaContrasenaActivity : BaseComposeActivity() {
                                 android.util.Log.e("NuevaContrasenaActivity", "Error al cambiar contraseña: ${e.message}", e)
                                 Toast.makeText(
                                     this@NuevaContrasenaActivity,
-                                    "Error al cambiar contraseña: ${e.message}",
+                                    getString(R.string.toast_error_changing_password, e.message ?: ""),
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
@@ -144,14 +144,14 @@ fun PantallaNuevaContrasena(
 
             // Título
             Text(
-                text = "Nueva Contraseña",
+                text = androidx.compose.ui.res.stringResource(R.string.new_password_title),
                 style = MaterialTheme.typography.headlineSmall,
                 color = androidx.compose.ui.graphics.Color.White,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
-                text = "Ingresa tu nueva contraseña",
+                text = androidx.compose.ui.res.stringResource(R.string.new_password_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
                 modifier = Modifier.padding(bottom = 32.dp)
@@ -163,7 +163,7 @@ fun PantallaNuevaContrasena(
                 onValueChange = { nuevaContrasena = it },
                 placeholder = {
                     Text(
-                        "Nueva contraseña",
+                        androidx.compose.ui.res.stringResource(R.string.new_password_placeholder),
                         color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f)
                     )
                 },
@@ -181,7 +181,7 @@ fun PantallaNuevaContrasena(
                                 androidx.compose.material.icons.Icons.Filled.Visibility
                             else
                                 androidx.compose.material.icons.Icons.Filled.VisibilityOff,
-                            contentDescription = if (showPassword1) "Ocultar" else "Mostrar",
+                            contentDescription = if (showPassword1) androidx.compose.ui.res.stringResource(R.string.content_desc_hide_password) else androidx.compose.ui.res.stringResource(R.string.content_desc_show_password),
                             tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f)
                         )
                     }
@@ -215,7 +215,7 @@ fun PantallaNuevaContrasena(
                 onValueChange = { confirmarContrasena = it },
                 placeholder = {
                     Text(
-                        "Confirmar contraseña",
+                        androidx.compose.ui.res.stringResource(R.string.confirm_password_placeholder),
                         color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f)
                     )
                 },
@@ -233,7 +233,7 @@ fun PantallaNuevaContrasena(
                                 androidx.compose.material.icons.Icons.Filled.Visibility
                             else
                                 androidx.compose.material.icons.Icons.Filled.VisibilityOff,
-                            contentDescription = if (showPassword2) "Ocultar" else "Mostrar",
+                            contentDescription = if (showPassword2) androidx.compose.ui.res.stringResource(R.string.content_desc_hide_password) else androidx.compose.ui.res.stringResource(R.string.content_desc_show_password),
                             tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.8f)
                         )
                     }
@@ -266,7 +266,7 @@ fun PantallaNuevaContrasena(
             if (confirmarContrasena.isNotEmpty() && confirmarContrasena != nuevaContrasena) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Las contraseñas no coinciden",
+                    text = androidx.compose.ui.res.stringResource(R.string.error_passwords_mismatch),
                     color = androidx.compose.ui.graphics.Color(0xFFFF6B6B),
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -299,7 +299,7 @@ fun PantallaNuevaContrasena(
                 enabled = nuevaContrasena.isNotBlank() && nuevaContrasena == confirmarContrasena
             ) {
                 Text(
-                    text = "Guardar",
+                    text = androidx.compose.ui.res.stringResource(R.string.btn_save),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                 )
@@ -310,7 +310,7 @@ fun PantallaNuevaContrasena(
             // Botón Cancelar
             TextButton(onClick = onCancel) {
                 Text(
-                    text = "Cancelar",
+                    text = androidx.compose.ui.res.stringResource(R.string.btn_cancel),
                     color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
                     style = MaterialTheme.typography.bodyMedium
                 )

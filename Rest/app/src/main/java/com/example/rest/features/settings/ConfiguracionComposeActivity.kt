@@ -59,13 +59,8 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
     var notifFlotanteTiempoPantalla by remember { mutableStateOf(sharedPrefs.getBoolean("FLOTANTE_TIEMPO_PANTALLA", true)) }
     var notifFlotanteBloqueo by remember { mutableStateOf(sharedPrefs.getBoolean("FLOTANTE_BLOQUEO", true)) }
 
-    // Estado para notificaciones del sistema
-    var notifSistemaEnabled by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_ENABLED", true)) }
-    var notifSistemaUsoExcesivo by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_USO_EXCESIVO", true)) }
-    var notifSistemaTareas by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_TAREAS", true)) }
-    var notifSistemaEventos by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_EVENTOS", true)) }
-    var notifSistemaTiempoPantalla by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_TIEMPO_PANTALLA", true)) }
-    var notifSistemaBloqueo by remember { mutableStateOf(sharedPrefs.getBoolean("SISTEMA_BLOQUEO", true)) }
+    // Estado para opciones desplegables
+    var notifFlotanteOpcionesVisibles by remember { mutableStateOf(false) }
     
     // Estado para el diálogo de Burbuja
     var mostrarDialogoBurbuja by remember { mutableStateOf(false) }
@@ -228,153 +223,89 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                 // Sub-toggle de uso excesivo
                 if (notifFlotanteEnabled) {
                     item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_flotante_excessive_use),
-                            activado = notifFlotanteUsoExcesivo,
-                            onToggle = { isEnabled ->
-                                notifFlotanteUsoExcesivo = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("FLOTANTE_USO_EXCESIVO", isEnabled).apply()
-                            }
-                        )
-                    }
-                    item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_flotante_tasks),
-                            activado = notifFlotanteTareas,
-                            onToggle = { isEnabled ->
-                                notifFlotanteTareas = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("FLOTANTE_TAREAS", isEnabled).apply()
-                            }
-                        )
-                    }
-                    item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_flotante_events),
-                            activado = notifFlotanteEventos,
-                            onToggle = { isEnabled ->
-                                notifFlotanteEventos = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("FLOTANTE_EVENTOS", isEnabled).apply()
-                            }
-                        )
-                    }
-                    item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_flotante_screen_time),
-                            activado = notifFlotanteTiempoPantalla,
-                            onToggle = { isEnabled ->
-                                notifFlotanteTiempoPantalla = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("FLOTANTE_TIEMPO_PANTALLA", isEnabled).apply()
-                            }
-                        )
-                    }
-                    item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_flotante_app_block),
-                            activado = notifFlotanteBloqueo,
-                            onToggle = { isEnabled ->
-                                notifFlotanteBloqueo = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("FLOTANTE_BLOQUEO", isEnabled).apply()
-                            }
-                        )
-                    }
-                }
-
-                item { Spacer(modifier = Modifier.height(12.dp)) }
-
-                // ========== NOTIFICACIONES DEL SISTEMA ==========
-                item {
-                    Text(
-                        text = stringResource(R.string.notif_section_system),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White.copy(alpha = 0.9f),
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-
-                item {
-                    OpcionConfiguracionToggle(
-                        icono = Icons.Default.Notifications,
-                        titulo = stringResource(R.string.notif_system_enable),
-                        activado = notifSistemaEnabled,
-                        onToggle = { isEnabled ->
-                            notifSistemaEnabled = isEnabled
-                            sharedPrefs
-                                .edit().putBoolean("SISTEMA_ENABLED", isEnabled).apply()
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { notifFlotanteOpcionesVisibles = !notifFlotanteOpcionesVisibles }
+                                .padding(vertical = 12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (notifFlotanteOpcionesVisibles) "Ocultar opciones" else "Mostrar opciones",
+                                color = Color.White.copy(alpha = 0.8f),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = if (notifFlotanteOpcionesVisibles) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.8f)
+                            )
                         }
-                    )
-                }
-
-                // Sub-toggle de uso excesivo
-                if (notifSistemaEnabled) {
-                    item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_system_excessive_use),
-                            activado = notifSistemaUsoExcesivo,
-                            onToggle = { isEnabled ->
-                                notifSistemaUsoExcesivo = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("SISTEMA_USO_EXCESIVO", isEnabled).apply()
-                            }
-                        )
                     }
-                    item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_system_tasks),
-                            activado = notifSistemaTareas,
-                            onToggle = { isEnabled ->
-                                notifSistemaTareas = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("SISTEMA_TAREAS", isEnabled).apply()
-                            }
-                        )
-                    }
-                    item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_system_events),
-                            activado = notifSistemaEventos,
-                            onToggle = { isEnabled ->
-                                notifSistemaEventos = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("SISTEMA_EVENTOS", isEnabled).apply()
-                            }
-                        )
-                    }
-                    item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_system_screen_time),
-                            activado = notifSistemaTiempoPantalla,
-                            onToggle = { isEnabled ->
-                                notifSistemaTiempoPantalla = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("SISTEMA_TIEMPO_PANTALLA", isEnabled).apply()
-                            }
-                        )
-                    }
-                    item {
-                        OpcionConfiguracionToggle(
-                            icono = null,
-                            titulo = stringResource(R.string.notif_system_app_block),
-                            activado = notifSistemaBloqueo,
-                            onToggle = { isEnabled ->
-                                notifSistemaBloqueo = isEnabled
-                                sharedPrefs
-                                    .edit().putBoolean("SISTEMA_BLOQUEO", isEnabled).apply()
-                            }
-                        )
+                    
+                    if (notifFlotanteOpcionesVisibles) {
+                        item {
+                            OpcionConfiguracionToggle(
+                                icono = null,
+                                titulo = stringResource(R.string.notif_flotante_excessive_use),
+                                activado = notifFlotanteUsoExcesivo,
+                                onToggle = { isEnabled ->
+                                    notifFlotanteUsoExcesivo = isEnabled
+                                    sharedPrefs
+                                        .edit().putBoolean("FLOTANTE_USO_EXCESIVO", isEnabled).apply()
+                                }
+                            )
+                        }
+                        item {
+                            OpcionConfiguracionToggle(
+                                icono = null,
+                                titulo = stringResource(R.string.notif_flotante_tasks),
+                                activado = notifFlotanteTareas,
+                                onToggle = { isEnabled ->
+                                    notifFlotanteTareas = isEnabled
+                                    sharedPrefs
+                                        .edit().putBoolean("FLOTANTE_TAREAS", isEnabled).apply()
+                                }
+                            )
+                        }
+                        item {
+                            OpcionConfiguracionToggle(
+                                icono = null,
+                                titulo = stringResource(R.string.notif_flotante_events),
+                                activado = notifFlotanteEventos,
+                                onToggle = { isEnabled ->
+                                    notifFlotanteEventos = isEnabled
+                                    sharedPrefs
+                                        .edit().putBoolean("FLOTANTE_EVENTOS", isEnabled).apply()
+                                }
+                            )
+                        }
+                        item {
+                            OpcionConfiguracionToggle(
+                                icono = null,
+                                titulo = stringResource(R.string.notif_flotante_screen_time),
+                                activado = notifFlotanteTiempoPantalla,
+                                onToggle = { isEnabled ->
+                                    notifFlotanteTiempoPantalla = isEnabled
+                                    sharedPrefs
+                                        .edit().putBoolean("FLOTANTE_TIEMPO_PANTALLA", isEnabled).apply()
+                                }
+                            )
+                        }
+                        item {
+                            OpcionConfiguracionToggle(
+                                icono = null,
+                                titulo = stringResource(R.string.notif_flotante_app_block),
+                                activado = notifFlotanteBloqueo,
+                                onToggle = { isEnabled ->
+                                    notifFlotanteBloqueo = isEnabled
+                                    sharedPrefs
+                                        .edit().putBoolean("FLOTANTE_BLOQUEO", isEnabled).apply()
+                                }
+                            )
+                        }
                     }
                 }
 

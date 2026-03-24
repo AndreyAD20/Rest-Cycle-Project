@@ -34,7 +34,6 @@
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
     <!-- Permisos de Ubicación -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -46,6 +45,11 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- ===== BLUETOOTH (Audífonos) ===== -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"
+        tools:ignore="UnsafeProtectedBroadcastReceiver" />
 
     <application
         android:allowBackup="true"
@@ -181,9 +185,6 @@
         <!-- ===== HABITS ===== -->
         <activity android:name=".features.habits.EstadisticasComposeActivity"
             android:exported="true"
-            android:allowEmbedded="true"
-            android:documentLaunchMode="always"
-            android:resizeableActivity="true"
             android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
 
         <!-- ===== SETTINGS ===== -->

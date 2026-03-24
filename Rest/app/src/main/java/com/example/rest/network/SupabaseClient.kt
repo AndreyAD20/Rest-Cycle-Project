@@ -23,7 +23,10 @@ object SupabaseClient {
         val requestBuilder = originalRequest.newBuilder()
             .header(SupabaseConfig.HEADER_API_KEY, SupabaseConfig.SUPABASE_ANON_KEY)
             .header("Content-Type", "application/json")
-            .header("Prefer", "return=representation")
+            
+        if (originalRequest.header("Prefer") == null) {
+            requestBuilder.header("Prefer", "return=representation")
+        }
         
         val url = originalRequest.url
         val path = url.encodedPath

@@ -198,7 +198,7 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
             scope.launch(Dispatchers.IO) {
                 try {
                     val updates = mapOf(
-                        "tiempo_limite" to (app.limitHours * 60 + app.limitMinutes),
+                        "tiempolimite" to (app.limitHours * 60 + app.limitMinutes),
                         "bloqueada" to app.isBlocked,
                         "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
                     )
@@ -336,6 +336,11 @@ fun PantallaBloqueoApps(onBackClick: () -> Unit) {
                             SupabaseClient.api.eliminarAppVinculada(
                                 idDispositivo = "eq.$dispositivoId",
                                 nombrePaquete = "eq.${app.packageName}"
+                            )
+                            SupabaseClient.api.actualizarAppInstaladaPorPaquete(
+                                idDispositivo = "eq.$dispositivoId",
+                                nombrePaquete = "eq.${app.packageName}",
+                                update = mapOf("enlazada" to false)
                             )
                         } catch (e: Exception) {
                             Log.e("BloqueoApps", "Error al eliminar: ${e.message}")

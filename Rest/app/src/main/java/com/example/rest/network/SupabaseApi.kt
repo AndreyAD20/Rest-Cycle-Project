@@ -126,6 +126,15 @@ interface SupabaseApi {
         @Query("idusuario") idUsuario: String,
         @Query("select") select: String = "*"
     ): Response<List<Dispositivo>>
+
+    /**
+     * Obtener dispositivo por ID
+     */
+    @GET("dispositivos")
+    suspend fun obtenerDispositivoPorId(
+        @Query("id") id: String,
+        @Query("select") select: String = "*"
+    ): Response<List<Dispositivo>>
     
     /**
      * Crear nuevo dispositivo
@@ -431,18 +440,9 @@ interface SupabaseApi {
     // ==================== APPS VINCULADAS (ESTADÍSTICAS) ====================
 
     /**
-     * Obtener apps vinculadas de un dispositivo
-     */
-    @GET("apps_vinculadas")
-    suspend fun obtenerAppsVinculadas(
-        @Query("iddispositivo") idDispositivo: String,
-        @Query("select") select: String = "*"
-    ): Response<List<AppVinculada>>
-
-    /**
      * Crear app vinculada
      */
-    @POST("apps_vinculadas")
+    @POST("apps_bloqueo")
     suspend fun crearAppVinculada(
         @Body app: AppVinculadaInput
     ): Response<List<AppVinculada>>
@@ -450,7 +450,7 @@ interface SupabaseApi {
     /**
      * Actualizar app vinculada (tiempo uso, limite)
      */
-    @PATCH("apps_vinculadas")
+    @PATCH("apps_bloqueo")
     suspend fun actualizarAppVinculada(
         @Query("id") id: String,
         @Body app: Map<String, @JvmSuppressWildcards Any>
@@ -459,7 +459,7 @@ interface SupabaseApi {
     /**
      * Actualizar app vinculada por paquete (para sincronizar desde UI local)
      */
-    @PATCH("apps_vinculadas")
+    @PATCH("apps_bloqueo")
     suspend fun actualizarAppVinculadaPorPaquete(
         @Query("iddispositivo") idDispositivo: String,
         @Query("nombre_paquete") nombrePaquete: String,
@@ -469,7 +469,7 @@ interface SupabaseApi {
     /**
      * Eliminar app vinculada
      */
-    @DELETE("apps_vinculadas")
+    @DELETE("apps_bloqueo")
     suspend fun eliminarAppVinculada(
         @Query("iddispositivo") idDispositivo: String,
         @Query("nombre_paquete") nombrePaquete: String
@@ -526,6 +526,7 @@ interface SupabaseApi {
     /**
      * Upsert apps instaladas (bulk insert/update)
      */
+    @Headers("Prefer: return=representation,resolution=merge-duplicates")
     @POST("apps_instaladas")
     suspend fun upsertAppsInstaladas(
         @Body apps: List<AppInstaladaInput>
@@ -536,7 +537,7 @@ interface SupabaseApi {
     /**
      * Obtener bloqueos de un dispositivo
      */
-    @GET("apps_vinculadas")
+    @GET("apps_bloqueo")
     suspend fun obtenerAppsBloqueo(
         @Query("iddispositivo") idDispositivo: String,
         @Query("select") select: String = "*"
@@ -545,7 +546,7 @@ interface SupabaseApi {
     /**
      * Crear app en bloqueo
      */
-    @POST("apps_vinculadas")
+    @POST("apps_bloqueo")
     suspend fun crearAppBloqueo(
         @Body app: AppBloqueoInput
     ): Response<List<AppVinculada>>
@@ -553,7 +554,7 @@ interface SupabaseApi {
     /**
      * Obtener app bloqueo por paquete
      */
-    @GET("apps_vinculadas")
+    @GET("apps_bloqueo")
     suspend fun obtenerAppBloqueoPorPaquete(
         @Query("iddispositivo") idDispositivo: String,
         @Query("nombre_paquete") nombrePaquete: String,
@@ -621,6 +622,7 @@ interface SupabaseApi {
     /**
      * Guardar nueva ubicación del hijo
      */
+    @Headers("Prefer: return=representation,resolution=merge-duplicates")
     @POST("ubicaciones")
     suspend fun guardarUbicacion(
         @Body ubicacion: UbicacionInput,
@@ -653,6 +655,7 @@ interface SupabaseApi {
     suspend fun obtenerHistorialUbicacion(
         @Query("id_usuario") idUsuario: String,
         @Query("order") order: String = "fecha.desc,hora.desc",
+        @Query("limit") limit: String? = null,
         @Query("select") select: String = "*"
     ): Response<List<HistorialUbicacion>>
 

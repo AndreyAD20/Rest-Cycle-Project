@@ -1,5 +1,7 @@
 package com.example.rest.features.home
 
+import com.example.rest.features.tools.parseSupabaseDate
+
 import android.os.Bundle
 import com.example.rest.BaseComposeActivity
 import com.example.rest.data.repository.UsuarioRepository
@@ -138,12 +140,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                     
                     proximoEvento = todosEventos.filter { evento ->
                         try {
-                            val fechaStr = evento.fechaInicio
-                                .replace("Z", "")
-                                .replace("+00:00", "")
-                                .substringBefore("+")
-                                .substringBefore(".")
-                            val fechaEvento = LocalDateTime.parse(fechaStr)
+                            val fechaEvento = parseSupabaseDate(evento.fechaInicio)
                             fechaEvento.isAfter(ahora)
                         } catch (e: Exception) {
                             Log.e("HabitosInicio", "Error parsing fecha evento: ${evento.fechaInicio}", e)
@@ -200,12 +197,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                                 proximoEvento = todosEventos.filter { evento ->
                                     try {
                                         // Manejar diferentes formatos de fecha Supabase (igual que CalendarioComposeActivity)
-                                        val fechaStr = evento.fechaInicio
-                                            .replace("Z", "")
-                                            .replace("+00:00", "")
-                                            .substringBefore("+")
-                                            .substringBefore(".")
-                                        val fechaEvento = LocalDateTime.parse(fechaStr)
+                                        val fechaEvento = parseSupabaseDate(evento.fechaInicio)
                                         fechaEvento.isAfter(ahora)
                                     } catch (e: Exception) {
                                         Log.e("HabitosInicio", "Error parsing fecha evento: ${evento.fechaInicio}", e)
@@ -726,12 +718,7 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                         if (proximoEvento != null) {
                             val evento = proximoEvento!!
                             val (fechaTexto, horaTexto) = try {
-                                val fechaStr = evento.fechaInicio
-                                    .replace("Z", "")
-                                    .replace("+00:00", "")
-                                    .substringBefore("+")
-                                    .substringBefore(".")
-                                val fecha = LocalDateTime.parse(fechaStr)
+                                val fecha = parseSupabaseDate(evento.fechaInicio)
                                 val fmtFecha = DateTimeFormatter.ofPattern("dd MMM")
                                 val fmtHora = DateTimeFormatter.ofPattern("hh:mm a")
                                 Pair(fecha.format(fmtFecha), fecha.format(fmtHora))

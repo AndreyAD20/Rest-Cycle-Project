@@ -13,6 +13,7 @@ package com.example.rest.features.tools
  *  - kotlinx.*     → Extensiones de Kotlin (coroutines para async)
  */
 import android.Manifest
+import android.app.AppOpsManager
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
@@ -81,20 +82,23 @@ fun checkDNDPermission(context: Context): Boolean {
 }
 
 /**
- * ¿Tiene el usuario concedido el permiso de reconocimiento de actividad?
+ * ¿Tiene el usuario concedido el permiso de actividad en segundo plano?
+ * Este permiso es necesario para que UsageMonitorService pueda rastrear
+ * el uso de aplicaciones cuando la app está en segundo plano.
  *
- * Este permiso (ACTIVITY_RECOGNITION) es necesario para la integración
- * con Sleep API. Solo se requiere en Android 10 (Q) o superior.
- * En versiones anteriores, asumimos que sí hay permiso.
+ * En Android 10 (API 29) y superior, se requiere el permiso
+ * android.permission.ACTIVITY_RECOGNITION para rastrear actividad física,
+ * pero para rastreo de uso de apps usamos android.permission.PACKAGE_USAGE_STATS
+ * que se verifica a través de UsageStatsManager.
  */
 fun checkActivityPermission(context: Context): Boolean {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        context.checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED
-    } else {
-        true   // Android < 10: no requiere este permiso
-    }
+    val appOpsManager = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+    val mode = appOpsManager.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(), context.packageName)
+    return mode == AppOpsManager.MODE_ALLOWED
 }
+
+
 
 /**
  * Inicia (o reinicia) el UsageMonitorService.
@@ -555,19 +559,7 @@ fun PantallaHorasDescanso(
         if (hasPermissionDND) restartService(context)
     }
 
-    val activityPermLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasPermissionActivity = isGranted
-        if (isGranted) restartService(context)
-    }
 
-    // Pedir el permiso ACTIVITY_RECOGNITION al abrir la pantalla (si no lo tiene)
-    LaunchedEffect(Unit) {
-        if (!hasPermissionActivity && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            activityPermLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
-        }
-    }
 
     /**
      * DisposableEffect: ejecuta código cuando el composable aparece (Unit) y lo limpia

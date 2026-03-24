@@ -97,6 +97,10 @@
     <string name="register_password_placeholder">Senha</string>
     <string name="register_confirm_password_placeholder">Confirmar Senha</string>
     <string name="register_accept_terms">Eu aceito os Termos e Condições</string>
+    <string name="register_accept_terms_prefix">Eu aceito os </string>
+    <string name="register_terms_y_condiciones">Termos e Condições</string>
+    <string name="register_accept_terms_suffix"> </string>
+    <string name="register_tyc_full">Por favor, revise o arquivo de termos de uso do aplicativo.</string>
     <string name="register_button_text">Registrar</string>
     <string name="dialog_detailed_error">Erro Detalhado</string>
     <string name="dialog_exception">Exceção</string>
@@ -517,4 +521,17 @@
     <!-- Notificação persistente / canal de bolha -->
     <string name="notif_bubble_channel_desc">Bolhas flutuantes do Rest Cycle</string>
     <string name="notif_bubble_content_text">Toque na bolha para ver seus alertas</string>
+    <!-- Nueva Contraseña Activity -->
+    <string name="new_password_title">Nova Senha</string>
+    <string name="new_password_subtitle">Digite sua nova senha</string>
+    <string name="new_password_placeholder">Nova senha</string>
+    <string name="confirm_password_placeholder">Confirmar senha</string>
+    <string name="error_passwords_mismatch">As senhas não coincidem</string>
+    <string name="toast_error_changing_password">Erro ao alterar a senha: %1$s</string>
+    <!-- Notificações de Alertas Locais -->
+    <string name="notif_time_warning_title">Tempo quase esgotado</string>
+    <string name="notif_time_warning_body">Você tem %1$d minutos restantes para usar %2$s hoje.</string>
+    <!-- Notificação de Fone de Ouvido -->
+    <string name="notif_headphone_title">⚠️ 1 hora de fone de ouvido</string>
+    <string name="notif_headphone_body">Descanse os seus ouvidos por alguns minutos. A sua saúde auditiva é importante!</string>
 </resources>

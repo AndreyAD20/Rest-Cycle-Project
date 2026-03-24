@@ -134,6 +134,7 @@ class LocalBlockingRepository(private val context: Context) {
             var minutesUsed = 0
             if (totalTime > 0) {
                 minutesUsed = (totalTime / 60000).toInt()
+                if (minutesUsed == 0 && totalTime > 5000) minutesUsed = 1
             }
             app.copy(usageMinutes = minutesUsed)
         }

@@ -38,6 +38,7 @@ import com.example.rest.data.repository.UsuarioRepository
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.example.rest.utils.NotificationPreferences
 
 class InicioComposeActivity : BaseComposeActivity() {
     
@@ -233,9 +234,18 @@ fun PantallaModosDeUso(
 
     // Función auxiliar para verificar si las burbujas están activas
     fun areBubblesEnabled(): Boolean {
+        // Si el usuario ya ha establecido una preferencia para burbujas, respetarla
+        if (NotificationPreferences.isBubblePreferenceSet(context)) {
+            return NotificationPreferences.getBubblesAllowed(context)
+        }
+        
+        // Si no hay preferencia establecida, verificar el estado actual del sistema
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
-            return notificationManager.areBubblesAllowed()
+            val systemAllowed = notificationManager.areBubblesAllowed()
+            // Guardar el estado actual del sistema como preferencia inicial
+            NotificationPreferences.setBubblesAllowed(context, systemAllowed)
+            return systemAllowed
         }
         return true // Para versiones anteriores a Android 11, devolvemos true porque no requieren permiso
     }

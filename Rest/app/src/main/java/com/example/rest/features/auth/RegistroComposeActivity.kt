@@ -35,6 +35,12 @@ import androidx.compose.ui.unit.dp
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.DialogProperties
 import com.example.rest.BaseComposeActivity
 import com.example.rest.R
 import com.example.rest.data.models.RegistroRequest
@@ -193,6 +199,7 @@ fun PantallaRegistro(
     var mostrarPin by remember { mutableStateOf(false) }
     var mostrarConfirmarPin by remember { mutableStateOf(false) }
     var aceptaTerminos by remember { mutableStateOf(false) }
+    var mostrarDialogoTerminos by remember { mutableStateOf(false) }
     var rol by remember { mutableStateOf("hijo") } // Por defecto "hijo"
 
     // FocusRequesters para navegación entre campos
@@ -627,7 +634,7 @@ fun PantallaRegistro(
                     .width(330.dp)
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Start
             ) {
                 Checkbox(
                     checked = aceptaTerminos,
@@ -637,13 +644,32 @@ fun PantallaRegistro(
                         uncheckedColor = Color.White.copy(alpha = 0.7f),
                         checkmarkColor = Color(0xFF0D47A1)
                     ),
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(24.dp)
                 )
-                Text(
-                    text = stringResource(R.string.register_accept_terms),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.9f),
-                    modifier = Modifier.padding(start = 8.dp)
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                val annotatedString = buildAnnotatedString {
+                    append(stringResource(R.string.register_accept_terms_prefix))
+                    
+                    pushStringAnnotation(tag = "TERMS", annotation = "terms")
+                    withStyle(style = SpanStyle(color = Color(0xFF0D47A1), fontWeight = FontWeight.Bold)) {
+                        append(stringResource(R.string.register_terms_y_condiciones))
+                    }
+                    pop()
+                    
+                    append(stringResource(R.string.register_accept_terms_suffix))
+                }
+                
+                ClickableText(
+                    text = annotatedString,
+                    style = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                    onClick = { offset ->
+                        annotatedString.getStringAnnotations(tag = "TERMS", start = offset, end = offset)
+                            .firstOrNull()?.let {
+                                mostrarDialogoTerminos = true
+                            }
+                    }
                 )
             }
 
@@ -753,5 +779,66 @@ fun PantallaRegistro(
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+        
+        if (mostrarDialogoTerminos) {
+            DialogoTerminosYCondiciones(
+                onDismiss = { mostrarDialogoTerminos = false }
+            )
+        }
     }
+}
+
+@Composable
+fun DialogoTerminosYCondiciones(onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val fallbackText = stringResource(R.string.register_tyc_full)
+    
+    // Read from assets
+    val terminosContent = remember {
+        try {
+            context.assets.open("terminos_y_condiciones.txt").bufferedReader().use { it.readText() }
+        } catch (e: Exception) {
+            fallbackText
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.register_terms_y_condiciones),
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.Black
+            )
+        },
+        text = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = terminosContent,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Black
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = Color(0xFF0D47A1)
+                ),
+                modifier = Modifier.width(120.dp)
+            ) {
+                Text(text = stringResource(R.string.dialog_ok))
+            }
+        },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    )
 }

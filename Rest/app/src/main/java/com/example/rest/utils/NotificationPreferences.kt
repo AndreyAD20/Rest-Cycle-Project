@@ -70,6 +70,19 @@ object NotificationPreferences {
         return getPrefs(context).getBoolean("FLOTANTE_BLOQUEO", true)
     }
 
+    // Burbujas (Bubbles) - Nueva función para persistir el estado de burbujas
+    fun setBubblesAllowed(context: Context, allowed: Boolean) {
+        getPrefs(context).edit().putBoolean("BUBBLES_ALLOWED", allowed).apply()
+    }
+
+    fun isBubblePreferenceSet(context: Context): Boolean {
+        return getPrefs(context).contains("BUBBLES_ALLOWED")
+    }
+
+    fun getBubblesAllowed(context: Context): Boolean {
+        return getPrefs(context).getBoolean("BUBBLES_ALLOWED", false) // Default false hasta que el usuario elija
+    }
+
     // ========== NOTIFICACIONES DEL SISTEMA ==========
 
     fun setSistemaEnabled(context: Context, enabled: Boolean) {

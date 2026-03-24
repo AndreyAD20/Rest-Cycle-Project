@@ -97,6 +97,10 @@
     <string name="register_password_placeholder">Password</string>
     <string name="register_confirm_password_placeholder">Confirm Password</string>
     <string name="register_accept_terms">I accept the Terms and Conditions</string>
+    <string name="register_accept_terms_prefix">I accept the </string>
+    <string name="register_terms_y_condiciones">Terms and Conditions</string>
+    <string name="register_accept_terms_suffix"> </string>
+    <string name="register_tyc_full">Please review the app\'s terms of use file.</string>
     <string name="register_button_text">Register</string>
     <string name="dialog_detailed_error">Detailed Error</string>
     <string name="dialog_exception">Exception</string>
@@ -517,4 +521,17 @@
     <!-- Persistent notification / bubble channel -->
     <string name="notif_bubble_channel_desc">Rest Cycle floating bubbles</string>
     <string name="notif_bubble_content_text">Tap the bubble to see your alerts</string>
+    <!-- Nueva Contraseña Activity -->
+    <string name="new_password_title">New Password</string>
+    <string name="new_password_subtitle">Enter your new password</string>
+    <string name="new_password_placeholder">New password</string>
+    <string name="confirm_password_placeholder">Confirm password</string>
+    <string name="error_passwords_mismatch">Passwords do not match</string>
+    <string name="toast_error_changing_password">Error changing password: %1$s</string>
+    <!-- Local Alert Notifications -->
+    <string name="notif_time_warning_title">Time almost up</string>
+    <string name="notif_time_warning_body">You have %1$d minutes left to use %2$s today.</string>
+    <!-- Headphone Notification -->
+    <string name="notif_headphone_title">⚠️ 1 hour on headphones</string>
+    <string name="notif_headphone_body">Take a short break and rest your ears. Your hearing health matters!</string>
 </resources>

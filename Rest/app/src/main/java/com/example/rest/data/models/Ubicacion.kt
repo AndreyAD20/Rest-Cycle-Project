@@ -20,7 +20,8 @@ data class Ubicacion(
 data class UbicacionInput(
     @SerializedName("id_usuario") val idUsuario: Int,
     val latitud: Double,
-    val longitud: Double
+    val longitud: Double,
+    val timestamp: String
 )
 
 /**

@@ -67,7 +67,7 @@ class BloqueoRemotoHijoActivity : BaseComposeActivity() {
         val nombreHijo = intent.getStringExtra("nombre_hijo") ?: "Hijo"
         
         if (idHijo == -1) {
-            Toast.makeText(this, "Error: No se encontrÃ³ el ID del hijo", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Error: No se encontró el ID del hijo", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -103,25 +103,45 @@ fun PantallaBloqueoRemoto(
         try {
             val resDev = SupabaseClient.api.obtenerDispositivosPorUsuario("eq.$idHijo")
             if (resDev.isSuccessful && !resDev.body().isNullOrEmpty()) {
-                idDispositivo = resDev.body()!![0].id ?: -1
-                if (idDispositivo != -1) {
-                    // 1. Obtener apps instaladas donde enlazada = true
-                    val resEnlazadas = SupabaseClient.api.obtenerAppsInstaladasPorEstado("eq.$idDispositivo", "eq.true")
-                    // 2. Obtener bloqueos de apps_vinculadas
-                    val resBloqueos = SupabaseClient.api.obtenerAppsBloqueo("eq.$idDispositivo")
-                    
-                    val enlazadas = resEnlazadas.body() ?: emptyList()
-                    val bloqueos = resBloqueos.body() ?: emptyList()
-                    
-                    appsEnlazadas.clear()
-                    for (app in enlazadas) {
-                        val bloqueo = bloqueos.find { it.nombrePaquete == app.nombrePaquete }
-                        appsEnlazadas.add(Pair(app, bloqueo))
+                val dispositivos = resDev.body() ?: emptyList()
+                
+                // SELECCIONAR EL DISPOSITIVO MÁS APROPIADO
+                val dispositivoAUsar = dispositivos
+                    // Primero buscar uno marcado como activo
+                    .firstOrNull { it.estado == "activo" }
+                    // Si no hay activo, tomar el más recientemente actualizado/creado (mayor ID)
+                    ?: dispositivos.maxByOrNull { it.id ?: Int.MIN_VALUE }
+                
+                if (dispositivoAUsar != null) {
+                    idDispositivo = dispositivoAUsar.id ?: -1
+                    // Asegurar que esté marcado como activo (por si acaso)
+                    if (dispositivoAUsar.estado != "activo") {
+                        // Nota: No actualizamos el estado aquí ya que estamos en modo solo lectura para este campo
+                        // La actualización del estado se hace desde el servicio de monitoreo
                     }
+                    if (idDispositivo != -1) {
+                        // 1. Obtener apps instaladas donde enlazada = true
+                        val resEnlazadas = SupabaseClient.api.obtenerAppsInstaladasPorEstado("eq.$idDispositivo", "eq.true")
+                        // 2. Obtener bloqueos de apps_vinculadas
+                        val resBloqueos = SupabaseClient.api.obtenerAppsBloqueo("eq.$idDispositivo")
+                        
+                        val enlazadas = resEnlazadas.body() ?: emptyList()
+                        val bloqueos = resBloqueos.body() ?: emptyList()
+                        
+                        appsEnlazadas.clear()
+                        for (app in enlazadas) {
+                            val bloqueo = bloqueos.find { it.nombrePaquete == app.nombrePaquete }
+                            appsEnlazadas.add(Pair(app, bloqueo))
+                        }
+                    }
+                } else {
+                    // No hay dispositivos disponibles
+                    idDispositivo = -1
                 }
             }
         } catch (e: Exception) {
             Log.e("BloqueoRemoto", "Error cargando datos: ${e.message}")
+            idDispositivo = -1
         } finally {
             isLoading = false
         }
@@ -135,7 +155,8 @@ fun PantallaBloqueoRemoto(
             nombrePaquete = app.nombrePaquete,
             tiempoLimite = bloqueo?.tiempoLimite ?: 0,
             bloqueada = bloqueo?.bloqueada ?: false,
-            bloqueadaPor = bloqueo?.bloqueadaPor ?: "hijo"
+            bloqueadaPor = bloqueo?.bloqueadaPor ?: "hijo",
+            tiempoUsado = bloqueo?.tiempoUsadoHoy ?: 0
         )
     }
 
@@ -180,12 +201,12 @@ fun PantallaBloqueoRemoto(
                         if (bloqueo != null) {
                             // Actualizar existente
                             val updates = mapOf(
-                                "tiempo_limite" to newLimit,
+                                "tiempolimite" to newLimit,
                                 "bloqueada_por" to "padre",
                                 "requiere_password" to (newLimit > 0),
                                 "fecha_actualizacion" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }.format(Date())
                             )
-                            SupabaseClient.api.actualizarAppVinculada(bloqueo.id.toString(), updates)
+                            SupabaseClient.api.actualizarAppVinculada("eq.${bloqueo.id}", updates)
                         } else {
                             // Crear nuevo registro de bloqueo
                             val nuevoBloqueo = AppBloqueoInput(
@@ -233,7 +254,7 @@ fun PantallaBloqueoRemoto(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 8.dp),
-                    placeholder = { Text("Buscar aplicaciÃ³n...", color = Blanco.copy(alpha = 0.6f)) },
+                    placeholder = { Text("Buscar aplicación...", color = Blanco.copy(alpha = 0.6f)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Blanco) },
                     trailingIcon = {
                         if (searchText.isNotEmpty()) {
@@ -269,13 +290,13 @@ fun PantallaBloqueoRemoto(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "El hijo aÃºn no ha vinculado aplicaciones.",
+                        "El hijo aún no ha vinculado aplicaciones.",
                         color = Blanco,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Las apps aparecerÃ¡n cuando el hijo las comparta desde su dispositivo.",
+                        "Las apps aparecerán cuando el hijo las comparta desde su dispositivo.",
                         color = Blanco.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 32.dp)
@@ -334,7 +355,7 @@ fun PantallaBloqueoRemoto(
                             )
                         }
 
-                        // BotÃ³n para enlazar mÃ¡s apps
+                        // Botón para enlazar más apps
                         item {
                             Button(
                                 onClick = {
@@ -364,7 +385,7 @@ fun PantallaBloqueoRemoto(
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "Enlazar mÃ¡s apps",
+                                    text = "Enlazar más apps",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -479,12 +500,12 @@ fun ItemAppRemoto(
                 } else if (app.tiempoLimite > 0) {
                     val h = app.tiempoLimite / 60
                     val m = app.tiempoLimite % 60
-                    Text("LÃ­mite: ${h}h ${m}m", style = MaterialTheme.typography.labelSmall, color = Primario)
+                    Text("Límite: ${h}h ${m}m", style = MaterialTheme.typography.labelSmall, color = Primario)
                 } else {
                     Text("Sin restricciones", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
                 }
                 
-                // Mostrar quiÃ©n puso el bloqueo
+                // Mostrar quién puso el bloqueo
                 if (app.bloqueadaPor == "padre") {
                     Text("Bloqueado por padre", style = MaterialTheme.typography.labelSmall, color = Color.Red.copy(alpha = 0.7f))
                 }
@@ -532,7 +553,7 @@ fun TimeLimitDialogRemoto(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "LÃ­mite de Tiempo",
+                    text = "Límite de Tiempo",
                     style = MaterialTheme.typography.headlineSmall,
                     color = Negro
                 )
@@ -609,7 +630,7 @@ private fun actualizarBloqueoEnBD(scope: kotlinx.coroutines.CoroutineScope, app:
                     "requiere_password" to bloquear,
                     "fecha_actualizacion" to timestamp
                 )
-                SupabaseClient.api.actualizarAppVinculada(bloqueoExistente.id.toString(), updates)
+                SupabaseClient.api.actualizarAppVinculada("eq.${bloqueoExistente.id}", updates)
                 Log.d("BloqueoRemoto", "BD actualizada para ${app.nombre}: bloqueada=$bloquear")
             } else {
                 // Crear nuevo registro de bloqueo
@@ -656,7 +677,7 @@ fun DialogEnlazarApps(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    text = "Enlazar mÃ¡s apps",
+                    text = "Enlazar más apps",
                     style = MaterialTheme.typography.titleLarge,
                     color = Negro,
                     fontWeight = FontWeight.Bold
@@ -693,7 +714,7 @@ fun DialogEnlazarApps(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No hay mÃ¡s apps para enlazar",
+                            text = "No hay más apps para enlazar",
                             color = Color.Gray,
                             textAlign = TextAlign.Center
                         )

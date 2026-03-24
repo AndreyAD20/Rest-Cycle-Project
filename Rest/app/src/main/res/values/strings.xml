@@ -97,6 +97,10 @@
     <string name="register_password_placeholder">Contraseña</string>
     <string name="register_confirm_password_placeholder">Confirmar Contraseña</string>
     <string name="register_accept_terms">Acepto los Términos y Condiciones</string>
+    <string name="register_accept_terms_prefix">Acepto los </string>
+    <string name="register_terms_y_condiciones">Términos y Condiciones</string>
+    <string name="register_accept_terms_suffix"> </string>
+    <string name="register_tyc_full">Por favor, revisa el archivo de términos de uso de la aplicación.</string>
     <string name="register_button_text">Registrar</string>
     <string name="dialog_detailed_error">Error Detallado</string>
     <string name="dialog_exception">Excepción</string>
@@ -519,4 +523,17 @@
     <!-- Notificación persistente / canal de burbuja -->
     <string name="notif_bubble_channel_desc">Burbujas flotantes de Rest Cycle</string>
     <string name="notif_bubble_content_text">Toca la burbuja para ver tus alertas</string>
+    <!-- Nueva Contraseña Activity -->
+    <string name="new_password_title">Nueva Contraseña</string>
+    <string name="new_password_subtitle">Ingresa tu nueva contraseña</string>
+    <string name="new_password_placeholder">Nueva contraseña</string>
+    <string name="confirm_password_placeholder">Confirmar contraseña</string>
+    <string name="error_passwords_mismatch">Las contraseñas no coinciden</string>
+    <string name="toast_error_changing_password">Error al cambiar contraseña: %1$s</string>
+    <!-- Notificaciones de Alertas Locales -->
+    <string name="notif_time_warning_title">Tiempo casi agotado</string>
+    <string name="notif_time_warning_body">Te quedan %1$d minutos para usar %2$s hoy.</string>
+    <!-- Notificación de Audífonos -->
+    <string name="notif_headphone_title">⚠️ Llevas 1 hora con audífonos</string>
+    <string name="notif_headphone_body">Descansa tus oídos unos minutos. ¡Tu salud auditiva importa!</string>
 </resources>

@@ -25,7 +25,7 @@ data class Usuario(
     val fechaNacimiento: String, // Formato: YYYY-MM-DD
     
     @SerializedName("contraseña")
-    val contraseña: String,
+    val contraseña: String? = null,
     
     @SerializedName("mayoredad")
     val mayorEdad: Boolean = false,

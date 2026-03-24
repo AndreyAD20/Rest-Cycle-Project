@@ -114,7 +114,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
         }
 
         if (forceLogoutMessage) {
-            android.widget.Toast.makeText(context, "La sesión ha expirado o se ha iniciado en otro dispositivo", android.widget.Toast.LENGTH_LONG).show()
+            // El mensaje de "La sesión ha expirado..." ha sido ocultado temporalmente a petición.
         }
 
         val activity = context as? android.app.Activity
