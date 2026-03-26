@@ -141,7 +141,7 @@ class UsageMonitorService : Service() {
      * se configura paso a paso con métodos encadenados hasta llamar .build().
      */
     private fun createNotification(): android.app.Notification {
-        val intent = Intent(this, com.example.rest.features.tools.HoraDescansoComposeActivity::class.java)
+        val intent = Intent(this, com.example.rest.features.home.InicioComposeActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         val pendingIntent = android.app.PendingIntent.getActivity(
             this,
@@ -188,6 +188,8 @@ class UsageMonitorService : Service() {
      * Si ninguno está activo → desactiva ambos.
      */
     private fun checkDowntime() {
+        // Desactivado para v1 - Próxima actualización
+        return
         // Obtenemos la lista completa de horarios guardados localmente
         val schedules = DowntimeManager.getSchedules(this)
 
