@@ -52,7 +52,11 @@ class LoginComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Detectar si viene un deep link de recovery ANTES de que handleDeeplinks cree la sesión
         isRecoveryFlow = isRecoveryIntent(intent)
-        SupabaseAuthClient.client.handleDeeplinks(intent)
+        try {
+            SupabaseAuthClient.client.handleDeeplinks(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("LoginComposeActivity", "Error manejando deeplink en onCreate", e)
+        }
         
         super.onCreate(savedInstanceState)
 
@@ -153,7 +157,11 @@ class LoginComposeActivity : BaseComposeActivity() {
         isRecoveryFlow = isRecoveryIntent(intent)
         
         // 2. Procesar el deep link con el SDK de Supabase
-        SupabaseAuthClient.client.handleDeeplinks(intent)
+        try {
+            SupabaseAuthClient.client.handleDeeplinks(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("LoginComposeActivity", "Error manejando deeplink en onNewIntent", e)
+        }
         
         // 3. Si es recovery, navegar a NuevaContrasenaActivity
         if (isRecoveryFlow) {

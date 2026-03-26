@@ -66,6 +66,9 @@ class DetalleHijoComposeActivity : BaseComposeActivity() {
                                 intent.putExtra("nombre_hijo", nombreHijo)
                                 startActivity(intent)
                             }
+                            else -> {
+                                Toast.makeText(this, "🚀 Próxima actualización", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 )

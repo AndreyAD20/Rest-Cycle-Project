@@ -232,22 +232,16 @@ fun PantallaModosDeUso(
         showTooltip = false
     }
 
-    // Función auxiliar para verificar si las burbujas están activas
-    fun areBubblesEnabled(): Boolean {
-        // Si el usuario ya ha establecido una preferencia para burbujas, respetarla
-        if (NotificationPreferences.isBubblePreferenceSet(context)) {
-            return NotificationPreferences.getBubblesAllowed(context)
-        }
-        
-        // Si no hay preferencia establecida, verificar el estado actual del sistema
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            val notificationManager = context.getSystemService(android.app.NotificationManager::class.java)
-            val systemAllowed = notificationManager.areBubblesAllowed()
-            // Guardar el estado actual del sistema como preferencia inicial
-            NotificationPreferences.setBubblesAllowed(context, systemAllowed)
-            return systemAllowed
-        }
-        return true // Para versiones anteriores a Android 11, devolvemos true porque no requieren permiso
+    // Función auxiliar: sólo las burbujas que no han sido evaluadas aún por el usuario
+    fun shouldShowBubbleDialog(): Boolean {
+        val sharedPrefs = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+        // Si ya mostré el diálogo alguna vez, no volver a mostrarlo
+        return !sharedPrefs.getBoolean("BUBBLE_DIALOG_SHOWN", false)
+    }
+
+    fun markBubbleDialogShown() {
+        val sharedPrefs = context.getSharedPreferences("RestCyclePrefs", android.content.Context.MODE_PRIVATE)
+        sharedPrefs.edit().putBoolean("BUBBLE_DIALOG_SHOWN", true).apply()
     }
 
     // Acción pendiente para ejecutar después de otorgar permisos
@@ -281,8 +275,8 @@ fun PantallaModosDeUso(
                 action()
             }
             
-            // Verificamos si las burbujas están habilitadas
-            if (!areBubblesEnabled()) {
+            // Verificamos si debemos mostrar el diálogo de burbujas (solo la primera vez)
+            if (shouldShowBubbleDialog()) {
                 showBubblePermissionDialog = true
             }
         }
@@ -387,9 +381,20 @@ fun PantallaModosDeUso(
             onDismissRequest = { showBubblePermissionDialog = false },
             title = { Text("Habilitar Burbujas Flotantes") },
             text = { Text("Rest Cycle usa burbujas interactivas para mostrar los reportes y recordatorios de tareas de manera amigable.\n\nPor favor, dirígete a las configuraciones de la aplicación, busca 'Burbujas' o 'Bubbles' y selecciona 'Todas las conversaciones pueden mostrar burbujas'.") },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        markBubbleDialogShown()
+                        showBubblePermissionDialog = false
+                    }
+                ) {
+                    Text("Más Tarde")
+                }
+            },
             confirmButton = {
                 Button(
                     onClick = {
+                        markBubbleDialogShown()
                         showBubblePermissionDialog = false
                         val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                             putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
@@ -399,13 +404,6 @@ fun PantallaModosDeUso(
                     }
                 ) {
                     Text("Abrir Ajustes")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showBubblePermissionDialog = false }
-                ) {
-                    Text("Más Tarde")
                 }
             }
         )

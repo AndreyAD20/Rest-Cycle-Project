@@ -23,7 +23,7 @@ object SupabaseAuthClient {
         install(Auth) {
             // Configuración para deep links de recuperación de contraseña
             host = "login"
-            scheme = "com.example.rest"
+            scheme = "com.restcycle.app"
         }
     }
 

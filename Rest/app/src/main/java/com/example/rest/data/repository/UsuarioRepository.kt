@@ -672,6 +672,30 @@ class UsuarioRepository {
     }
     
     /**
+     * Eliminar cuenta del usuario permanentemente usando la función RPC en Supabase.
+     */
+    suspend fun eliminarMiCuenta(context: android.content.Context): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Llama al RPC que elimina al usuario autenicado de auth.users cascadeando los deletes
+                val response = api.eliminarMiCuenta()
+                
+                if (response.isSuccessful) {
+                    // Si se elimina correctamente de la DB, limpiamos datos locales y Auth local
+                    SupabaseAuthClient.logout()
+                    val prefs = com.example.rest.utils.PreferencesManager(context)
+                    prefs.clearPreferences()
+                    Result.Success(Unit)
+                } else {
+                    Result.Error(context.getString(R.string.err_server_error_code, response.code()))
+                }
+            } catch (e: Exception) {
+                Result.Error(context.getString(R.string.err_network_error_msg, e.message ?: ""))
+            }
+        }
+    }
+    
+    /**
      * Actualizar usuario después de verificar email
      * Sincroniza el auth_user_id y marca email_verificado como true
      * @param authUserId UUID del usuario en Supabase Auth

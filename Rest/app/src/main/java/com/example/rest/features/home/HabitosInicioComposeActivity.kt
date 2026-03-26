@@ -449,7 +449,22 @@ fun PantallaInicioHub(onBackClick: () -> Unit) {
                             )
                         )
                         
-                        // 3. Bloqueo de Aplicaciones
+                        // 3. Horarios
+                        NavigationDrawerItem(
+                            label = { Text("Horarios", style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
+                            selected = false,
+                            onClick = {
+                                android.widget.Toast.makeText(context, "🚀 Próxima actualización", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            icon = { Icon(Icons.Default.Schedule, null, tint = Negro, modifier = Modifier.size(28.dp)) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                            colors = NavigationDrawerItemDefaults.colors(
+                                unselectedContainerColor = Color.Transparent,
+                                selectedContainerColor = Negro.copy(alpha = 0.2f)
+                            )
+                        )
+
+                        // 4. Bloqueo de Aplicaciones
                         NavigationDrawerItem(
                             label = { Text(stringResource(R.string.menu_app_block), style = MaterialTheme.typography.bodyLarge.copy(fontSize = TextUnit(18f, TextUnitType.Sp)), color = Negro) },
                             selected = false,

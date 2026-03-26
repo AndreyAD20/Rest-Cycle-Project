@@ -108,6 +108,12 @@ interface SupabaseApi {
     ): Response<Void>
 
     /**
+     * Eliminar cuenta permanentemente (vía RPC)
+     */
+    @POST("rpc/eliminar_mi_cuenta")
+    suspend fun eliminarMiCuenta(): Response<Void>
+
+    /**
      * Buscar usuario por código de vinculación (para enlace parental)
      */
     @GET("usuario")

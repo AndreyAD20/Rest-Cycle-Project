@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.rest.BaseComposeActivity
 import com.example.rest.ui.theme.*
+import kotlinx.coroutines.launch
+import com.example.rest.data.repository.UsuarioRepository
 
 class ConfiguracionComposeActivity : BaseComposeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +80,11 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
     
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+
+    // Estados para Eliminar Cuenta
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var isDeletingAccount by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     // Gradiente idéntico al de Selección de Modos y Registro
     val brochaGradiente = Brush.linearGradient(
@@ -370,6 +377,16 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                         titulo = stringResource(R.string.settings_about),
                         onClick = { showAboutDialog = true }
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // Eliminar Cuenta
+                item {
+                    OpcionConfiguracion(
+                        icono = Icons.Default.DeleteForever,
+                        titulo = stringResource(R.string.settings_delete_account),
+                        onClick = { showDeleteAccountDialog = true }
+                    )
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
@@ -415,6 +432,63 @@ fun PantallaConfiguracion(onBackClick: () -> Unit) {
                     }
                 }
             )
+        }
+        
+        // Diálogo para Eliminar Cuenta
+        if (showDeleteAccountDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteAccountDialog = false },
+                icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                title = { Text(stringResource(R.string.dialog_delete_account_title)) },
+                text = { Text(stringResource(R.string.dialog_delete_account_desc)) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDeleteAccountDialog = false
+                            isDeletingAccount = true
+                            
+                            coroutineScope.launch {
+                                val repo = UsuarioRepository()
+                                val result = repo.eliminarMiCuenta(context)
+                                isDeletingAccount = false
+                                
+                                if (result is UsuarioRepository.Result.Success) {
+                                    android.widget.Toast.makeText(context, context.getString(R.string.toast_account_deleted), android.widget.Toast.LENGTH_LONG).show()
+                                    // Volver a Login
+                                    val intent = android.content.Intent(context, com.example.rest.features.auth.LoginComposeActivity::class.java).apply {
+                                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    }
+                                    context.startActivity(intent)
+                                    (context as? android.app.Activity)?.finish()
+                                } else if (result is UsuarioRepository.Result.Error) {
+                                    android.widget.Toast.makeText(context, result.message, android.widget.Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(stringResource(R.string.btn_delete_account), color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteAccountDialog = false }) {
+                        Text(stringResource(R.string.btn_cancel))
+                    }
+                }
+            )
+        }
+
+        // Overlay de carga general
+        if (isDeletingAccount) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(enabled = false, onClick = {}),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
         }
     }
     

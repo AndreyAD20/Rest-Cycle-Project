@@ -180,6 +180,12 @@
     <string name="dialog_about_version">Versión 1.0.0</string>
     <string name="dialog_about_desc">Una aplicación diseñada para ayudarte a gestionar tu tiempo, equilibrar tus hábitos y desconectar para descansar mejor.\n\nDesarrollada por el equipo de Rest Cycle.</string>
 
+    <string name="settings_delete_account">Eliminar mi cuenta</string>
+    <string name="dialog_delete_account_title">¿Eliminar tu cuenta?</string>
+    <string name="dialog_delete_account_desc">Esta acción es irreversible. Se eliminarán todos tus datos personales, notas, configuración y estadísticas de uso permanentemente de nuestros servidores.</string>
+    <string name="btn_delete_account">Eliminar permanentemente</string>
+    <string name="toast_account_deleted">Tu cuenta ha sido eliminada correctamente.</string>
+
     <string name="toast_permission_granted">Permiso concedido</string>
     <string name="toast_permission_required_photo">Se requiere permiso para cambiar la foto</string>
     <string name="toast_camera_error">Error al iniciar cámara: %1$s</string>

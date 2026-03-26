@@ -91,7 +91,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="login"
-                    android:scheme="com.example.rest" />
+                    android:scheme="com.restcycle.app" />
             </intent-filter>
         </activity>
         <activity android:name=".features.auth.RegistroComposeActivity"
