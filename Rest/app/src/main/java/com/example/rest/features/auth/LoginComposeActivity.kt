@@ -179,7 +179,9 @@ class LoginComposeActivity : BaseComposeActivity() {
      */
     private fun isRecoveryIntent(intent: Intent?): Boolean {
         val uri = intent?.data ?: return false
-        if (uri.scheme != "com.example.rest" || uri.host != "login") return false
+        if (uri.scheme != "com.restcycle.app") return false
+        if (uri.host != "login" && uri.host != "recovery") return false
+        
         val type = uri.getQueryParameter("type")
             ?: uri.fragment?.let { android.net.Uri.parse("dummy://x?$it").getQueryParameter("type") }
         return type == "recovery"

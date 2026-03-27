@@ -79,7 +79,7 @@ class OlvidoContrasenaActivity : BaseComposeActivity() {
                 // Usar resetPasswordForEmail de Supabase Auth (flujo estándar)
                 SupabaseAuthClient.auth.resetPasswordForEmail(
                     email = correo,
-                    redirectUrl = "com.example.rest://login"
+                    redirectUrl = "com.restcycle.app://recovery"
                 )
                 
                 runOnUiThread {

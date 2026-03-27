@@ -644,7 +644,7 @@ class UsuarioRepository {
             try {
                 SupabaseAuthClient.auth.resetPasswordForEmail(
                     email = correo,
-                    redirectUrl = "com.example.rest://login"
+                    redirectUrl = "com.restcycle.app://recovery"
                 )
                 Result.Success(context.getString(R.string.recovery_check_email_msg))
             } catch (e: Exception) {

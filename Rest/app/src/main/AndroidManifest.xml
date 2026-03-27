@@ -92,6 +92,9 @@
                 <data
                     android:host="login"
                     android:scheme="com.restcycle.app" />
+                <data
+                    android:host="recovery"
+                    android:scheme="com.restcycle.app" />
             </intent-filter>
         </activity>
         <activity android:name=".features.auth.RegistroComposeActivity"
