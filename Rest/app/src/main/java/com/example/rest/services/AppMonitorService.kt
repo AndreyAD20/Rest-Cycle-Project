@@ -256,20 +256,33 @@ if (dispositivoAUsar != null) {
             onHeadphonesConnected()
         }
         
-        if (Build.VERSION.SDK_INT >= 34) { // Android 14+
-            startForeground(
-                NOTIFICATION_ID, 
-                createNotification(), 
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or 
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+        val hasLocationPermission = android.content.pm.PackageManager.PERMISSION_GRANTED ==
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) || android.content.pm.PackageManager.PERMISSION_GRANTED ==
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.ACCESS_COARSE_LOCATION
             )
+
+        if (Build.VERSION.SDK_INT >= 34) { // Android 14+
+            val foregroundType = if (hasLocationPermission) {
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+            } else {
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            }
+            startForeground(NOTIFICATION_ID, createNotification(), foregroundType)
         } else {
             startForeground(NOTIFICATION_ID, createNotification())
         }
 
-        // Iniciar rastreo de ubicación de alta frecuencia
+        // Iniciar rastreo de ubicación de alta frecuencia (solo si hay permiso)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        startLocationUpdates()
+        if (hasLocationPermission) {
+            startLocationUpdates()
+        } else {
+            Log.w(TAG, "Permisos de ubicación no concedidos - rastreo desactivado en este inicio")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
